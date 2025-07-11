@@ -10,7 +10,7 @@ fetch('https://f004.backblazeb2.com/file/whereisthedeer/LocalityPolygon.geojson'
     L.geoJSON(data).addTo(map);
   });
 
-fetch('https://f004.backblazeb2.com/file/whereisthedeer/zones.geojson')
+fetch('https://f004.backblazeb2.com/file/whereisthedeer/zones.json')
   .then(res => res.json())
   .then(data => {
     L.geoJSON(data).addTo(map);
