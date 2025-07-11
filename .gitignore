@@ -1,0 +1,17 @@
+# Big local data
+Data/
+*.geojson
+*.sqlite
+*.psv
+
+# Node stuff (not needed now but ok to keep)
+node_modules/
+
+# MacOS clutter
+.DS_Store
+
+# Logs (optional)
+*.log
+
+# OS + editor junk
+Thumbs.db

@@ -1,0 +1,101 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>WhereIsTheDeer - Hunting Map for Victoria</title>
+  <link rel="icon" href="favicon.ico" type="image/x-icon" />
+  <style>
+    body {
+      margin: 0;
+      font-family: Arial, sans-serif;
+      background: url('Images/WhereIsTheDeerLandingPage.png') no-repeat center center fixed;
+      background-size: cover;
+      height: 100vh;
+      text-align: center;
+    }
+    .container {
+  display: flex;
+  flex-direction: column;
+  justify-content: flex-start; /* start from top, not bottom */
+  align-items: center;
+  height: 100%;
+  box-sizing: border-box;
+  padding-top: 60px;  /* NEW: push content down */
+  padding-bottom: 40px;
+    filter: drop-shadow(0  5px 5px rgba(0, 0, 0, 1));
+
+}
+    .logo {
+  width: 220px;
+  height: auto;
+  margin-bottom: 30px;
+  filter: drop-shadow(0  10px 10px rgba(0, 0, 0, 1));
+}
+
+    .text-block {
+      background: none;
+      padding: 0;
+      border-radius: 12px;
+      max-width: 800px;
+    }
+    .text-block p {
+      color: #ffffff;
+      font-size: 1.6em;
+      margin-bottom: 20px;
+      text-shadow: 3px 3px 2px rgba(0, 0, 0, 0.9);
+      line-height: 1.4;
+    }
+    .button {
+  display: inline-block;
+  background: #1f7a27; /* base fallback color */
+  background-image: url('Images/DeerCamo.png');
+  background-size: cover; /* scale to fill */
+  background-blend-mode: overlay; /* blend with base green */
+  color: white;
+  text-decoration: none;
+  padding: 14px 28px;
+  border-radius: 10px;
+  font-size: 1.2em;
+  border: 2px solid #000;
+  box-shadow: 0 0 10px rgba(0,0,0,0.7);
+  transition: background 0.3s, box-shadow 0.3s;
+}
+
+.button:hover {
+  background: #1f7a27;
+  background-image: url('Images/DeerCamo.png');
+  background-size: cover; /* scale to fill */
+  background-blend-mode: overlay; /* blend with base green */
+  filter: brightness(1.1);
+  transform: scale(1.02);
+  box-shadow: 0 0 14px rgba(0,0,0,0.9);
+}
+    @media screen and (max-width: 768px) {
+      .container { max-width: 90%; padding: 20px 10px 60px 10px; }
+      .logo { width: 140px; margin-bottom: 20px; }
+      .text-block { padding: 20px 30px; }
+      .text-block p { font-size: 1.2em; }
+    }
+
+    .brand-name-logo {
+  width: 500px;
+  max-width: 90%;
+  height: auto;
+  margin: 0 0 20px 0;
+}
+
+  </style>
+</head>
+<body>
+  <div class="container">
+<img src="Images/WhereIsTheDeerTextLogo.png" alt="WHERE IS THE DEER?" class="brand-name-logo">
+    <img src="Images/WhereIsTheDeerLogo.png" alt="WhereIsTheDeer Logo" class="logo">
+    <div class="text-block">
+      <p>A custom hunting map for deer hunters in Victoria, Australia.<br>
+        Weather, overlays, GPS tracks — all in one place.</p>
+      <a href="map.html" class="button">Enter Map</a>
+    </div>
+  </div>
+</body>
+</html>

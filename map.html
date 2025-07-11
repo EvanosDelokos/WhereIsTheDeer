@@ -1,0 +1,221 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <title>WhereIsTheDeer Map</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+
+  <!-- Favicon if you have it -->
+  <link rel="icon" href="Images/favicon.ico" type="image/x-icon">
+
+  <!-- Leaflet & Draw -->
+  <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css"/>
+  <link rel="stylesheet" href="https://unpkg.com/leaflet-draw@1.0.4/dist/leaflet.draw.css" />
+  <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+  <script src="https://unpkg.com/leaflet-draw@1.0.4/dist/leaflet.draw.js"></script>
+  <script src="https://unpkg.com/leaflet-providers@1.13.0/leaflet-providers.js"></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/leaflet-gpx/1.4.0/gpx.min.js"></script>
+  <script src="https://unpkg.com/@mapbox/leaflet-pip@1.1.0/leaflet-pip.js"></script>
+
+  <!-- SQLite WASM -->
+<script src="https://cdnjs.cloudflare.com/ajax/libs/sql.js/1.8.0/sql-wasm.js"></script>
+
+  <!-- Your custom CSS -->
+  <link rel="stylesheet" href="CSS/style.css"/>
+
+</head>
+<body>
+
+  <!-- Map Container -->
+  <div id="map"></div>
+
+  <!-- Top Search Bar -->
+  <div class="top-search-bar">
+    <input id="addressSearch" type="text" placeholder="Search address...">
+    <div id="addressSuggestions" class="suggestions"></div>
+    <span class="help-icon">?</span>
+  </div>
+
+  <!-- Left Sidebar -->
+  <div id="leftSidebar" class="sidebar left">
+    <div class="sidebar-content">
+      <!-- Pins -->
+      <div class="dropdown">
+        <button>📍</button>
+        <div class="dropdown-content">
+          <button id="addPinBtn">📍 Place Pin</button>
+          <button id="clearPinsBtn">🧹 Clear Pins</button>
+        </div>
+      </div>
+
+      <!-- GPX Upload -->
+      <div class="dropdown">
+        <button>📁</button>
+        <div class="dropdown-content">
+          <input id="gpxUpload" type="file" accept=".gpx" multiple>
+          <div id="gpxList"></div>
+          <button id="removeGpx">🗑️ Clear</button>
+        </div>
+      </div>
+
+      <!-- ✅ Draw Track -->
+    <button id="drawTrackBtn">✏️</button>
+    </div>
+  </div>
+
+  <!-- Right Sidebar -->
+  <div id="rightSidebar" class="sidebar right">
+    <div class="sidebar-content">
+
+      <!-- Weather -->
+      <div id="weatherWrapper" class="dropdown">
+        <button>🌤️</button>
+        <div class="dropdown-content">
+          <h3>Weather Forecast</h3>
+          <input id="weatherSearch" type="text" placeholder="Search location...">
+          <div id="weatherSuggestions" class="suggestions"></div>
+          <div id="weatherOutput" class="weather-output"></div>
+        </div>
+      </div>
+
+      <!-- Map Layers -->
+      <div id="mapLayersWrapper" class="dropdown">
+        <button>🗺️</button>
+        <div class="dropdown-content">
+          <button onclick="switchBaseLayer('Terrain')">Terrain</button>
+          <button onclick="switchBaseLayer('Satellite')">Satellite</button>
+          <button onclick="switchBaseLayer('Contours')">Contours</button>
+        </div>
+      </div>
+
+      <!-- Species Filter -->
+      <div class="dropdown">
+  <button id="speciesFilter">🦌</button>
+
+  <!-- species list -->
+  <div class="dropdown-content species-dropdown">
+    <button value="OFF">OFF</button>
+    <button value="Deer">Deer (All)</button>
+    <button value="Hog Deer">Hog Deer</button>
+    <button value="Duck">Duck</button>
+    <button value="Stubble Quail">Stubble Quail</button>
+    <button value="Pest">Pest</button>
+  </div>
+</div>  
+
+    </div>
+  </div>
+
+  <!-- Disclaimer -->
+  <div id="disclaimerOverlay">
+    <div>
+      <h2>Disclaimer</h2>
+      <p>
+        Note: Hunters are personally responsible for acting in accordance with the Firearms Act 1996 and the Firearm Safety Code, including informing themselves about any prohibited locations within the areas shown on this map and other relevant laws; obtaining the required hunting licence; and for hunting only within season. The Firearm Safety Code Rules 4 (identify your target beyond all doubt) and 5 (check your firing zone) are of particular relevance.
+</p>
+<p>
+  This map is provided for general reference only. Public land boundaries, hunting zones, and seasonal restrictions may change. Always verify with official sources before hunting.
+</p>
+<p>
+  <a href="https://www.gma.vic.gov.au/hunting" target="_blank">Game Management Authority – Hunting Maps</a><br>
+  <a href="https://mapshare.vic.gov.au" target="_blank">MapShareVic – Victorian Land Information</a><br>
+  <a href="https://www.police.vic.gov.au/sites/default/files/2018-11/Firearm-Safety-Code.pdf" target="_blank">Firearm Safety Code PDF</a>
+</p>
+<p>
+  Data Sources: Vicmap Basemap Services, MapShareVic, and DataShareVic | Government of Victoria
+</p>
+<p>
+  Disclaimer: WhereIsTheDeer is not affiliated with the Victorian Government.<br>
+  No guarantee is made regarding accuracy or legal validity of mapped zones.
+      </p>
+      <button id="agreeDisclaimer" class="sidebar-content">Agree and enter map</button>
+    </div>
+  </div>
+
+  <!-- UI Dropdown JS -->
+  <script>
+    document.querySelectorAll('.dropdown > button').forEach(button => {
+      button.addEventListener('click', function(e) {
+        e.stopPropagation();
+        const parent = this.parentElement;
+        document.querySelectorAll('.dropdown').forEach(d => {
+          if (d !== parent) d.classList.remove('open');
+        });
+        parent.classList.toggle('open');
+      });
+    });
+    document.querySelectorAll('.dropdown-content').forEach(content => {
+      content.addEventListener('click', function(e) {
+        e.stopPropagation();
+      });
+    });
+    document.addEventListener('click', () => {
+      document.querySelectorAll('.dropdown').forEach(d => d.classList.remove('open'));
+    });
+  </script>
+
+  <!-- All your modules in order -->
+  <script src="JS/mapEngine.js"></script>
+  <script src="JS/layerManager.js"></script>
+  <script src="JS/searchModule.js"></script>
+  <script type="module" src="JS/pinManager.js"></script>
+<script type="module" src="JS/gpxManager.js"></script>
+  <script type="module" src="JS/drawModule.js"></script>
+  <script type="module" src="JS/weatherModule.js"></script>
+  <script src="JS/speciesLayer.js"></script>
+  <script src="JS/uiManager.js"></script>
+  <script src="JS/disclaimerModule.js"></script>
+  <script src="JS/settings.js"></script>
+  <script src="JS/main.js"></script>
+
+  <script>
+  const speciesFilter = document.getElementById("speciesFilter");
+
+  if (speciesFilter) {
+    speciesFilter.addEventListener("click", (e) => {
+      e.stopPropagation();
+      const dropdown = speciesFilter.nextElementSibling;
+      if (dropdown) {
+        dropdown.style.display = dropdown.style.display === "block" ? "none" : "block";
+      }
+    });
+
+    const speciesDropdown = speciesFilter.nextElementSibling;
+    if (speciesDropdown) {
+      speciesDropdown.addEventListener("click", e => e.stopPropagation());
+
+      speciesDropdown.querySelectorAll("button").forEach(button => {
+        button.addEventListener("click", e => {
+          const selected = button.value;
+          speciesFilter.textContent = button.textContent;
+
+          if (selected === "All") {
+            switchSpeciesLayer("OFF"); // ✅ OFF means clear all
+          } else if (selected === "Deer (All Year)") {
+            switchSpeciesLayer("Deer");
+          } else {
+            switchSpeciesLayer(selected);
+          }
+
+          speciesDropdown.style.display = "none";
+        });
+      });
+    }
+  }
+
+  document.addEventListener("click", function (e) {
+    const speciesBtn = document.getElementById("speciesFilter");
+    const speciesDropdown = speciesBtn?.nextElementSibling;
+
+    if (!speciesBtn || !speciesDropdown) return;
+
+    if (!speciesBtn.contains(e.target) && !speciesDropdown.contains(e.target)) {
+      speciesDropdown.style.display = "none";
+    }
+  });
+</script>
+
+
+
+</body>
+</html>

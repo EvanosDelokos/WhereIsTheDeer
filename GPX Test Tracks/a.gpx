@@ -1,0 +1,22 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<gpx version="1.1" creator="WhereIsTheDeer" xmlns="http://www.topografix.com/GPX/1/1">
+
+  <!-- Waypoint -->
+  <wpt lat="-36.654" lon="147.180">
+    <name>Camp Setup</name>
+    <desc>Main camp spot with fire ring</desc>
+  </wpt>
+
+  <!-- Track -->
+  <trk>
+    <name>Morning Stalk</name>
+    <trkseg>
+      <trkpt lat="-36.650" lon="147.170"><ele>600</ele></trkpt>
+      <trkpt lat="-36.652" lon="147.175"><ele>605</ele></trkpt>
+      <trkpt lat="-36.654" lon="147.180"><ele>610</ele></trkpt>
+      <trkpt lat="-36.656" lon="147.185"><ele>608</ele></trkpt>
+      <trkpt lat="-36.658" lon="147.190"><ele>605</ele></trkpt>
+    </trkseg>
+  </trk>
+
+</gpx>
