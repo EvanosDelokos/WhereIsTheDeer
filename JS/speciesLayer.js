@@ -49,7 +49,7 @@ fetch('https://f004.backblazeb2.com/file/whereisthedeer/zones.json')
 
       console.log("Species layers grouped & ready.");
     })
-    .catch(err => console.error("Failed to load zones.geojson:", err));
+    .catch(err => console.error("Failed to load zones.json:", err));
 
   // Store the groups globally
   window.WITD.speciesLayers = {
