@@ -10,7 +10,7 @@ let searchMarker = null; // store single search marker
 initSqlJs({
   locateFile: file => `https://cdnjs.cloudflare.com/ajax/libs/sql.js/1.8.0/${file}`
 }).then(SQL => {
-  fetch("/Data/addresses.sqlite")
+fetch('https://pub-4fb36f4851fc417d8fee38f3358690bb.r2.dev/addresses.sqlite')
     .then(response => response.arrayBuffer())
     .then(data => {
       db = new SQL.Database(new Uint8Array(data));

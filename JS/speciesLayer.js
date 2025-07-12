@@ -11,7 +11,7 @@ document.addEventListener("DOMContentLoaded", () => {
   const pestLayer = L.layerGroup();
 
   // Load zones.geojson once
-fetch('https://f004.backblazeb2.com/file/whereisthedeer/zones.json')
+fetch('https://pub-4fb36f4851fc417d8fee38f3358690bb.r2.dev/zones.json')
     .then(res => res.json())
     .then(data => {
       console.log(`Zones loaded: ${data.features.length} features`);
