@@ -1,18 +1,12 @@
 const express = require("express");
 const sqlite3 = require("sqlite3").verbose();
 const path = require("path");
-import { fileURLToPath } from "url";
 
 const app = express();
 
-// Handle __dirname in ES modules
-const __filename = fileURLToPath(import.meta.url);
-const __dirname = path.dirname(__filename);
-
-// SQLite init
+// __dirname is available in CommonJS already
 const db = new sqlite3.Database(path.join(__dirname, "addresses.sqlite"));
 
-// Search endpoint
 app.get("/search", (req, res) => {
   const q = req.query.q;
   if (!q) return res.status(400).json({ error: "Missing query" });
@@ -40,12 +34,10 @@ app.get("/search", (req, res) => {
   });
 });
 
-// Default root
 app.get("/", (req, res) => {
   res.send("WhereIsTheDeer API is running.");
 });
 
-// Start server
 const PORT = process.env.PORT || 3000;
 app.listen(PORT, () => {
   console.log(`API server running on http://localhost:${PORT}`);
