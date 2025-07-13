@@ -9,6 +9,11 @@ app.use(cors());
 // __dirname is available in CommonJS already
 const db = new sqlite3.Database(path.join(__dirname, "addresses.sqlite"));
 
+// Health check route
+app.get("/health", (req, res) => {
+  res.status(200).send("OK");
+});
+
 app.get("/search", (req, res) => {
   const q = req.query.q;
   if (!q) return res.status(400).json({ error: "Missing query" });
