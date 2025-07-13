@@ -589,3 +589,47 @@ body, html {
     width: 80px;
   }
 }
+
+.container {
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  align-items: center;
+  height: 100vh;
+  text-align: center;
+}
+
+.content {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 16px;
+}
+
+.text-block p {
+  color: #ffffff;
+  font-size: 1.6em;
+  margin-bottom: 20px;
+  text-shadow: 0 0 6px rgba(255, 255, 255, 0.8);
+}
+
+@media screen and (max-width: 768px) {
+  #disclaimerOverlay div {
+    width: 90%;
+    max-height: 90vh;
+    overflow-y: auto;
+    padding: 16px;
+    font-size: 14px;
+  }
+
+  #disclaimerOverlay button {
+    width: 100%;
+    font-size: 1em;
+    padding: 12px;
+  }
+
+  #disclaimerOverlay p {
+    font-size: 0.95em;
+  }
+}
+
