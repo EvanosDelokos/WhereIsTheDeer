@@ -1,8 +1,10 @@
+const cors = require("cors");
 const express = require("express");
 const sqlite3 = require("sqlite3").verbose();
 const path = require("path");
 
 const app = express();
+app.use(cors());
 
 // __dirname is available in CommonJS already
 const db = new sqlite3.Database(path.join(__dirname, "addresses.sqlite"));
