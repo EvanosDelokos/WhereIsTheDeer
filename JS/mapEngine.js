@@ -3,24 +3,35 @@ console.log("Module loaded: mapEngine");
 document.addEventListener("DOMContentLoaded", () => {
   const map = L.map('map').setView([-36.5, 146.5], 7);
 
-  // After map init
-fetch('https://pub-4fb36f4851fc417d8fee38f3358690bb.r2.dev/LocalityPolygon.geojson')
-  .then(res => res.json())
-  .then(data => {
-    L.geoJSON(data).addTo(map);
-  });
+  // Store the LocalityPolygon but do NOT add it to the map
+  fetch('https://pub-4fb36f4851fc417d8fee38f3358690bb.r2.dev/LocalityPolygon.geojson')
+    .then(res => res.json())
+    .then(data => {
+      const localityLayer = L.geoJSON(data, {
+        style: {
+          color: '#666',
+          weight: 1,
+          opacity: 0.2,
+          fillOpacity: 0.05
+        }
+      });
 
-fetch('https://pub-4fb36f4851fc417d8fee38f3358690bb.r2.dev/zones.json')
-  .then(res => res.json())
-  .then(data => {
-    L.geoJSON(data).addTo(map);
-  });
+      // Stored globally in case you want to toggle later
+      window.WITD = window.WITD || {};
+      window.WITD.localityLayer = localityLayer;
+    });
 
+  // Zones: shown by default
+  fetch('https://pub-4fb36f4851fc417d8fee38f3358690bb.r2.dev/zones.json')
+    .then(res => res.json())
+    .then(data => {
+      L.geoJSON(data).addTo(map);
+    });
 
-  // Optional: Add scale control
+  // Optional: scale control
   L.control.scale({ position: 'bottomright' }).addTo(map);
 
-  // Expose globally for other modules
+  // Expose map
   window.WITD = window.WITD || {};
   window.WITD.map = map;
 
