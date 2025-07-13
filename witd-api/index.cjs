@@ -1,6 +1,6 @@
-import express from "express";
-import sqlite3 from "sqlite3";
-import path from "path";
+const express = require("express");
+const sqlite3 = require("sqlite3").verbose();
+const path = require("path");
 import { fileURLToPath } from "url";
 
 const app = express();
