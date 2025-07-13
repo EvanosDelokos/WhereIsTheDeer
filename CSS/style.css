@@ -4,8 +4,9 @@ body, html {
   padding: 0;
   height: 100%;
   font-family: Arial, sans-serif;
-  overflow: hidden;
+  overflow-x: hidden;
 }
+
 
 #map {
   width: 100%;
@@ -593,11 +594,14 @@ body, html {
 .container {
   display: flex;
   flex-direction: column;
-  justify-content: center;
+  justify-content: center; /* ✅ center vertically */
   align-items: center;
   height: 100vh;
+  box-sizing: border-box;
   text-align: center;
+  padding: 20px;
 }
+
 
 .content {
   display: flex;
