@@ -1,4 +1,4 @@
-/* Base Styles */
+/* === Base Layout === */
 body, html {
   margin: 0;
   padding: 0;
@@ -7,7 +7,7 @@ body, html {
   overflow-x: hidden;
 }
 
-
+/* Map container */
 #map {
   width: 100%;
   height: 100vh;
@@ -17,7 +17,8 @@ body, html {
   z-index: 0;
 }
 
-/* Top Search Bar */
+/* === Top Search Bar === */
+/* Container for search bar */
 .top-search-bar {
   position: absolute;
   top: 12px;
@@ -33,6 +34,7 @@ body, html {
   z-index: 1001;
 }
 
+/* Styling for search input */
 .top-search-bar input {
   border: none;
   outline: none;
@@ -42,6 +44,7 @@ body, html {
   width: 240px;
 }
 
+/* Dropdown for address suggestions */
 .top-search-bar .suggestions {
   position: absolute;
   top: 100%;
@@ -58,15 +61,18 @@ body, html {
   display: none;
 }
 
+/* Individual suggestion item */
 .top-search-bar .suggestion {
   padding: 4px 8px;
   cursor: pointer;
 }
 
+/* Hover state for suggestion */
 .top-search-bar .suggestion:hover {
   background: #f0f0f0;
 }
 
+/* Help icon (question mark) */
 .help-icon {
   font-weight: bold;
   font-size: 16px;
@@ -74,31 +80,37 @@ body, html {
   cursor: pointer;
 }
 
-/* Smaller popups, no tail */
+/* === Leaflet Popups === */
+/* Content inside popup */
 .leaflet-popup-content {
   margin: 5px 10px !important;
   font-size: 14px;
+  pointer-events: auto;
 }
 
+/* Popup wrapper box */
 .leaflet-popup-content-wrapper {
   padding: 4px 8px;
   border-radius: 6px;
 }
 
+/* Hide popup tail */
 .leaflet-popup-tip {
   display: none;
 }
 
+/* Hide close button */
 .leaflet-popup-close-button {
-  display: none; /* or style smaller if you want */
+  display: none;
 }
 
-/* Sidebars */
+/* === Sidebar Layout === */
+/* Sidebar container (left/right) */
 .sidebar {
   position: absolute;
   top: 50%;
   transform: translateY(-50%);
-  width: 60px; /* Unified width for left & right */
+  width: 60px;
   background: rgba(255,255,255,0.95);
   box-shadow: 0 2px 6px rgba(0,0,0,0.15);
   border-radius: 30px;
@@ -111,20 +123,20 @@ body, html {
   transition: all 0.3s ease;
 }
 
-.sidebar.left {
-  left: 12px;
-}
+/* Sidebar left position */
+.sidebar.left { left: 12px; }
 
-.sidebar.right {
-  right: 12px;
-}
+/* Sidebar right position */
+.sidebar.right { right: 12px; }
 
+/* Collapsed state */
 .sidebar.collapsed {
   width: 28px;
   padding: 10px 2px;
   overflow: hidden;
 }
 
+/* Button container inside sidebar */
 .sidebar-content {
   display: flex;
   flex-direction: column;
@@ -133,14 +145,14 @@ body, html {
   width: 100%;
 }
 
-/* Unified Round Buttons */
+/* Round button styling */
 .sidebar-content button {
   width: 48px;
   height: 48px;
   border-radius: 50%;
   overflow: hidden;
   display: flex;
-  flex-direction: column; /* Allows icon + text stack */
+  flex-direction: column;
   align-items: center;
   justify-content: center;
   border: 1px solid #888;
@@ -152,21 +164,31 @@ body, html {
   text-align: center;
 }
 
+/* Hover effect */
 .sidebar-content button:hover {
   background: #e0e0e0;
   box-shadow: 0 3px 6px rgba(0,0,0,0.15);
 }
 
-/* Species Filter Special Alignment */
+/* Click effect */
+.sidebar-content button:active {
+  transform: scale(0.95);
+  box-shadow: 0 1px 2px rgba(0,0,0,0.2);
+}
+
+/* === Species Filter === */
+/* Filter button */
 #speciesFilter {
   font-size: 13px;
 }
 
+/* Species label block */
 #speciesFilter span {
   display: block;
   line-height: 1.1;
 }
 
+/* Dropdown for species */
 .species-dropdown {
   max-height: 200px;
   overflow-y: auto;
@@ -176,19 +198,20 @@ body, html {
   padding: 8px;
 }
 
+/* Button container */
 .species-buttons {
   display: flex;
   flex-direction: column;
   gap: 6px;
 }
 
-
-/* Dropdowns */
+/* === Dropdowns (generic) === */
 .dropdown {
   position: relative;
   width: auto;
 }
 
+/* Dropdown content panel */
 .dropdown-content {
   display: none;
   position: absolute;
@@ -204,32 +227,24 @@ body, html {
   overflow-y: auto;
 }
 
+/* Dropdown in left sidebar */
 .sidebar.left .dropdown-content {
-  left: 50px; /* match sidebar width */
+  left: 50px;
   right: auto;
 }
 
+/* Dropdown in right sidebar */
 .sidebar.right .dropdown-content {
   right: 50px;
   left: auto;
 }
 
-/* Click effect */
-.sidebar-content button:active {
-  transform: scale(0.95);
-  box-shadow: 0 1px 2px rgba(0,0,0,0.2);
-}
-
-
-.dropdown-content {
-  display: none;
-}
-
+/* Open state */
 .dropdown.open .dropdown-content {
   display: block;
 }
 
-
+/* Inputs and buttons inside dropdowns */
 .dropdown-content input,
 .dropdown-content button {
   width: 100%;
@@ -242,20 +257,23 @@ body, html {
   white-space: nowrap;
 }
 
+/* === Weather Panel === */
+/* Full dropdown content */
 #weatherWrapper .dropdown-content {
-  width: 320px; /* much wider */
+  width: 320px;
   max-height: 700px;
-  padding: 16px; /* more space inside */
+  padding: 16px;
   background: #ffffff;
-  border: 2px solid #007bff; /* bright border */
+  border: 2px solid #007bff;
   border-radius: 10px;
   box-shadow: 0 4px 12px rgba(0,0,0,0.2);
   position: absolute;
   top: 0;
-  right: 50px; /* or whatever your adjusted offset is */
+  right: 50px;
   overflow-y: auto;
 }
 
+/* Weather title */
 #weatherWrapper .dropdown-content h3 {
   margin: 0 0 12px 0;
   color: #007bff;
@@ -264,6 +282,7 @@ body, html {
   text-align: center;
 }
 
+/* Weather search input */
 #weatherWrapper .dropdown-content input {
   width: 100%;
   padding: 8px 10px;
@@ -273,6 +292,7 @@ body, html {
   box-sizing: border-box;
 }
 
+/* Close button inside weather box */
 #weatherWrapper .dropdown-content .close-btn {
   position: absolute;
   top: 10px;
@@ -284,10 +304,12 @@ body, html {
   color: #555;
 }
 
+/* Hover state for close button */
 #weatherWrapper .dropdown-content .close-btn:hover {
   color: #007bff;
 }
 
+/* Weather result box */
 #weatherWrapper .weather-output {
   margin-top: 12px;
   background: #f9f9f9;
@@ -298,25 +320,56 @@ body, html {
   line-height: 1.4;
 }
 
+/* Weather now */
 .today {
   font-size: 14px;
   line-height: 1.4;
 }
 
+/* Bold now title */
 .today b {
   display: block;
   margin-bottom: 4px;
 }
 
+/* Line spacing in today */
 .today br {
   line-height: 1.2;
 }
 
+/* Wind direction bold */
 .today .wind-direction {
   font-weight: bold;
 }
 
-/* Layer + Species popups */
+/* Forecast layout */
+.forecast {
+  margin-top: 12px;
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(240px, 1fr));
+  gap: 10px;
+}
+
+/* Individual day forecast */
+.forecast-day {
+  background: #ffffff;
+  border: 1px solid #ddd;
+  border-radius: 6px;
+  padding: 8px;
+  font-size: 12px;
+  line-height: 1.4;
+  box-shadow: 1px 1px 3px rgba(0,0,0,0.1);
+}
+
+/* Forecast title */
+.forecast-day b {
+  display: block;
+  margin-bottom: 4px;
+  font-size: 13px;
+}
+
+/* === Map Layers & Species Popups === */
+/* Dropdown for base map layers */
 #mapLayersWrapper .dropdown-content,
 #speciesFilter + .dropdown-content {
   width: 90px;
@@ -325,6 +378,7 @@ body, html {
   top: 0;
 }
 
+/* Button styling for dropdown list */
 #speciesFilter + .dropdown-content button,
 #mapLayersWrapper .dropdown-content button {
   padding: 2px 4px;
@@ -334,6 +388,7 @@ body, html {
   line-height: 12px;
 }
 
+/* Weather output text field */
 #weatherOutput {
   max-height: 120px;
   overflow-y: auto;
@@ -341,8 +396,9 @@ body, html {
   margin-top: 6px;
 }
 
-/* GPX + Custom Pins from main.js */
-/* Unified GPX Label Marker */
+
+/* === GPX + Custom Pins === */
+/* Label for GPX track markers */
 .gpx-label {
   background: white;
   border: 1px solid #333;
@@ -356,16 +412,17 @@ body, html {
   cursor: pointer;
 }
 
-
+/* Wrapper for pin label box */
 .marker-text-box {
   position: relative;
 }
 
+/* Inner floating label above pin */
 .marker-text-box .label-inner {
   position: absolute;
   bottom: 100%;
   left: 50%;
-  transform: translate(-50%, -70px); /* the -8px is the vertical lift */
+  transform: translate(-50%, -70px);
   background: white;
   border: none;
   padding: 4px 8px;
@@ -377,17 +434,17 @@ body, html {
   box-shadow: 0 1px 3px rgba(0,0,0,0.2);
 }
 
-
-
+/* Container for uploaded GPX list */
 #gpxList {
   width: 100%;
 }
 
+/* Each GPX file entry */
 .gpx-item {
   display: flex;
   justify-content: space-between;
   align-items: center;
-  padding: 8px 12px;   /* bigger touch area */
+  padding: 8px 12px;
   margin-bottom: 6px;
   background: #f9f9f9;
   border: 1px solid #ddd;
@@ -396,6 +453,7 @@ body, html {
   box-shadow: 0 1px 3px rgba(0,0,0,0.1);
 }
 
+/* File name text */
 .gpx-item .file-name {
   flex-grow: 1;
   overflow: hidden;
@@ -403,6 +461,7 @@ body, html {
   white-space: nowrap;
 }
 
+/* Delete button for file */
 .gpx-item .delete-btn {
   margin-left: 12px;
   cursor: pointer;
@@ -414,14 +473,14 @@ body, html {
   color: #900;
 }
 
-/* Make GPX upload box wider & taller */
+/* GPX upload dropdown panel */
 #leftSidebar .dropdown:nth-child(2) .dropdown-content {
-  width: 240px;     /* adjust to what feels good */
+  width: 240px;
   max-height: 700px;
   overflow-y: auto;
 }
 
-/* GPX Pin styling */
+/* Midpoint pin label during track drawing */
 .mid-label {
   background: white;
   padding: 2px 6px;
@@ -430,6 +489,8 @@ body, html {
   font-size: 12px;
 }
 
+
+/* === Weather Forecast Popup (Floating) === */
 .weather-popup-box {
   position: absolute;
   background: white;
@@ -443,30 +504,10 @@ body, html {
   max-width: 250px;
   font-size: 14px;
 }
-.forecast {
-  margin-top: 12px;
-  display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(240px, 1fr)); /* each forecast day is wider */
-  gap: 10px;
-}
 
-.forecast-day {
-  background: #ffffff;
-  border: 1px solid #ddd;
-  border-radius: 6px;
-  padding: 8px;
-  font-size: 12px;
-  line-height: 1.4;
-  box-shadow: 1px 1px 3px rgba(0,0,0,0.1);
-}
 
-.forecast-day b {
-  display: block;
-  margin-bottom: 4px;
-  font-size: 13px;
-}
-
-/* Disclaimer Modal */
+/* === Disclaimer Overlay === */
+/* Fullscreen disclaimer wrapper */
 #disclaimerOverlay {
   position: fixed;
   top: 0;
@@ -480,6 +521,7 @@ body, html {
   align-items: center;
 }
 
+/* White disclaimer box */
 #disclaimerOverlay div {
   background: white;
   padding: 20px;
@@ -487,18 +529,21 @@ body, html {
   max-width: 600px;
 }
 
+/* Disclaimer heading */
 #disclaimerOverlay h2 {
   color: #2e7d32;
   font-size: 1.8em;
   margin-bottom: 15px;
 }
 
+/* Disclaimer text */
 #disclaimerOverlay p {
   color: #555;
   font-size: 1em;
   margin-bottom: 15px;
 }
 
+/* Disclaimer link */
 #disclaimerOverlay a {
   color: #007bff;
   text-decoration: none;
@@ -508,6 +553,7 @@ body, html {
   text-decoration: underline;
 }
 
+/* Agree button */
 #disclaimerOverlay button {
   background: #4caf50;
   color: white;
@@ -522,29 +568,9 @@ body, html {
   background: #388e3c;
 }
 
-.track-label {
-  background: white;
-  border: 1px solid #333;
-  border-radius: 4px; /* Less rounded corners look tidier */
-  padding: 4px 10px; /* Add horizontal space */
-  font-size: 14px;
-  font-weight: 500;
-  box-shadow: 0 1px 4px rgba(0,0,0,0.3);
-  cursor: pointer;
-  white-space: nowrap;
-  display: inline-block; /* Ensures padding is respected */
-  line-height: 1.2; /* Avoids weird vertical stretching */
-}
 
-.leaflet-pane.zonesPane path {
-  pointer-events: none !important;
-}
-
-.leaflet-popup-content {
-  pointer-events: auto;
-}
-
-
+/* === Track Drawing Button + Labels === */
+/* Button to start drawing */
 #drawTrackBtn {
   display: flex;
   align-items: center;
@@ -560,41 +586,47 @@ body, html {
   transition: background 0.2s, box-shadow 0.2s;
 }
 
+/* Hover state */
 #drawTrackBtn:hover {
   background: #f0f0f0;
   box-shadow: 0 4px 12px rgba(0,0,0,0.2);
 }
 
+/* Icon inside button */
 #drawTrackBtn img {
   width: 18px;
   height: 18px;
 }
 
-
-/* Responsive tweaks */
-@media screen and (max-width: 768px) {
-  .top-search-bar input {
-    width: 160px;
-  }
-  .sidebar {
-    width: 56px;
-  }
-  .sidebar.collapsed {
-    width: 24px;
-  }
-  #weatherWrapper .dropdown-content {
-    width: 100px;
-  }
-  #mapLayersWrapper .dropdown-content,
-  #speciesFilter + .dropdown-content {
-    width: 80px;
-  }
+/* Inline label on track line */
+.track-label {
+  background: white;
+  border: 1px solid #333;
+  border-radius: 4px;
+  padding: 4px 10px;
+  font-size: 14px;
+  font-weight: 500;
+  box-shadow: 0 1px 4px rgba(0,0,0,0.3);
+  cursor: pointer;
+  white-space: nowrap;
+  display: inline-block;
+  line-height: 1.2;
 }
 
+
+/* === Custom Zones Layer === */
+/* Disable interaction on zones layer */
+.leaflet-pane.zonesPane path {
+  pointer-events: none !important;
+}
+
+
+/* === Landing Page === */
+/* Main logo/text/button container */
 .container {
   display: flex;
   flex-direction: column;
-  justify-content: center; /* ✅ center vertically */
+  justify-content: center;
   align-items: center;
   height: 100vh;
   box-sizing: border-box;
@@ -602,7 +634,7 @@ body, html {
   padding: 20px;
 }
 
-
+/* Inner content block */
 .content {
   display: flex;
   flex-direction: column;
@@ -610,6 +642,7 @@ body, html {
   gap: 16px;
 }
 
+/* Landing subtitle text */
 .text-block p {
   color: #ffffff;
   font-size: 1.6em;
@@ -617,7 +650,36 @@ body, html {
   text-shadow: 0 0 6px rgba(255, 255, 255, 0.8);
 }
 
+
+/* === Responsive Styles === */
 @media screen and (max-width: 768px) {
+  /* Smaller input in search bar */
+  .top-search-bar input {
+    width: 160px;
+  }
+
+  /* Narrower sidebars */
+  .sidebar {
+    width: 56px;
+  }
+
+  /* Collapsed sidebar shrink */
+  .sidebar.collapsed {
+    width: 24px;
+  }
+
+  /* Narrow weather dropdown */
+  #weatherWrapper .dropdown-content {
+    width: 100px;
+  }
+
+  /* Narrow map/species layer dropdowns */
+  #mapLayersWrapper .dropdown-content,
+  #speciesFilter + .dropdown-content {
+    width: 80px;
+  }
+
+  /* Disclaimer modal adjusts */
   #disclaimerOverlay div {
     width: 90%;
     max-height: 90vh;
