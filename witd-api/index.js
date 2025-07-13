@@ -16,10 +16,18 @@ app.get("/health", (req, res) => {
 
 app.get("/search", (req, res) => {
   const q = req.query.q;
-  if (!q) return res.status(400).json({ error: "Missing query" });
+  console.log(">> Incoming /search:", q); // 🔍 Add this
+
+  if (!q) {
+    console.log(">> Missing query param");
+    return res.status(400).json({ error: "Missing query" });
+  }
 
   const terms = q.trim().split(/\s+/);
-  if (terms.length === 0) return res.json([]);
+  if (terms.length === 0) {
+    console.log(">> Empty terms after trim");
+    return res.json([]);
+  }
 
   let addressTerms = terms.slice(0, -1);
   let suburbTerm = terms[terms.length - 1];
@@ -35,8 +43,15 @@ app.get("/search", (req, res) => {
 
   sql += ` LIMIT 10`;
 
+  console.log(">> Final SQL:", sql);
+  console.log(">> Params:", params);
+
   db.all(sql, params, (err, rows) => {
-    if (err) return res.status(500).json({ error: err.message });
+    if (err) {
+      console.log(">> SQL error:", err.message);
+      return res.status(500).json({ error: err.message });
+    }
+    console.log(">> Returning", rows.length, "results");
     res.json(rows);
   });
 });
