@@ -4,13 +4,13 @@ document.addEventListener("DOMContentLoaded", () => {
   const map = L.map('map').setView([-36.5, 146.5], 7);
 
   // After map init
-fetch('https://f004.backblazeb2.com/file/whereisthedeer/LocalityPolygon.geojson')
+fetch('https://pub-4fb36f4851fc417d8fee38f3358690bb.r2.dev/LocalityPolygon.geojson')
   .then(res => res.json())
   .then(data => {
     L.geoJSON(data).addTo(map);
   });
 
-fetch('https://f004.backblazeb2.com/file/whereisthedeer/zones.json')
+fetch('https://pub-4fb36f4851fc417d8fee38f3358690bb.r2.dev/zones.json')
   .then(res => res.json())
   .then(data => {
     L.geoJSON(data).addTo(map);
