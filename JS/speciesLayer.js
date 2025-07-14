@@ -41,7 +41,15 @@ function initSpeciesLayer(map) {
 
           if (!species) return;
 
-          layer.setStyle({ opacity: 0, fillOpacity: 0 });
+const speciesStyle = {
+  color: "#FF7F00",
+  weight: 1,
+  fillColor: "#FFEDA0",
+  fillOpacity: 0.3
+};
+
+layer.setStyle(speciesStyle);
+
           layer.bindPopup(`<b>${props.Name || "Unknown"}</b><br>Species: ${species}`);
 
           if (species === "Deer") deerLayer.addLayer(layer);
