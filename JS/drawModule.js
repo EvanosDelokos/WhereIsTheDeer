@@ -5,6 +5,17 @@ import { saveTracks, loadTracks } from './storeManager.js';
 document.addEventListener("DOMContentLoaded", () => {
   const map = window.WITD.map;
 
+  // ✅ Custom pane setup
+  if (!map.getPane('trackLabelPane')) {
+    map.createPane('trackLabelPane');
+    map.getPane('trackLabelPane').style.zIndex = 10000;
+  }
+
+  if (!map.getPane('trackMarkerPane')) {
+    map.createPane('trackMarkerPane');
+    map.getPane('trackMarkerPane').style.zIndex = 500;
+  }
+
   let drawMode = false;
   let currentPolyline = null;
   let currentPoints = [];
@@ -36,11 +47,11 @@ document.addEventListener("DOMContentLoaded", () => {
     currentPoints.push([lat, lng]);
 
     if (currentPoints.length === 1) {
-      const marker = L.marker([lat, lng], { icon: startIcon }).addTo(map).bindPopup("Start");
+      const marker = L.marker([lat, lng], { icon: startIcon, pane: 'trackMarkerPane' }).addTo(map).bindPopup("Start");
       currentMarkers.push(marker);
     } else {
       const icon = (currentPoints.length % 2 === 0) ? middleOrangeIcon : middleYellowIcon;
-      const marker = L.marker([lat, lng], { icon }).addTo(map).bindPopup(`Point ${currentPoints.length}`);
+      const marker = L.marker([lat, lng], { icon, pane: 'trackMarkerPane' }).addTo(map).bindPopup(`Point ${currentPoints.length}`);
       currentMarkers.push(marker);
     }
 
@@ -62,7 +73,7 @@ document.addEventListener("DOMContentLoaded", () => {
     if (lastMarker) map.removeLayer(lastMarker);
 
     const endLatLng = currentPoints[currentPoints.length - 1];
-    const endMarker = L.marker(endLatLng, { icon: finishIcon }).addTo(map).bindPopup("End");
+    const endMarker = L.marker(endLatLng, { icon: finishIcon, pane: 'trackMarkerPane' }).addTo(map).bindPopup("End");
     currentMarkers.push(endMarker);
 
     const midIndex = Math.floor(currentPoints.length / 2);
@@ -72,7 +83,8 @@ document.addEventListener("DOMContentLoaded", () => {
         className: 'track-label',
         html: `Unnamed <span class="rename">✏️</span> <span class="delete">🗑️</span> <span class="export">⬇️</span>`,
         iconSize: [140, 20]
-      })
+      }),
+      pane: 'trackLabelPane'
     }).addTo(map);
 
     const markerTypes = currentMarkers.map((m, i) => {
@@ -200,7 +212,7 @@ document.addEventListener("DOMContentLoaded", () => {
         else if (markerTypes[i] === 'end') icon = finishIcon;
         else icon = i % 2 === 0 ? middleOrangeIcon : middleYellowIcon;
 
-        return L.marker(latlng, { icon }).addTo(map);
+        return L.marker(latlng, { icon, pane: 'trackMarkerPane' }).addTo(map);
       });
 
       const midIndex = Math.floor(latlngs.length / 2);
@@ -211,7 +223,8 @@ document.addEventListener("DOMContentLoaded", () => {
           className: 'track-label',
           html: `${name || "Unnamed"} <span class="rename">✏️</span> <span class="delete">🗑️</span> <span class="export">⬇️</span>`,
           iconSize: [140, 20]
-        })
+        }),
+        pane: 'trackLabelPane'
       }).addTo(map);
 
       const track = {

@@ -115,15 +115,22 @@ document.addEventListener("DOMContentLoaded", () => {
       const endMarker = L.marker(points[points.length - 1], { icon: finishIcon }).addTo(map);
       allMarkers.push(endMarker);
 
+      if (!map.getPane('gpxLabelPane')) {
+  map.createPane('gpxLabelPane');
+  map.getPane('gpxLabelPane').style.zIndex = 10000;
+}
+
       // Single mid label
       const midIndex = Math.floor(points.length / 2);
       const midLabel = L.marker(points[midIndex], {
-        icon: L.divIcon({
-          className: 'gpx-label',
-          html: `${name} 🗑️`,
-          iconSize: [100, 20]
-        })
-      }).addTo(map);
+  icon: L.divIcon({
+    className: 'gpx-label',
+    html: `${name} 🗑️`,
+    iconSize: [100, 20]
+  }),
+  pane: 'gpxLabelPane'
+}).addTo(map);
+
 
       // Sidebar
       const listItem = document.createElement("div");

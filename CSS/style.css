@@ -1,11 +1,9 @@
-/* Base Styles */
-body, html {
-  margin: 0;
-  padding: 0;
-  height: 100%;
-  font-family: Arial, sans-serif;
-  overflow: hidden;
-}
+
+/* === BASE STYLES === */
+
+
+
+/* === MAP CONTAINER === */
 
 #map {
   width: 100%;
@@ -16,7 +14,16 @@ body, html {
   z-index: 0;
 }
 
-/* Top Search Bar */
+#mapLayersWrapper .dropdown-content button {
+  padding: 2px 4px;
+  font-size: 12px;
+  text-align: center;
+  white-space: nowrap;
+  line-height: 12px;
+}
+
+/* === TOP SEARCH BAR === */
+
 .top-search-bar {
   position: absolute;
   top: 12px;
@@ -66,33 +73,6 @@ body, html {
   background: #f0f0f0;
 }
 
-.help-icon {
-  font-weight: bold;
-  font-size: 16px;
-  color: #555;
-  cursor: pointer;
-}
-
-/* Smaller popups, no tail */
-.leaflet-popup-content {
-  margin: 5px 10px !important;
-  font-size: 14px;
-}
-
-.leaflet-popup-content-wrapper {
-  padding: 4px 8px;
-  border-radius: 6px;
-}
-
-.leaflet-popup-tip {
-  display: none;
-}
-
-.leaflet-popup-close-button {
-  display: none; /* or style smaller if you want */
-}
-
-/* Sidebars */
 .sidebar {
   position: absolute;
   top: 50%;
@@ -132,7 +112,6 @@ body, html {
   width: 100%;
 }
 
-/* Unified Round Buttons */
 .sidebar-content button {
   width: 48px;
   height: 48px;
@@ -156,7 +135,45 @@ body, html {
   box-shadow: 0 3px 6px rgba(0,0,0,0.15);
 }
 
-/* Species Filter Special Alignment */
+.sidebar.left .dropdown-content {
+  left: 50px; /* match sidebar width */
+  right: auto;
+}
+
+.sidebar.right .dropdown-content {
+  right: 50px;
+  left: auto;
+}
+
+.sidebar-content button:active {
+  transform: scale(0.95);
+  box-shadow: 0 1px 2px rgba(0,0,0,0.2);
+}
+
+#leftSidebar .dropdown:nth-child(2) .dropdown-content {
+  width: 240px;     /* adjust to what feels good */
+  max-height: 700px;
+  overflow-y: auto;
+}
+
+/* === POPUPS & LABELS === */
+
+
+
+/* === Z-INDEX MANAGEMENT === */
+
+
+
+/* === SIDEBAR BUTTONS & DROPDOWNS === */
+
+.species-buttons {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+/* === SPECIES FILTER === */
+
 #speciesFilter {
   font-size: 13px;
 }
@@ -175,71 +192,14 @@ body, html {
   padding: 8px;
 }
 
-.species-buttons {
-  display: flex;
-  flex-direction: column;
-  gap: 6px;
-}
-
-
-/* Dropdowns */
-.dropdown {
-  position: relative;
-  width: auto;
-}
-
-.dropdown-content {
-  display: none;
-  position: absolute;
-  background: white;
-  border: 1px solid #ccc;
-  border-radius: 8px;
-  box-shadow: 0 2px 6px rgba(0,0,0,0.2);
-  padding: 4px;
-  z-index: 1002;
+#speciesFilter + .dropdown-content {
   width: 90px;
-  top: 0;
-  max-height: 150px;
-  overflow-y: auto;
-}
-
-.sidebar.left .dropdown-content {
-  left: 50px; /* match sidebar width */
-  right: auto;
-}
-
-.sidebar.right .dropdown-content {
+  padding: 4px;
   right: 50px;
-  left: auto;
+  top: 0;
 }
 
-/* Click effect */
-.sidebar-content button:active {
-  transform: scale(0.95);
-  box-shadow: 0 1px 2px rgba(0,0,0,0.2);
-}
-
-
-.dropdown-content {
-  display: none;
-}
-
-.dropdown.open .dropdown-content {
-  display: block;
-}
-
-
-.dropdown-content input,
-.dropdown-content button {
-  width: 100%;
-  padding: 2px 4px;
-  margin-bottom: 4px;
-  font-size: 11px;
-  border: 1px solid #ccc;
-  border-radius: 4px;
-  background: #fff;
-  white-space: nowrap;
-}
+/* === WEATHER BOX === */
 
 #weatherWrapper .dropdown-content {
   width: 320px; /* much wider */
@@ -297,64 +257,12 @@ body, html {
   line-height: 1.4;
 }
 
-.today {
-  font-size: 14px;
-  line-height: 1.4;
-}
-
-.today b {
-  display: block;
-  margin-bottom: 4px;
-}
-
-.today br {
-  line-height: 1.2;
-}
-
-.today .wind-direction {
-  font-weight: bold;
-}
-
-/* Layer + Species popups */
-#mapLayersWrapper .dropdown-content,
-#speciesFilter + .dropdown-content {
-  width: 90px;
-  padding: 4px;
-  right: 50px;
-  top: 0;
-}
-
-#speciesFilter + .dropdown-content button,
-#mapLayersWrapper .dropdown-content button {
-  padding: 2px 4px;
-  font-size: 12px;
-  text-align: center;
-  white-space: nowrap;
-  line-height: 12px;
-}
-
 #weatherOutput {
   max-height: 120px;
   overflow-y: auto;
   font-size: 11px;
   margin-top: 6px;
 }
-
-/* GPX + Custom Pins from main.js */
-/* Unified GPX Label Marker */
-.gpx-label {
-  background: white;
-  border: 1px solid #333;
-  border-radius: 4px;
-  padding: 4px 8px;
-  font-size: 12px;
-  font-weight: bold;
-  white-space: nowrap;
-  color: black;
-  box-shadow: 0 1px 3px rgba(0,0,0,0.3);
-  cursor: pointer;
-}
-
 
 .marker-text-box {
   position: relative;
@@ -376,7 +284,36 @@ body, html {
   box-shadow: 0 1px 3px rgba(0,0,0,0.2);
 }
 
+.weather-popup-box {
+  position: absolute;
+  background: white;
+  border: 1px solid #444;
+  border-radius: 6px;
+  padding: 10px;
+  z-index: 999;
+  display: none;
+  pointer-events: auto;
+  box-shadow: 2px 2px 10px rgba(0,0,0,0.3);
+  max-width: 250px;
+  font-size: 14px;
+}
 
+/* === GPX STYLING === */
+
+.gpx-label {
+  background: white;
+  border: 1px solid #333;
+  border-radius: 4px;
+  padding: 4px 8px;
+  font-size: 12px;
+  font-weight: bold;
+  white-space: nowrap;
+  color: black;
+  box-shadow: 0 1px 3px rgba(0,0,0,0.3);
+  cursor: pointer;
+    position: absolute;   /* or absolute if needed */
+  z-index: 10000;       /* Bring to front */
+}
 
 #gpxList {
   width: 100%;
@@ -413,59 +350,35 @@ body, html {
   color: #900;
 }
 
-/* Make GPX upload box wider & taller */
-#leftSidebar .dropdown:nth-child(2) .dropdown-content {
-  width: 240px;     /* adjust to what feels good */
-  max-height: 700px;
-  overflow-y: auto;
-}
+/* === DRAW MODULE === */
 
-/* GPX Pin styling */
-.mid-label {
-  background: white;
-  padding: 2px 6px;
-  border: 1px solid #333;
-  border-radius: 4px;
-  font-size: 12px;
-}
-
-.weather-popup-box {
-  position: absolute;
-  background: white;
-  border: 1px solid #444;
-  border-radius: 6px;
-  padding: 10px;
-  z-index: 999;
-  display: none;
-  pointer-events: auto;
-  box-shadow: 2px 2px 10px rgba(0,0,0,0.3);
-  max-width: 250px;
+#drawTrackBtn {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  padding: 8px 12px;
+  background: #fff;
+  border: 1px solid #666;
+  border-radius: 30px;
+  cursor: pointer;
   font-size: 14px;
-}
-.forecast {
-  margin-top: 12px;
-  display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(240px, 1fr)); /* each forecast day is wider */
-  gap: 10px;
+  font-weight: 500;
+  transition: background 0.2s, box-shadow 0.2s;
 }
 
-.forecast-day {
-  background: #ffffff;
-  border: 1px solid #ddd;
-  border-radius: 6px;
-  padding: 8px;
-  font-size: 12px;
-  line-height: 1.4;
-  box-shadow: 1px 1px 3px rgba(0,0,0,0.1);
+#drawTrackBtn:hover {
+  background: #f0f0f0;
+  box-shadow: 0 4px 12px rgba(0,0,0,0.2);
 }
 
-.forecast-day b {
-  display: block;
-  margin-bottom: 4px;
-  font-size: 13px;
+#drawTrackBtn img {
+  width: 18px;
+  height: 18px;
 }
 
-/* Disclaimer Modal */
+/* === DISCLAIMER MODAL === */
+
 #disclaimerOverlay {
   position: fixed;
   top: 0;
@@ -521,6 +434,133 @@ body, html {
   background: #388e3c;
 }
 
+/* === RESPONSIVE TWEAKS === */
+
+
+
+/* === LANDING PAGE LAYOUT === */
+
+
+
+/* === MISCELLANEOUS === */
+
+body, html {
+  margin: 0;
+  padding: 0;
+  height: 100%;
+  font-family: Arial, sans-serif;
+  overflow: hidden;
+}
+
+.help-icon {
+  font-weight: bold;
+  font-size: 16px;
+  color: #555;
+  cursor: pointer;
+}
+
+.leaflet-popup-content {
+  margin: 5px 10px !important;
+  font-size: 14px;
+}
+
+.leaflet-popup-content-wrapper {
+  padding: 4px 8px;
+  border-radius: 6px;
+}
+
+.leaflet-popup-tip {
+  display: none;
+}
+
+.leaflet-popup-close-button {
+  display: none; /* or style smaller if you want */
+}
+
+.dropdown {
+  position: relative;
+  width: auto;
+}
+
+.dropdown-content {
+  display: none;
+  position: absolute;
+  background: white;
+  border: 1px solid #ccc;
+  border-radius: 8px;
+  box-shadow: 0 2px 6px rgba(0,0,0,0.2);
+  padding: 4px;
+  z-index: 1002;
+  width: 90px;
+  top: 0;
+  max-height: 150px;
+  overflow-y: auto;
+}
+
+.dropdown.open .dropdown-content {
+  display: block;
+}
+
+.dropdown-content button {
+  width: 100%;
+  padding: 2px 4px;
+  margin-bottom: 4px;
+  font-size: 11px;
+  border: 1px solid #ccc;
+  border-radius: 4px;
+  background: #fff;
+  white-space: nowrap;
+}
+
+.today {
+  font-size: 14px;
+  line-height: 1.4;
+}
+
+.today b {
+  display: block;
+  margin-bottom: 4px;
+}
+
+.today br {
+  line-height: 1.2;
+}
+
+.today .wind-direction {
+  font-weight: bold;
+}
+
+.mid-label {
+  background: white;
+  padding: 2px 6px;
+  border: 1px solid #333;
+  border-radius: 4px;
+  font-size: 12px;
+}
+
+.forecast {
+  margin-top: 12px;
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(240px, 1fr)); /* each forecast day is wider */
+  gap: 10px;
+}
+
+.forecast-day {
+  background: #ffffff;
+  border: 1px solid #ddd;
+  border-radius: 6px;
+  padding: 8px;
+  font-size: 12px;
+  line-height: 1.4;
+  box-shadow: 1px 1px 3px rgba(0,0,0,0.1);
+}
+
+.forecast-day b {
+  display: block;
+  margin-bottom: 4px;
+  font-size: 13px;
+}
+
 .track-label {
   background: white;
   border: 1px solid #333;
@@ -537,107 +577,4 @@ body, html {
 
 .leaflet-pane.zonesPane path {
   pointer-events: none !important;
-}
-
-.leaflet-popup-content {
-  pointer-events: auto;
-}
-
-
-#drawTrackBtn {
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  gap: 6px;
-  padding: 8px 12px;
-  background: #fff;
-  border: 1px solid #666;
-  border-radius: 30px;
-  cursor: pointer;
-  font-size: 14px;
-  font-weight: 500;
-  transition: background 0.2s, box-shadow 0.2s;
-}
-
-#drawTrackBtn:hover {
-  background: #f0f0f0;
-  box-shadow: 0 4px 12px rgba(0,0,0,0.2);
-}
-
-#drawTrackBtn img {
-  width: 18px;
-  height: 18px;
-}
-
-
-/* Responsive tweaks */
-@media screen and (max-width: 768px) {
-  .top-search-bar input {
-    width: 160px;
-  }
-  .sidebar {
-    width: 56px;
-  }
-  .sidebar.collapsed {
-    width: 24px;
-  }
-  #weatherWrapper .dropdown-content {
-    width: 100px;
-  }
-  #mapLayersWrapper .dropdown-content,
-  #speciesFilter + .dropdown-content {
-    width: 80px;
-  }
-}
-
-.container {
-  height: 100vh;
-  width: 100%;
-  display: flex;
-  justify-content: center;
-  align-items: flex-end;     /* 👇 Push content to bottom */
-  padding-bottom: 10vh;      /* 👇 Adjust how low it sits */
-  text-align: center;
-  position: relative;
-  z-index: 10;
-}
-
-.content {
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  gap: 1.2em;
-}
-
-.brand-name-logo {
-  width: 90vw;
-  max-width: 600px;
-}
-
-.logo {
-  width: 80px;
-  margin-bottom: 0.5em;
-}
-
-.text-block p {
-  color: white;
-  font-size: 1.2em;
-  text-shadow: 1px 1px 3px #000;
-  margin: 0;
-}
-
-.button {
-  background-color: #1b5e20;
-  color: white;
-  font-size: 1.1em;
-  padding: 10px 24px;
-  border: none;
-  border-radius: 8px;
-  text-decoration: none;
-  box-shadow: 0 4px 10px rgba(0,0,0,0.3);
-  transition: background 0.2s ease;
-}
-
-.button:hover {
-  background-color: #2e7d32;
 }

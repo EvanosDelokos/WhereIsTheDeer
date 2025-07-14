@@ -225,6 +225,14 @@ if (speciesFilter) {
 </script>
 
 
-
+<div class="mobile-tools-menu" id="toolsMenu">
+  <button onclick="document.getElementById('addPinBtn').click()">📍 Place Pin</button>
+  <button onclick="document.getElementById('clearPinsBtn').click()">🧹 Clear Pins</button>
+  <button onclick="document.getElementById('gpxUpload').click()">📁 Load GPX</button>
+  <button onclick="document.getElementById('drawTrackBtn').click()">✏️ Draw Track</button>
+  <button onclick="document.getElementById('speciesFilter').click()">🦌 Species</button>
+  <button onclick="document.querySelector('#mapLayersWrapper > button').click()">🗺️ Layers</button>
+  <button onclick="document.querySelector('#weatherWrapper > button').click()">🌤️ Weather</button>
+</div>
 </body>
 </html>

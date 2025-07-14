@@ -10,6 +10,13 @@ document.addEventListener("DOMContentLoaded", () => {
 
   const addPinBtn = document.getElementById("addPinBtn");
   const clearPinsBtn = document.getElementById("clearPinsBtn");
+  clearPinsBtn.addEventListener("click", () => {
+  // Show confirm dialog
+  if (confirm("Are you sure you want to delete ALL placed pins?")) {
+    // Your existing pin clearing logic here
+    clearAllPins(); // ← whatever your function is called
+  }
+});
 
   addPinBtn.addEventListener("click", () => {
     window.WITD.pinMode = !window.WITD.pinMode;
