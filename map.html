@@ -173,37 +173,44 @@
   <script>
   const speciesFilter = document.getElementById("speciesFilter");
 
-  if (speciesFilter) {
-    speciesFilter.addEventListener("click", (e) => {
-      e.stopPropagation();
-      const dropdown = speciesFilter.nextElementSibling;
-      if (dropdown) {
-        dropdown.style.display = dropdown.style.display === "block" ? "none" : "block";
-      }
-    });
-
-    const speciesDropdown = speciesFilter.nextElementSibling;
-    if (speciesDropdown) {
-      speciesDropdown.addEventListener("click", e => e.stopPropagation());
-
-      speciesDropdown.querySelectorAll("button").forEach(button => {
-        button.addEventListener("click", e => {
-          const selected = button.value;
-          speciesFilter.textContent = button.textContent;
-
-          if (selected === "All") {
-            switchSpeciesLayer("OFF"); // ✅ OFF means clear all
-          } else if (selected === "Deer (All Year)") {
-            switchSpeciesLayer("Deer");
-          } else {
-            switchSpeciesLayer(selected);
-          }
-
-          speciesDropdown.style.display = "none";
-        });
-      });
+if (speciesFilter) {
+  speciesFilter.addEventListener("click", (e) => {
+    e.stopPropagation();
+    const dropdown = speciesFilter.nextElementSibling;
+    if (dropdown) {
+      dropdown.style.display = dropdown.style.display === "block" ? "none" : "block";
     }
+  });
+
+  const speciesDropdown = speciesFilter.nextElementSibling;
+  if (speciesDropdown) {
+    speciesDropdown.addEventListener("click", e => e.stopPropagation());
+
+    speciesDropdown.querySelectorAll("button").forEach(button => {
+      button.addEventListener("click", e => {
+        const selected = button.value;
+        speciesFilter.textContent = button.textContent;
+
+        // ✅ Wait until species layers are initialized
+        if (!window.WITD?.speciesLayers) {
+          console.warn("Species layers not ready yet.");
+          return;
+        }
+
+        if (selected === "All" || selected === "OFF") {
+          switchSpeciesLayer("OFF");
+        } else if (selected === "Deer (All Year)" || selected === "Deer") {
+          switchSpeciesLayer("Deer");
+        } else {
+          switchSpeciesLayer(selected);
+        }
+
+        speciesDropdown.style.display = "none";
+      });
+    });
   }
+}
+
 
   document.addEventListener("click", function (e) {
     const speciesBtn = document.getElementById("speciesFilter");
