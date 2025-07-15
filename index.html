@@ -14,23 +14,43 @@
       height: 100vh;
       text-align: center;
     }
+
     .container {
-  display: flex;
-  flex-direction: column;
-  justify-content: center;     /* 👈 vertically centered */
-  align-items: center;
-  height: 100vh;
-  text-align: center;
-  box-sizing: border-box;
-  filter: drop-shadow(0 5px 5px rgba(0, 0, 0, 1));
-}
+      display: flex;
+      flex-direction: column;
+      justify-content: center;
+      align-items: center;
+      height: 100vh;
+      box-sizing: border-box;
+      filter: drop-shadow(0 5px 5px rgba(0, 0, 0, 1));
+    }
+
+    .content {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+    }
+
+    .logo-row {
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      gap: 20px;
+      margin-bottom: 30px;
+      flex-wrap: wrap;
+    }
+
+    .brand-name-logo {
+      width: 360px;
+      max-width: 90%;
+      height: auto;
+    }
 
     .logo {
-  width: 220px;
-  height: auto;
-  margin-bottom: 30px;
-  filter: drop-shadow(0  10px 10px rgba(0, 0, 0, 1));
-}
+      width: 160px;
+      height: auto;
+    }
 
     .text-block {
       background: none;
@@ -38,6 +58,7 @@
       border-radius: 12px;
       max-width: 800px;
     }
+
     .text-block p {
       color: #ffffff;
       font-size: 1.6em;
@@ -45,88 +66,76 @@
       text-shadow: 3px 3px 2px rgba(0, 0, 0, 0.9);
       line-height: 1.4;
     }
+
     .button {
-  display: inline-block;
-  background: #1f7a27; /* base fallback color */
-  background-image: url('Images/DeerCamo.png');
-  background-size: cover; /* scale to fill */
-  background-blend-mode: overlay; /* blend with base green */
-  color: white;
-  text-decoration: none;
-  padding: 14px 28px;
-  border-radius: 10px;
-  font-size: 1.2em;
-  border: 2px solid #000;
-  box-shadow: 0 0 10px rgba(0,0,0,0.7);
-  transition: background 0.3s, box-shadow 0.3s;
-}
+      display: inline-block;
+      background: #1f7a27;
+      background-image: url('Images/DeerCamo.png');
+      background-size: cover;
+      background-blend-mode: overlay;
+      color: white;
+      text-decoration: none;
+      padding: 14px 28px;
+      border-radius: 10px;
+      font-size: 1.2em;
+      border: 2px solid #000;
+      box-shadow: 0 0 10px rgba(0,0,0,0.7);
+      transition: background 0.3s, box-shadow 0.3s;
+      margin-top: 20px;
+    }
 
-.button:hover {
-  background: #1f7a27;
-  background-image: url('Images/DeerCamo.png');
-  background-size: cover; /* scale to fill */
-  background-blend-mode: overlay; /* blend with base green */
-  filter: brightness(1.1);
-  transform: scale(1.02);
-  box-shadow: 0 0 14px rgba(0,0,0,0.9);
-}
+    .button:hover {
+      background: #1f7a27;
+      background-image: url('Images/DeerCamo.png');
+      background-size: cover;
+      background-blend-mode: overlay;
+      filter: brightness(1.1);
+      transform: scale(1.02);
+      box-shadow: 0 0 14px rgba(0,0,0,0.9);
+    }
+
     @media screen and (max-width: 768px) {
-  .container {
-    max-width: 100%;
-    padding: 40px 10px 40px 10px;
-    display: flex;
-    flex-direction: column;
-    align-items: center;
-    justify-content: center; /* ✅ vertically centers */
-    text-align: center;
-  }
+      .container {
+        padding: 40px 10px;
+      }
 
-  .logo {
-    width: 140px;
-    margin-bottom: 20px;
-  }
+      .logo-row {
+        flex-direction: column;
+        gap: 12px;
+        margin-bottom: 24px;
+      }
 
-  .brand-name-logo {
-    width: 80%;
-    max-width: 300px;
-    margin-bottom: 20px;
-  }
+      .brand-name-logo {
+        width: 260px;
+      }
 
-  .text-block {
-    padding: 0;
-    max-width: 90%;
-  }
+      .logo {
+        width: 130px;
+      }
 
-  .text-block p {
-    font-size: 1.2em;
-    line-height: 1.4;
-  }
+      .text-block p {
+        font-size: 1.2em;
+      }
 
-  .button {
-    margin-top: 20px;
-  }
-}
-
-.content {
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  justify-content: center;
-}
-
-
-
+      .button {
+        font-size: 1.1em;
+        padding: 12px 24px;
+      }
+    }
   </style>
 </head>
 <body>
   <div class="container">
-      <div class="content">
-<img src="Images/WhereIsTheDeerTextLogo.png" alt="WHERE IS THE DEER?" class="brand-name-logo">
-    <img src="Images/WhereIsTheDeerLogo.png" alt="WhereIsTheDeer Logo" class="logo">
-    <div class="text-block">
-      <p>A custom hunting map for deer hunters in Victoria, Australia.<br>
-        Weather, overlays, GPS tracks — all in one place.</p>
-      <a href="map.html" class="button">Enter Map</a>
+    <div class="content">
+      <div class="logo-row">
+        <img src="Images/WhereIsTheDeerTextLogo.png" alt="WHERE IS THE DEER?" class="brand-name-logo">
+        <img src="Images/WhereIsTheDeerLogo.png" alt="Deer Icon" class="logo">
+      </div>
+      <div class="text-block">
+        <p>A custom hunting map for deer hunters in Victoria, Australia.<br>
+          Weather, overlays, GPS tracks — all in one place.</p>
+        <a href="map.html" class="button">Enter Map</a>
+      </div>
     </div>
   </div>
 </body>
