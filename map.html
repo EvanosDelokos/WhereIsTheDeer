@@ -22,7 +22,7 @@
 
   <!-- Your custom CSS -->
   <link rel="stylesheet" href="CSS/style.css"/>
-
+  
 </head>
 <body>
 
@@ -36,75 +36,27 @@
     <span class="help-icon">?</span>
   </div>
 
-  <!-- Left Sidebar -->
-  <div id="leftSidebar" class="sidebar left">
-    <div class="sidebar-content">
-      <!-- Pins -->
-      <div class="dropdown">
-        <button>📍</button>
-        <div class="dropdown-content">
-          <button id="addPinBtn">📍 Place Pin</button>
-          <button id="clearPinsBtn">🧹 Clear Pins</button>
-        </div>
-      </div>
-
-      <!-- GPX Upload -->
-      <div class="dropdown">
-        <button>📁</button>
-        <div class="dropdown-content">
-          <input id="gpxUpload" type="file" accept=".gpx" multiple>
-          <div id="gpxList"></div>
-          <button id="removeGpx">🗑️ Clear</button>
-        </div>
-      </div>
-
-      <!-- ✅ Draw Track -->
-    <button id="drawTrackBtn">✏️</button>
+  <!-- Remove old sidebars, but preserve needed elements in a hidden container -->
+  <div id="uiHidden" style="display:none;">
+    <button id="addPinBtn">📍 Place Pin</button>
+    <button id="clearPinsBtn">🧹 Clear Pins</button>
+    <button id="drawTrackBtn">✏️ Draw Track</button>
+    <input id="gpxUpload" type="file" accept=".gpx" multiple>
+    <div id="gpxList"></div>
+    <button id="removeGpx">🗑️ Clear</button>
+    <button id="speciesFilter">🦌</button>
+    <div class="dropdown-content species-dropdown">
+      <button value="OFF">OFF</button>
+      <button value="Deer">Deer (All)</button>
+      <button value="Hog Deer">Hog Deer</button>
+      <button value="Duck">Duck</button>
+      <button value="Stubble Quail">Stubble Quail</button>
+      <button value="Pest">Pest</button>
     </div>
   </div>
 
-  <!-- Right Sidebar -->
-  <div id="rightSidebar" class="sidebar right">
-    <div class="sidebar-content">
-
-      <!-- Weather -->
-      <div id="weatherWrapper" class="dropdown">
-        <button>🌤️</button>
-        <div class="dropdown-content">
-          <h3>Weather Forecast</h3>
-          <input id="weatherSearch" type="text" placeholder="Search location...">
-          <div id="weatherSuggestions" class="suggestions"></div>
-          <div id="weatherOutput" class="weather-output"></div>
-        </div>
-      </div>
-
-      <!-- Map Layers -->
-      <div id="mapLayersWrapper" class="dropdown">
-        <button>🗺️</button>
-        <div class="dropdown-content">
-          <button onclick="switchBaseLayer('Terrain')">Terrain</button>
-          <button onclick="switchBaseLayer('Satellite')">Satellite</button>
-          <button onclick="switchBaseLayer('Contours')">Contours</button>
-        </div>
-      </div>
-
-      <!-- Species Filter -->
-      <div class="dropdown">
-  <button id="speciesFilter">🦌</button>
-
-  <!-- species list -->
-  <div class="dropdown-content species-dropdown">
-    <button value="OFF">OFF</button>
-    <button value="Deer">Deer (All)</button>
-    <button value="Hog Deer">Hog Deer</button>
-    <button value="Duck">Duck</button>
-    <button value="Stubble Quail">Stubble Quail</button>
-    <button value="Pest">Pest</button>
-  </div>
-</div>  
-
-    </div>
-  </div>
+  <!-- Weather Popup (moved out of sidebar) -->
+  <!-- Legacy weatherWrapper removed. Only modern version retained below. -->
 
   <!-- Disclaimer -->
   <div id="disclaimerOverlay">
@@ -224,15 +176,480 @@ if (speciesFilter) {
   });
 </script>
 
-
-<div class="mobile-tools-menu" id="toolsMenu">
-  <button onclick="document.getElementById('addPinBtn').click()">📍 Place Pin</button>
-  <button onclick="document.getElementById('clearPinsBtn').click()">🧹 Clear Pins</button>
-  <button onclick="document.getElementById('gpxUpload').click()">📁 Load GPX</button>
-  <button onclick="document.getElementById('drawTrackBtn').click()">✏️ Draw Track</button>
-  <button onclick="document.getElementById('speciesFilter').click()">🦌 Species</button>
-  <button onclick="document.querySelector('#mapLayersWrapper > button').click()">🗺️ Layers</button>
-  <button onclick="document.querySelector('#weatherWrapper > button').click()">🌤️ Weather</button>
+<!-- === Bottom Toolbar Modals & Dropdowns === -->
+<!-- Tools Popup (modern style) -->
+<div id="toolsDropdown" class="modern-popup" style="display:none;">
+  <div class="popup-grid">
+    <button id="toolbarPlacePin" class="popup-btn">📍<br><span>Place Pin</span></button>
+    <button id="toolbarClearPins" class="popup-btn">🧹<br><span>Clear Pins</span></button>
+    <button id="toolbarDrawTrack" class="popup-btn">✏️<br><span>Draw Track</span></button>
+    <button id="toolbarMeasure" class="popup-btn">📏<br><span>Measure</span></button>
+  </div>
+  <div class="modern-popup-arrow">
+    <svg width="28" height="14" viewBox="0 0 28 14">
+      <polygon points="14,14 0,0 28,0" fill="#fff" stroke="#e0e0e0" stroke-width="1"/>
+    </svg>
+  </div>
 </div>
+<!-- Layers Popup (modern style) -->
+<div id="layersDropdown" class="modern-popup" style="display:none;">
+  <div class="popup-grid">
+    <button data-layer="Terrain" class="popup-btn">🗺️<br><span>Terrain</span></button>
+    <button data-layer="Satellite" class="popup-btn">🛰️<br><span>Satellite</span></button>
+    <button data-layer="Contours" class="popup-btn">🗻<br><span>Contours</span></button>
+    <button class="popup-btn" disabled style="opacity:0;pointer-events:none;"></button>
+  </div>
+  <div style="width:100%;margin:10px 0 0 0;text-align:left;font-weight:600;font-size:1em;">🦌 Species list</div>
+  <div class="popup-grid" style="margin-top:6px;">
+    <button class="species-btn popup-btn" data-species="OFF">OFF</button>
+    <button class="species-btn popup-btn" data-species="Deer">Deer</button>
+    <button class="species-btn popup-btn" data-species="Hog Deer">Hog Deer</button>
+    <button class="species-btn popup-btn" data-species="Duck">Duck</button>
+    <button class="species-btn popup-btn" data-species="Stubble Quail">Stubble Quail</button>
+    <button class="species-btn popup-btn" data-species="Pest">Pest</button>
+  </div>
+  <div class="modern-popup-arrow">
+    <svg width="28" height="14" viewBox="0 0 28 14"><polygon points="14,14 0,0 28,0" fill="#fff" stroke="#e0e0e0" stroke-width="1"/></svg>
+  </div>
+</div>
+<!-- GPX Modal (modern style) -->
+<div id="gpxModal" class="modern-popup" style="display:none;">
+  <div class="popup-grid">
+    <label for="gpxUploadProxy" class="popup-btn gpx-upload-label" style="margin-bottom:0;">
+      📁<br><span>Upload GPX</span>
+    </label>
+    <input id="gpxUploadProxy" type="file" accept=".gpx" style="display:none">
+    
+    <button id="removeGpxProxy" class="popup-btn">🗑️<br><span>Clear</span></button>
+  </div>
+  <div id="gpxListProxy" style="width:100%;margin:10px 0 0 0;"></div>
+  <button class="close-modal popup-btn" style="width:100%;margin-top:10px;">Close</button>
+  <div class="modern-popup-arrow">
+    <svg width="28" height="14" viewBox="0 0 28 14"><polygon points="14,14 0,0 28,0" fill="#fff" stroke="#e0e0e0" stroke-width="1"/></svg>
+  </div>
+</div>
+<!-- Weather Popup (modern style, unified) -->
+<div id="weatherWrapper" class="modern-popup" style="display:none;">
+  <div class="weather-fixed-header">
+    <h3 class="weather-title">Weather Forecast</h3>
+    <div class="weather-search-row">
+      <input id="weatherSearch" type="text" placeholder="Search location...">
+      <button id="useMyLocationBtn">📍 Use My Location</button>
+    </div>
+    <div id="weatherSuggestions" class="suggestions"></div>
+  </div>
+
+  <div class="weather-forecast-container">
+    <div id="weatherOutput" class="weather-output"></div>
+  </div>
+
+</div>
+<!-- Detached tail for weather popup -->
+<div id="weatherTail" class="modern-popup-arrow" style="display:none;">
+  <svg width="28" height="14" viewBox="0 0 28 14">
+    <polygon points="14,14 0,0 28,0" fill="#fff" stroke="#e0e0e0" stroke-width="1"/>
+  </svg>
+</div>
+
+
+<!-- Journal Modal (modern style) -->
+<!-- Journal Modal (modern style, JS-filled) -->
+<div id="journalModal" class="modern-popup" style="display:none;"></div>
+
+<!-- SSS Modal (modern style) -->
+<div id="sssModal" class="modern-popup" style="display:none;">
+  <div style="width:100%;text-align:center;">
+    <h3>Smart Scout Suggestions</h3>
+    <p>Smart Scout Suggestions coming soon!</p>
+    <button class="close-modal popup-btn" style="width:100%;margin-top:10px;">Close</button>
+  </div>
+  <div class="modern-popup-arrow">
+    <svg width="28" height="14" viewBox="0 0 28 14"><polygon points="14,14 0,0 28,0" fill="#fff" stroke="#e0e0e0" stroke-width="1"/></svg>
+  </div>
+</div>
+<!-- === Global Popup Arrow for Tools Popup === -->
+<!-- (Removed: no arrow for Tools popup) -->
+<!-- === Bottom Toolbar === -->
+<div id="bottomToolbar" class="bottom-toolbar">
+  <button id="toolbarToolsBtn" class="toolbar-btn">🛠️ <span>Tools</span></button>
+  <button id="toolbarLayersBtn" class="toolbar-btn">🗺️ <span>Layers</span></button>
+  <button id="toolbarGpxBtn" class="toolbar-btn">📁 <span>GPX</span></button>
+  <button id="toolbarWeatherBtn" class="toolbar-btn">🌤️ <span>Weather</span></button>
+  <button id="toolbarJournalBtn" class="toolbar-btn">📓 <span>Journal</span></button>
+  <button id="toolbarSSSBtn" class="toolbar-btn">💡 <span>SSS</span></button>
+</div>
+<!-- No clones, no carousel, no infinite scroll code. Only a simple horizontal scroll toolbar remains. -->
+
+<style>
+  @media (max-width: 900px) {
+    .bottom-toolbar {
+      position: fixed;
+      left: 0;
+      right: 0;
+      bottom: 0;
+      z-index: 4000;
+      width: 100vw;
+      padding: 12px 0 12px 0;
+      background: #f8f8f8;
+      box-shadow: 0 -2px 8px rgba(0,0,0,0.12);
+      display: flex;
+      flex-direction: row;
+      flex-wrap: nowrap;
+      overflow-x: auto;
+      overflow-y: hidden;
+      white-space: nowrap;
+      justify-content: flex-start;
+      align-items: center;
+      gap: 0;
+      scrollbar-width: none;
+      -ms-overflow-style: none;
+    }
+    .bottom-toolbar::-webkit-scrollbar {
+      display: none;
+    }
+    .bottom-toolbar .toolbar-btn {
+      min-width: 90px;
+      max-width: 120px;
+      font-size: 1.3em;
+      padding: 4px 0;
+      margin: 0 6px;
+      border-radius: 14px;
+      background: #fff;
+      border: 1.5px solid #e0e0e0;
+      box-shadow: 0 1px 4px rgba(0,0,0,0.04);
+      transition: background 0.2s, border 0.2s;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      position: relative;
+    }
+    .bottom-toolbar .toolbar-btn:active, .bottom-toolbar .toolbar-btn:focus {
+      background: #f0f8ff;
+      border-color: #b3d8ff;
+    }
+    .bottom-toolbar .toolbar-btn span {
+      font-size: 0.95em;
+      margin-top: 2px;
+      display: block;
+    }
+  }
+</style>
+<!-- No Swiper, carousel, or duplicate toolbar code remains. -->
+
+<script>
+// --- Toolbar Dropdown/Modal Logic ---
+function closeAllDropdownsAndModals() {
+  document.getElementById('toolsDropdown').style.display = 'none';
+  document.getElementById('layersDropdown').style.display = 'none';
+  document.getElementById('gpxModal').style.display = 'none';
+  document.getElementById('journalModal').style.display = 'none';
+  document.getElementById('sssModal').style.display = 'none';
+  document.getElementById('weatherWrapper').style.display = 'none';
+  document.getElementById('weatherTail').style.display = 'none';
+  // No arrow logic for Tools popup
+}
+
+// Helper for popup positioning
+function showPopupAboveButton(popup, button, alignRight = false) {
+  // For Tools popup, always reset height and position before showing
+  if (popup.id === 'toolsDropdown') {
+    popup.style.height = '';
+    popup.style.top = '';
+    popup.style.left = '';
+  }
+  popup.style.display = 'block';
+  popup.style.position = 'fixed';
+  popup.style.zIndex = 3300;
+  // Always reset the arrow style before positioning (for legacy arrows in other popups)
+  const arrowShow = popup.querySelector('.modern-popup-arrow');
+  if (arrowShow && popup.id !== 'toolsDropdown') {
+    arrowShow.style.display = '';
+    arrowShow.style.left = '';
+    arrowShow.style.right = '';
+    arrowShow.style.bottom = '';
+    arrowShow.style.top = '';
+    arrowShow.style.transform = '';
+  }
+  // Position popup first
+  positionPopup(popup, button, alignRight);
+  // Dynamically align the weather popup tail arrow under the weather button
+  if (popup.id === 'weatherWrapper') {
+    setTimeout(() => {
+      const weatherBtn = document.getElementById('toolbarWeatherBtn');
+      const weatherTail = document.getElementById('weatherTail');
+      const btnRect = weatherBtn.getBoundingClientRect();
+      const popupRect = popup.getBoundingClientRect();
+
+      const tailLeft = btnRect.left + (btnRect.width / 2) - 14; // center under button
+      const tailTop = popupRect.bottom; // position under popup
+
+      weatherTail.style.left = `${tailLeft}px`;
+      weatherTail.style.top = `${tailTop}px`;
+      weatherTail.style.display = 'block';
+    }, 0);
+  }
+}
+
+function positionPopup(popup, button, alignRight = false) {
+  if (!button || popup.style.display === 'none') return;
+
+  const btnRect = button.getBoundingClientRect();
+  const popupWidth = popup.offsetWidth;
+  const popupHeight = popup.offsetHeight;
+
+  let left;
+  let top;
+
+  const isMobile = window.innerWidth <= 900;
+
+  if (isMobile) {
+    // 📱 Center popup horizontally on mobile
+    left = (window.innerWidth / 2) - (popupWidth / 2);
+    top = btnRect.top - popupHeight - 12 - 8; // 8px extra gap
+  } else {
+    // 🖥️ Desktop: normal align logic
+    left = alignRight
+      ? btnRect.right - popup.offsetWidth
+      : btnRect.left;
+    top = btnRect.top - popupHeight - 12 - 8; // 8px extra gap
+  }
+
+  popup.style.left = `${Math.max(8, left)}px`;
+  popup.style.top = `${Math.max(8, top)}px`;
+
+  // Arrow positioning (optional)
+  const arrow = popup.querySelector('.modern-popup-arrow');
+  if (arrow) {
+    const btnCenter = btnRect.left + btnRect.width / 2;
+    const arrowLeft = btnCenter - left - 14; // 14px = half arrow width
+    arrow.style.left = `${arrowLeft}px`;
+  }
+}
+// Keep track of open popup/button
+let openPopup = null;
+let openButton = null;
+let openAlignRight = false;
+
+// Function to reposition GPX popup when content changes
+let repositionTimeout = null;
+function repositionGpxPopup() {
+  console.log('repositionGpxPopup called');
+  
+  // Clear any existing timeout to prevent multiple rapid calls
+  if (repositionTimeout) {
+    clearTimeout(repositionTimeout);
+  }
+  
+  if (openPopup && openPopup.id === 'gpxModal' && openPopup.style.display === 'block' && openButton && openButton.getBoundingClientRect) {
+    console.log('Repositioning GPX popup...');
+    
+
+    
+    // Longer delay to let map operations and DOM updates settle
+    repositionTimeout = setTimeout(() => {
+      console.log('Executing positionPopup...');
+      positionPopup(openPopup, openButton, openAlignRight);
+      console.log('GPX popup repositioned');
+      repositionTimeout = null;
+    }, 100); // Increased delay to let map operations complete
+  } else {
+    console.log('GPX popup repositioning skipped - conditions not met');
+  }
+}
+
+// Make it globally accessible for GPX operations
+window.repositionGpxPopup = repositionGpxPopup;
+window.positionPopup = positionPopup;
+
+function openPopupAboveButton(popup, button, alignRight = false) {
+  closeAllDropdownsAndModals();
+  showPopupAboveButton(popup, button, alignRight);
+  openPopup = popup;
+  openButton = button;
+  openAlignRight = alignRight;
+}
+window.addEventListener('resize', () => {
+  if (openPopup && openPopup.style.display === 'block' && openButton) {
+    positionPopup(openPopup, openButton, openAlignRight);
+  }
+});
+window.addEventListener('scroll', () => {
+  if (openPopup && openPopup.style.display === 'block' && openButton) {
+    positionPopup(openPopup, openButton, openAlignRight);
+  }
+}, true);
+// Tools Dropdown
+const toolsBtn = document.getElementById('toolbarToolsBtn');
+const toolsDropdown = document.getElementById('toolsDropdown');
+toolsBtn.addEventListener('click', e => {
+  e.stopPropagation();
+  if (toolsDropdown.style.display === 'block') {
+    closeAllDropdownsAndModals();
+  } else {
+    openPopupAboveButton(toolsDropdown, toolsBtn, false);
+  }
+});
+document.getElementById('toolbarPlacePin').onclick = () => document.getElementById('addPinBtn').click();
+document.getElementById('toolbarClearPins').onclick = () => document.getElementById('clearPinsBtn').click();
+document.getElementById('toolbarDrawTrack').onclick = () => document.getElementById('drawTrackBtn').click();
+document.getElementById('toolbarMeasure').onclick = () => alert('Measure tool coming soon!');
+
+// Layers Dropdown
+const layersBtn = document.getElementById('toolbarLayersBtn');
+const layersDropdown = document.getElementById('layersDropdown');
+layersBtn.addEventListener('click', e => {
+  e.stopPropagation();
+  if (layersDropdown.style.display === 'block') {
+    layersDropdown.style.display = 'none';
+    openPopup = null;
+    openButton = null;
+  } else {
+    openPopupAboveButton(layersDropdown, layersBtn);
+  }
+});
+layersDropdown.querySelectorAll('button[data-layer]').forEach(btn => {
+  btn.onclick = () => window.switchBaseLayer(btn.getAttribute('data-layer'));
+});
+layersDropdown.querySelectorAll('.species-btn').forEach(btn => {
+  btn.onclick = () => {
+    const value = btn.getAttribute('data-species');
+    if (window.switchSpeciesLayer) window.switchSpeciesLayer(value);
+  };
+});
+
+// GPX Modal
+const gpxBtn = document.getElementById('toolbarGpxBtn');
+const gpxModal = document.getElementById('gpxModal');
+gpxBtn.addEventListener('click', e => {
+  e.stopPropagation();
+  if (gpxModal.style.display === 'block') {
+    gpxModal.style.display = 'none';
+    openPopup = null;
+    openButton = null;
+  } else {
+    openPopupAboveButton(gpxModal, gpxBtn);
+    // Proxy real GPX controls into modal
+    const realUpload = document.getElementById('gpxUpload');
+    const realList = document.getElementById('gpxList');
+    const realRemove = document.getElementById('removeGpx');
+    const proxyUpload = document.getElementById('gpxUploadProxy');
+    const proxyList = document.getElementById('gpxListProxy');
+    const proxyRemove = document.getElementById('removeGpxProxy');
+    if (proxyUpload && realUpload) {
+  // Trigger the proxy input when the label is clicked
+  proxyUpload.addEventListener('change', () => {
+    const files = proxyUpload.files;
+    if (files.length > 0) {
+      // Copy files to real input manually (via DataTransfer)
+      const dt = new DataTransfer();
+      for (const file of files) dt.items.add(file);
+      realUpload.files = dt.files;
+      realUpload.dispatchEvent(new Event('change'));
+    }
+    proxyUpload.value = ''; // clear it so you can upload same file again
+  });
+}
+
+    if (proxyList && realList) proxyList.innerHTML = realList.innerHTML;
+    if (proxyRemove && realRemove) proxyRemove.onclick = () => realRemove.click();
+    
+    // Reposition popup after syncing content
+    setTimeout(() => {
+      if (window.repositionGpxPopup) {
+        window.repositionGpxPopup();
+      }
+    }, 10);
+  }
+});
+gpxModal.querySelector('.close-modal').onclick = () => { gpxModal.style.display = 'none'; openPopup = null; openButton = null; };
+
+// Weather Button
+const weatherBtn = document.getElementById('toolbarWeatherBtn');
+const weatherWrapper = document.getElementById('weatherWrapper');
+weatherBtn.addEventListener('click', e => {
+  e.stopPropagation();
+  if (weatherWrapper.style.display === 'block') {
+    closeAllDropdownsAndModals();
+  } else {
+    openPopupAboveButton(weatherWrapper, weatherBtn);
+    // Auto-fetch weather for current location on first open
+    if (window.autoFetchWeatherLocation) {
+      setTimeout(() => window.autoFetchWeatherLocation(), 150);
+    }
+  }
+});
+// Journal Modal
+const journalBtn = document.getElementById('toolbarJournalBtn');
+const journalModal = document.getElementById('journalModal');
+journalBtn.addEventListener('click', e => {
+  e.stopPropagation();
+  if (journalModal.style.display === 'block') {
+    journalModal.style.display = 'none';
+    openPopup = null;
+    openButton = null;
+  } else {
+    openPopupAboveButton(journalModal, journalBtn, true); // alignRight = true
+    setTimeout(() => {
+      if (typeof initJournal === 'function') initJournal();
+      // 🔧 Re-align popup after content is injected
+      setTimeout(() => {
+        if (openPopup && openButton) {
+          positionPopup(openPopup, openButton, openAlignRight);
+        }
+      }, 10); // slight delay lets layout settle
+    }, 0);
+  }
+});
+
+
+// SSS Modal
+const sssBtn = document.getElementById('toolbarSSSBtn');
+const sssModal = document.getElementById('sssModal');
+sssBtn.addEventListener('click', e => {
+  e.stopPropagation();
+  if (sssModal.style.display === 'block') {
+    sssModal.style.display = 'none';
+    openPopup = null;
+    openButton = null;
+    openAlignRight = false;
+  } else {
+    openPopupAboveButton(sssModal, sssBtn, true);
+  }
+});
+sssModal.querySelector('.close-modal').onclick = () => { sssModal.style.display = 'none'; openPopup = null; openButton = null; openAlignRight = false; };
+
+// Hide all popups on outside click
+window.addEventListener('click', () => {
+  document.getElementById('weatherTail').style.display = 'none';
+  toolsDropdown.style.display = 'none';
+  layersDropdown.style.display = 'none';
+  gpxModal.style.display = 'none';
+  weatherWrapper.style.display = 'none';
+  journalModal.style.display = 'none';
+  sssModal.style.display = 'none';
+  openPopup = null;
+  openButton = null;
+});
+[toolsDropdown, layersDropdown, gpxModal, weatherWrapper, journalModal, sssModal].forEach(el => {
+  el.addEventListener('click', e => e.stopPropagation());
+});
+</script>
+<!-- Remove old mobile tools menu if present -->
+<script>const oldMenu=document.getElementById('toolsMenu');if(oldMenu)oldMenu.remove();</script>
+<!-- END Bottom Toolbar & Modals -->
+<script>
+// Ensure weather popup is hidden on page load
+window.addEventListener('DOMContentLoaded', function() {
+  var weatherWrapper = document.getElementById('weatherWrapper');
+  if (weatherWrapper) weatherWrapper.style.display = 'none';
+});
+</script>
+<script src="JS/journalModal.js"></script>
+<script>
+
+</script>
+<!-- End Swiper Mobile Toolbar integration -->
+<!-- (To revert: remove Swiper CSS/JS, mobile-toolbar-swiper div, and Swiper init script) -->
 </body>
 </html>

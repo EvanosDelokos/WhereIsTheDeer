@@ -79,6 +79,12 @@ window.switchSpeciesLayer = function(name) {
   const map = window.WITD.map;
   const groups = window.WITD.speciesLayers;
 
+  // Defensive check for speciesLayers
+  if (!groups || typeof groups !== 'object') {
+    console.warn('switchSpeciesLayer: window.WITD.speciesLayers is not initialized.');
+    return;
+  }
+
   // Remove all species layers first
   Object.values(groups).forEach(group => map.removeLayer(group));
 

@@ -1,0 +1,13 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<gpx version="1.1" creator="WhereIsTheDeer Test">
+  <trk>
+    <name>Test Fallback Track 1</name>
+    <trkseg>
+      <trkpt lat="-37.8136" lon="144.9631"></trkpt>
+      <trkpt lat="-37.8146" lon="144.9641"></trkpt>
+      <trkpt lat="-37.8156" lon="144.9651"></trkpt>
+      <trkpt lat="-37.8166" lon="144.9661"></trkpt>
+      <trkpt lat="-37.8176" lon="144.9671"></trkpt>
+    </trkseg>
+  </trk>
+</gpx> 

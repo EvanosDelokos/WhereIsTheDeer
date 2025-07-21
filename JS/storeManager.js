@@ -20,7 +20,8 @@ export function loadPins(map, customPins, attachPopupActions) {
       Lat: ${data.lat.toFixed(5)}<br>
       Lon: ${data.lng.toFixed(5)}<br><br>
       <button class="rename-btn">✏️ Rename</button>
-      <button class="delete-btn">🗑️ Delete</button>`
+      <button class="delete-btn">🗑️ Delete</button>
+      <button class="journal-btn">📓 Send to Journal</button>`
     );
 
     const labelIcon = L.divIcon({
@@ -36,6 +37,9 @@ export function loadPins(map, customPins, attachPopupActions) {
 
     marker.on("popupopen", (e) => {
       const el = e.popup.getElement();
+      if (!el || el.dataset.hasListener) return;
+      el.dataset.hasListener = "true";
+    
       el.addEventListener("click", (evt) => {
         if (evt.target.classList.contains("rename-btn")) {
           attachPopupActions.reopenRename(marker, pin);
@@ -45,6 +49,31 @@ export function loadPins(map, customPins, attachPopupActions) {
           const index = customPins.indexOf(pin);
           if (index > -1) customPins.splice(index, 1);
           savePins(customPins);
+        } else if (evt.target.classList.contains("journal-btn")) {
+          if (typeof initJournal === "function") {
+            initJournal();
+            setTimeout(() => {
+              const journalModal = document.getElementById('journalModal');
+              const journalBtn = document.getElementById('toolbarJournalBtn');
+              openPopupAboveButton(journalModal, journalBtn, true);
+    
+              const titleEl = document.getElementById('journalTitle');
+              const coordsEl = document.getElementById('journalCoords');
+              const noteEl = document.getElementById('journalNote');
+    
+              if (titleEl && coordsEl && noteEl) {
+                titleEl.value = pin.name;
+                coordsEl.value = `${pin.lat.toFixed(5)}, ${pin.lng.toFixed(5)}`;
+                noteEl.focus();
+              }
+    
+              if (openPopup && openButton) {
+                positionPopup(openPopup, openButton, openAlignRight);
+              }
+            }, 50);
+          } else {
+            alert("Journal module not loaded.");
+          }
         }
       });
     });
@@ -75,20 +104,7 @@ export function loadTracks(map, drawnTracks, drawTrackLabel) {
 }
 
 // --- Weather Marker ---
-export function saveWeatherMarker(weatherMarkerData) {
-  localStorage.setItem('witd_weatherMarker', JSON.stringify(weatherMarkerData));
-}
-
-export function loadWeatherMarker(map, addWeatherMarkerCallback) {
-  const saved = JSON.parse(localStorage.getItem('witd_weatherMarker') || 'null');
-  if (saved) {
-    addWeatherMarkerCallback(saved.lat, saved.lon, saved.query);
-  }
-}
-
-export function clearWeatherMarker() {
-  localStorage.removeItem('witd_weatherMarker');
-}
+// (Removed: no longer saving/loading weather marker in localStorage)
 
 // --- GPX ---
 export function saveGpxFiles(gpxFiles) {
@@ -107,6 +123,5 @@ export function loadGpxFiles(map, gpxFiles, addGpxToMap) {
 export function clearAll() {
   localStorage.removeItem('witd_pins');
   localStorage.removeItem('witd_tracks');
-  localStorage.removeItem('witd_weatherMarker');
   localStorage.removeItem('witd_gpx_files');
 }

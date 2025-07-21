@@ -82,28 +82,34 @@ document.addEventListener("DOMContentLoaded", () => {
         Lon: ${lng.toFixed(5)}<br><br>
         <button class="rename-btn">✏️ Rename</button>
         <button class="delete-btn">🗑️ Delete</button>
+        <button class="journal-btn">📓 Send to Journal</button>
       `;
-
-      marker.setPopupContent(details).openPopup();
-
+    
       const labelIcon = L.divIcon({
         className: 'marker-text-box',
         html: `<div class="label-inner">${name}</div>`,
         iconSize: null,
-        iconAnchor: [0, -25] // push above pin
+        iconAnchor: [0, -25]
       });
-
+    
       const labelMarker = L.marker([lat, lng], { icon: labelIcon }).addTo(map);
-
+    
       pin.name = name;
       pin.labelMarker = labelMarker;
-
-      bindPopupActions(marker, pin);
+    
+      // ✅ Re-apply popup content + bind actions
+      marker.setPopupContent(details);
+      marker.closePopup();
+      setTimeout(() => {
+        marker.openPopup();
+        setTimeout(() => bindPopupActions(marker, pin), 0);
+      }, 0);
+    
       savePins(customPins);
-
       window.WITD.pinMode = false;
       addPinBtn.classList.remove("active");
     }
+    
 
     function cancelPin() {
       map.removeLayer(marker);
@@ -118,18 +124,58 @@ document.addEventListener("DOMContentLoaded", () => {
 
   // ✅ Renamed to bindPopupActions for NEW pins
   function bindPopupActions(marker, pin) {
-    marker.getPopup().getElement().addEventListener("click", (e) => {
+    const popupEl = marker.getPopup().getElement();
+    if (!popupEl) return;
+  
+    const existing = popupEl.dataset.hasListener;
+    if (existing) return; // prevent duplicate listeners
+    popupEl.dataset.hasListener = "true";
+  
+    popupEl.addEventListener("click", (e) => {
       if (e.target.classList.contains("rename-btn")) {
         reopenRename(marker, pin);
+  
       } else if (e.target.classList.contains("delete-btn")) {
         map.removeLayer(marker);
         if (pin.labelMarker) map.removeLayer(pin.labelMarker);
         const index = customPins.indexOf(pin);
         if (index > -1) customPins.splice(index, 1);
         savePins(customPins);
+  
+      } else if (e.target.classList.contains("journal-btn")) {
+        if (typeof initJournal === "function") {
+          initJournal();
+          setTimeout(() => {
+            const journalModal = document.getElementById('journalModal');
+            const journalBtn = document.getElementById('toolbarJournalBtn');
+  
+            openPopupAboveButton(journalModal, journalBtn, true);
+  
+            const titleEl = document.getElementById('journalTitle');
+            const coordsEl = document.getElementById('journalCoords');
+            const noteEl = document.getElementById('journalNote');
+  
+            if (titleEl && coordsEl && noteEl) {
+              titleEl.value = pin.name;
+              coordsEl.value = `${pin.lat.toFixed(5)}, ${pin.lng.toFixed(5)}`;
+              noteEl.focus();
+            }
+  
+  
+            if (openPopup && openButton) {
+              positionPopup(openPopup, openButton, openAlignRight);
+            }
+  
+          }, 50);
+        } else {
+          alert("Journal module not loaded.");
+        }
       }
     });
   }
+  
+  
+  
 
   function reopenRename(marker, pin) {
     const input = document.createElement("input");
@@ -145,9 +191,17 @@ document.addEventListener("DOMContentLoaded", () => {
     popupContent.appendChild(input);
     popupContent.appendChild(saveBtn);
 
-    marker.setPopupContent(popupContent).openPopup();
-
-    setTimeout(() => input.focus(), 0);
+    setTimeout(() => {
+      marker.setPopupContent(popupContent);
+      marker.closePopup();
+      marker.openPopup();
+    
+      setTimeout(() => {
+        bindPopupActions(marker, pin);
+        input.focus();
+      }, 0);
+    }, 0);
+    
 
     input.addEventListener("keydown", (e) => {
       if (e.key === "Enter") {
@@ -161,32 +215,41 @@ document.addEventListener("DOMContentLoaded", () => {
     function saveRename() {
       const newName = input.value.trim() || "Unnamed Pin";
       pin.name = newName;
-
+    
       const details = `
         <b>${newName}</b><br>
         Lat: ${pin.lat.toFixed(5)}<br>
         Lon: ${pin.lng.toFixed(5)}<br><br>
         <button class="rename-btn">✏️ Rename</button>
         <button class="delete-btn">🗑️ Delete</button>
+        <button class="journal-btn">📓 Send to Journal</button>
       `;
-
-      marker.setPopupContent(details).openPopup();
-
+    
+      marker.setPopupContent(details);
+      marker.closePopup();
+    
+      setTimeout(() => {
+        marker.openPopup();
+        setTimeout(() => bindPopupActions(marker, pin), 0);
+      }, 0);
+    
+      // update label
       if (pin.labelMarker) {
         map.removeLayer(pin.labelMarker);
       }
-
+    
       const labelIcon = L.divIcon({
         className: 'marker-text-box',
         html: `<div class="label-inner">${newName}</div>`,
         iconSize: null,
         iconAnchor: [0, 0]
       });
-
+    
       pin.labelMarker = L.marker([pin.lat, pin.lng], { icon: labelIcon }).addTo(map);
-
+    
       savePins(customPins);
     }
+    
   }
 
   // ✅ Export the reopenRename for loaded pins
