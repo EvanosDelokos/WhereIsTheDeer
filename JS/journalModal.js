@@ -86,20 +86,20 @@ window.initJournal = () => {
   }
 
   journalModal.innerHTML = `
-  <div style="display:flex;flex-direction:column;width:100%;max-width:600px;margin:0 auto;height:100%;">
+  <div style="display:flex;flex-direction:column;width:100%;max-width:600px;margin:0 auto;height:100%;box-sizing:border-box;">
     <div style="flex:1;display:flex;flex-direction:column;overflow:hidden;max-height:500px;">
       <h3 style="text-align:center;margin-bottom:12px;">📓 Journal</h3>
       <form id="journalForm" style="margin-bottom:16px;">
-        <input type="text" id="journalTitle" placeholder="Entry title (optional)" style="width:100%;margin-bottom:6px;padding:8px;border-radius:8px;border:1px solid #ccc;"/>
-        <textarea id="journalNote" placeholder="Write your observation or thoughts..." rows="3" style="width:100%;padding:8px;border-radius:8px;border:1px solid #ccc;"></textarea>
-        <input type="text" id="journalCoords" placeholder="Coordinates (optional)" style="width:100%;margin-top:6px;margin-bottom:8px;padding:8px;border-radius:8px;border:1px solid #ccc;" />
-        <button type="submit" class="popup-btn" style="width:100%;">➕ Add Entry</button>
+        <input type="text" id="journalTitle" placeholder="Entry title (optional)" style="width:100%;margin-bottom:6px;padding:8px;border-radius:8px;border:1px solid #ccc;box-sizing:border-box;"/>
+        <textarea id="journalNote" placeholder="Write your observation or thoughts..." rows="3" style="width:100%;padding:8px;border-radius:8px;border:1px solid #ccc;box-sizing:border-box;"></textarea>
+        <input type="text" id="journalCoords" placeholder="Coordinates (optional)" style="width:100%;margin-top:6px;margin-bottom:8px;padding:8px;border-radius:8px;border:1px solid #ccc;box-sizing:border-box;" />
+        <button type="submit" class="popup-btn" style="width:100%;box-sizing:border-box;">➕ Add Entry</button>
       </form>
       <div style="flex:1;overflow-y:auto;min-height:0;">
         <div id="journalList" style="padding-top:8px;margin-top:12px;border-top:1px solid #ccc;"></div>
       </div>
     </div>
-    <button class="close-modal popup-btn" style="width:100%;margin-top:12px;">Close</button>
+    <button class="close-modal popup-btn" style="width:100%;margin-top:12px;box-sizing:border-box;">Close</button>
   </div>
   <div class="modern-popup-arrow">
     <svg width="28" height="14" viewBox="0 0 28 14">
