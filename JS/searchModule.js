@@ -4,71 +4,28 @@ console.log("Module loaded: searchModule.js");
 const searchInput = document.getElementById("addressSearch");
 const suggestionsBox = document.getElementById("addressSuggestions");
 
-let db;
 let searchMarker = null; // store single search marker
 
-initSqlJs({
-  locateFile: file => `https://cdnjs.cloudflare.com/ajax/libs/sql.js/1.8.0/${file}`
-}).then(SQL => {
-fetch('https://pub-4fb36f4851fc417d8fee38f3358690bb.r2.dev/addresses.sqlite')
-    .then(response => response.arrayBuffer())
-    .then(data => {
-      db = new SQL.Database(new Uint8Array(data));
-      console.log("SQLite DB loaded");
-      searchInput.disabled = false;
-    });
-});
-
-// Final smart split doSearch
-async function doSearch(query) {
-  if (!db) {
-    console.warn("DB not loaded yet");
+// API-based search function
+async function searchAddresses(query) {
+  if (!query || query.trim().length < 2) {
     return [];
   }
 
-  const terms = query.trim().split(/\s+/);
-  if (terms.length === 0) return [];
+  try {
+    const response = await fetch(`https://witd-api-production.up.railway.app/search?q=${encodeURIComponent(query.trim())}`);
+    
+    if (!response.ok) {
+      console.error('Search API request failed:', response.status, response.statusText);
+      return [];
+    }
 
-  let addressTerms = [];
-  let suburbTerm = "";
-  if (terms.length === 1) {
-    addressTerms = terms;
-  } else {
-    addressTerms = terms.slice(0, -1);
-    suburbTerm = terms.slice(-1)[0];
+    const results = await response.json();
+    return results || [];
+  } catch (error) {
+    console.error('Error fetching search results:', error);
+    return [];
   }
-
-  const addrConds = addressTerms.map((t, i) =>
-    `REPLACE(address, '.0 ', ' ') LIKE $a${i} COLLATE NOCASE`
-  ).join(' AND ');
-
-  const sql = `
-    SELECT * FROM addresses
-    WHERE 
-      (${addrConds})
-      ${suburbTerm ? `AND (suburb LIKE $suburb COLLATE NOCASE)` : ''}
-    LIMIT 10;
-  `;
-
-  const stmt = db.prepare(sql);
-  const bindings = {};
-  addressTerms.forEach((t, i) => {
-    bindings[`$a${i}`] = `%${t}%`;
-  });
-  if (suburbTerm) {
-    bindings[`$suburb`] = `%${suburbTerm}%`;
-  }
-
-  stmt.bind(bindings);
-
-  const results = [];
-  while (stmt.step()) {
-    const row = stmt.getAsObject();
-    row.address = row.address.replace(/\.0 /g, ' ');
-    results.push(row);
-  }
-  stmt.free();
-  return results;
 }
 
 // Debounced input listener
@@ -82,7 +39,7 @@ searchInput.addEventListener("input", function () {
     return;
   }
   debounceTimer = setTimeout(async () => {
-    const results = await doSearch(query);
+    const results = await searchAddresses(query);
     suggestionsBox.innerHTML = "";
 
     results.forEach(result => {

@@ -4,7 +4,7 @@ document.addEventListener("DOMContentLoaded", () => {
   const map = L.map('map').setView([-36.5, 146.5], 7);
 
   // Store the LocalityPolygon but do NOT add it to the map
-  fetch('https://pub-4fb36f4851fc417d8fee38f3358690bb.r2.dev/LocalityPolygon.geojson')
+  fetch('https://witd-api-production.up.railway.app/locality')
     .then(res => res.json())
     .then(data => {
       const localityLayer = L.geoJSON(data, {
