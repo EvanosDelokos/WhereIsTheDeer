@@ -21,13 +21,6 @@ document.addEventListener("DOMContentLoaded", () => {
       window.WITD.localityLayer = localityLayer;
     });
 
-  // Zones: shown by default
-  fetch('https://witd-api-production.up.railway.app/zones')
-    .then(res => res.json())
-    .then(data => {
-// L.geoJSON(data).addTo(map); // ← we don’t want the raw zone dump
-    });
-
   // Optional: scale control
   L.control.scale({ position: 'bottomright' }).addTo(map);
 
