@@ -16,7 +16,7 @@ function initSpeciesLayer(map) {
   const quailLayer = L.layerGroup();
   const pestLayer = L.layerGroup();
 
-  fetch('https://pub-4fb36f4851fc417d8fee38f3358690bb.r2.dev/zones.json')
+  fetch('https://witd-api-production.up.railway.app/zones')
     .then(res => res.json())
     .then(data => {
       console.log(`Zones loaded: ${data.features.length} features`);
@@ -71,7 +71,7 @@ layer.setStyle(speciesStyle);
         Pest: pestLayer
       };
     })
-    .catch(err => console.error("Failed to load zones.json:", err));
+    .catch(err => console.error("Failed to load zones from API:", err));
 }
 
 

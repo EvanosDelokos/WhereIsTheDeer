@@ -22,7 +22,7 @@ document.addEventListener("DOMContentLoaded", () => {
     });
 
   // Zones: shown by default
-  fetch('https://pub-4fb36f4851fc417d8fee38f3358690bb.r2.dev/zones.json')
+  fetch('https://witd-api-production.up.railway.app/zones')
     .then(res => res.json())
     .then(data => {
 // L.geoJSON(data).addTo(map); // ← we don’t want the raw zone dump
