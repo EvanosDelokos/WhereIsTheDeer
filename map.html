@@ -1554,6 +1554,11 @@ window.debugPlan = function() {
 function applyPremiumStyling() {
   console.log(`[Styling] Applying premium styling for plan: ${currentUserPlan}`);
   
+  // Update 2D/3D toggle button styling
+  if (window.viewModeControl) {
+    window.viewModeControl.updateButtonStyle();
+  }
+  
   // Apply protection to all modals based on current plan
   if (currentUserPlan === 'premium') {
     // Premium user - enable all features

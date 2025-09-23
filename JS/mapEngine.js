@@ -175,7 +175,10 @@ document.addEventListener("DOMContentLoaded", () => {
         transition: all 0.2s ease;
       `;
       this.button.innerHTML = '🛩️';
-      this.button.title = 'Toggle 2D/3D View';
+      this.button.title = 'Toggle 2D/3D View (Premium)';
+      
+      // Style button based on user plan
+      this.updateButtonStyle();
       
       this.button.addEventListener('click', () => this.toggleView());
       this.container.appendChild(this.button);
@@ -184,6 +187,13 @@ document.addEventListener("DOMContentLoaded", () => {
     }
 
     toggleView() {
+      // Check if user is premium before allowing 2D/3D toggle
+      if (window.currentUserPlan !== 'premium') {
+        console.log('[Security] 2D/3D toggle blocked for free user');
+        this.showUpgradeMessage();
+        return;
+      }
+      
       this.is3D = !this.is3D;
       
       if (this.is3D) {
@@ -248,6 +258,94 @@ document.addEventListener("DOMContentLoaded", () => {
       }, 1100);
     }
 
+    showUpgradeMessage() {
+      // Remove any existing popup first
+      const existingPopup = document.querySelector('.premium-upgrade-popup');
+      if (existingPopup) {
+        existingPopup.remove();
+      }
+
+      // Create the upgrade popup using the same styling as other gated features
+      const popup = document.createElement('div');
+      popup.className = 'premium-upgrade-popup';
+      popup.style.cssText = `
+        position: fixed;
+        top: 50%;
+        left: 50%;
+        transform: translate(-50%, -50%);
+        background: white;
+        border-radius: 12px;
+        padding: 30px;
+        text-align: center;
+        box-shadow: 0 10px 30px rgba(0,0,0,0.3);
+        z-index: 10000;
+        max-width: 400px;
+        width: 90%;
+        border: 2px solid #ff6b6b;
+      `;
+
+      popup.innerHTML = `
+        <div style="font-size: 48px; margin-bottom: 20px;">🚁</div>
+        <h2 style="margin: 0 0 15px 0; color: #333; font-size: 24px;">Premium Feature</h2>
+        <p style="margin: 0 0 25px 0; color: #666; font-size: 16px; line-height: 1.5;">
+          The 2D/3D toggle is a premium feature. Upgrade to access this and other advanced mapping tools!
+        </p>
+        <button id="premium-popup-close" style="
+          background: #ff6b6b;
+          color: white;
+          border: none;
+          padding: 12px 30px;
+          border-radius: 8px;
+          font-size: 16px;
+          cursor: pointer;
+          font-weight: 600;
+        ">Got it</button>
+      `;
+
+      document.body.appendChild(popup);
+
+      // Add proper event listener to close button
+      const closeBtn = popup.querySelector('#premium-popup-close');
+      if (closeBtn) {
+        closeBtn.addEventListener('click', (e) => {
+          e.stopPropagation();
+          e.preventDefault();
+          popup.remove();
+        });
+      }
+
+      // Add click outside to close functionality
+      popup.addEventListener('click', (e) => {
+        if (e.target === popup) {
+          popup.remove();
+        }
+      });
+
+      // Auto-remove after 5 seconds
+      setTimeout(() => {
+        if (popup.parentNode) {
+          popup.remove();
+        }
+      }, 5000);
+    }
+
+    updateButtonStyle() {
+      // Update button styling based on user plan
+      if (window.currentUserPlan !== 'premium') {
+        // Free user - show as disabled/premium
+        this.button.style.opacity = '0.6';
+        this.button.style.filter = 'grayscale(0.3)';
+        this.button.style.cursor = 'pointer'; // Still clickable to show upgrade message
+        this.button.title = 'Toggle 2D/3D View (Premium Feature)';
+      } else {
+        // Premium user - show as enabled
+        this.button.style.opacity = '1';
+        this.button.style.filter = 'none';
+        this.button.style.cursor = 'pointer';
+        this.button.title = 'Toggle 2D/3D View';
+      }
+    }
+
     onRemove() {
       this.container.parentNode.removeChild(this.container);
       this.map = null;
@@ -255,7 +353,11 @@ document.addEventListener("DOMContentLoaded", () => {
   }
 
   // Add custom view mode control
-  map.addControl(new ViewModeControl(), 'top-right');
+  const viewModeControl = new ViewModeControl();
+  map.addControl(viewModeControl, 'top-right');
+  
+  // Make the control globally accessible for plan updates
+  window.viewModeControl = viewModeControl;
 
   // Custom Home Button Control
   class HomeControl {
