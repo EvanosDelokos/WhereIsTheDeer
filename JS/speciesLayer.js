@@ -16,16 +16,8 @@ function initSpeciesLayer(map) {
   window.WITD.speciesLayers = {};
   window.WITD.currentSpeciesLayer = null;
   
-  // Get zones API URL from environment or fallback
-  let zonesApiUrl;
-  if (window.VITE_ZONES_API_URL) {
-    zonesApiUrl = window.VITE_ZONES_API_URL;
-  } else {
-    zonesApiUrl = 'https://zones.whereisthedeer.com.au';
-  }
-
   // Fetch zones data and create layer groups
-  fetch(`${zonesApiUrl}/zones`)
+  fetch('https://zones.whereisthedeer.com.au/zones')
     .then(res => res.json())
     .then(data => {
       console.log(`Zones loaded: ${data.features.length} features`);

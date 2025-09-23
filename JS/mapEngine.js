@@ -49,19 +49,14 @@ window.safeMapOperation = function(operation, retryDelay = 100) {
 };
 
 document.addEventListener("DOMContentLoaded", () => {
-  // Get Mapbox token from environment or global variable
-  let mapboxToken;
-  if (window.VITE_MAPBOX_TOKEN) {
-    mapboxToken = window.VITE_MAPBOX_TOKEN;
-  } else if (typeof MAPBOX_TOKEN !== 'undefined' && MAPBOX_TOKEN !== 'YOUR_MAPBOX_TOKEN_HERE') {
-    mapboxToken = MAPBOX_TOKEN;
-  } else {
-    console.error('❌ Please configure your Mapbox token in .env file or map.html');
+  // Check if Mapbox token is configured
+  if (typeof MAPBOX_TOKEN === 'undefined' || MAPBOX_TOKEN === 'YOUR_MAPBOX_TOKEN_HERE') {
+    console.error('❌ Please configure your Mapbox token in map.html');
     document.getElementById('map').innerHTML = `
       <div style="display: flex; align-items: center; justify-content: center; height: 100%; background: #f0f0f0; color: #666; font-family: Arial, sans-serif;">
         <div style="text-align: center; padding: 20px;">
           <h3>🗺️ Mapbox Token Required</h3>
-          <p>Please set VITE_MAPBOX_TOKEN in your .env file or MAPBOX_TOKEN in map.html with your actual Mapbox token.</p>
+          <p>Please replace 'YOUR_MAPBOX_TOKEN_HERE' in map.html with your actual Mapbox token.</p>
           <p><a href="https://account.mapbox.com/access-tokens/" target="_blank">Get your token here</a></p>
         </div>
       </div>
@@ -75,7 +70,7 @@ document.addEventListener("DOMContentLoaded", () => {
   const DEFAULT_ZOOM = 7;
 
   // Set Mapbox token
-  mapboxgl.accessToken = mapboxToken;
+  mapboxgl.accessToken = MAPBOX_TOKEN;
 
   // Initialize Mapbox map
   const map = new mapboxgl.Map({
