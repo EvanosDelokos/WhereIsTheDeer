@@ -4,9 +4,6 @@
   <meta charset="UTF-8" />
   <title>WhereIsTheDeer Map</title>
   <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
-  
-  <!-- Content Security Policy -->
-  <meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self' https://cdn.jsdelivr.net https://unpkg.com https://*.mapbox.com https://*.supabase.co; style-src 'self' 'unsafe-inline' https://*.mapbox.com https://cdn.jsdelivr.net; img-src 'self' data: https://*.mapbox.com; connect-src 'self' https://*.mapbox.com https://*.supabase.co https://api.whereisthedeer.com.au; object-src 'none'; base-uri 'self'; form-action 'self';">
 
   <!-- Favicon if you have it -->
   <link rel="icon" href="Images/favicon.ico" type="image/x-icon">
@@ -29,9 +26,8 @@
     );
 
     // 🗺️ Mapbox Configuration
-    // Mapbox token configured securely
-    const MAPBOX_TOKEN = "pk.eyJ1IjoiZXZhbmtva2EiLCJhIjoiY21lNWJmY3F2MHJzOTJrb2h1MWl4eDZpMCJ9.5ZEQqD207yalsIQLX5tpdg";
-    mapboxgl.accessToken = MAPBOX_TOKEN;
+    // Mapbox token configured
+    const MAPBOX_TOKEN = 'pk.eyJ1IjoiZXZhbmtva2EiLCJhIjoiY21lNWJmY3F2MHJzOTJrb2h1MWl4eDZpMCJ9.5ZEQqD207yalsIQLX5tpdg';
     
     // Default map center and zoom (Victoria, Australia)
     const DEFAULT_CENTER = [-37.81, 144.95];
@@ -1539,7 +1535,8 @@ function clearProtectedModals() {
   console.log("🔄 Protected modals cleared");
 }
 
-// SECURITY: Debug function removed - window.debugPlan = function() {
+// Debug function to check and reset plan
+window.debugPlan = function() {
   console.log("🔍 Current plan state:", { currentUserPlan, planLoaded });
   if (planLoaded) {
     console.log("🔄 Resetting plan and re-fetching...");
@@ -2232,7 +2229,18 @@ function restoreOriginalButtonFunctionality() {
 }
 
 // Global function for testing - can be called from console
-// SECURITY: Debug function removed - window.testPremiumFunctionality = function() { ... };
+window.testPremiumFunctionality = function() {
+  console.log("🧪 Testing premium functionality...");
+  console.log("Current user plan:", currentUserPlan);
+  console.log("Current user:", loggedInUser?.email);
+  
+  if (currentUserPlan === 'premium') {
+    console.log("✅ User is premium - restoring functionality");
+    restoreOriginalButtonFunctionality();
+  } else {
+    console.log("❌ User is not premium");
+  }
+};
 
 // Styled confirmation dialog function
 function showStyledConfirm(message, onConfirm, onCancel) {
@@ -2315,7 +2323,8 @@ function showStyledMessage(message, title = "Message") {
   document.body.appendChild(messagePopup);
 }
 
-// SECURITY: Debug function removed - window.debugButtonListeners = function() {
+// Debug helper to check button event listeners
+window.debugButtonListeners = function() {
   const buttons = document.querySelectorAll('.popup-btn, .species-btn, button[data-layer]');
   buttons.forEach(btn => {
     console.log(`${btn.id || btn.textContent.trim()}:`, {
@@ -2550,13 +2559,22 @@ window.inspectButtons = function() {
 };
 
 // Make functions globally accessible for testing
-// SECURITY: Debug function removed - window.setPremiumStatus = setPremiumStatus;
+window.setPremiumStatus = setPremiumStatus;
 window.setUserPremiumInDatabase = setUserPremiumInDatabase;
 window.checkUserPlanStatus = checkUserPlanStatus;
 window.restoreButtonFunctionality = restoreButtonFunctionality;
 
 // Immediate premium test function
-// SECURITY: Debug function removed - window.testPremium = function() { ... };
+window.testPremium = function() {
+  console.log("🧪 Testing premium status...");
+  console.log("Current plan:", currentUserPlan);
+  console.log("Current user:", loggedInUser?.email);
+  
+  // Try to set premium immediately
+  setPremiumStatus(true);
+  
+  // Force apply premium styling
+  applyPremiumStyling();
   
   // Force re-enable all buttons by removing protection and styling
   const allButtons = document.querySelectorAll('.popup-btn, .species-btn, button[data-layer]');

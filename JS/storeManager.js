@@ -1,14 +1,6 @@
 console.log("Module loaded: storeManager (Mapbox GL JS)");
 console.log("🔍 storeManager.js loaded successfully");
 
-// Input sanitization utility to prevent XSS
-function sanitizeInput(str) {
-  if (typeof str !== 'string') return '';
-  const div = document.createElement("div");
-  div.innerText = str;
-  return div.innerHTML;
-}
-
 // Import unified pin builder functions
 import { createPinMarker, createPinPopup, createLabelElement, buildPinPopupHTML } from './pinManager.js';
 
@@ -320,7 +312,7 @@ export async function loadUserPinsFromSupabase(userId) {
 
 export async function savePins(customPins) {
   const saveData = customPins.map(pin => ({
-    name: sanitizeInput(pin.name),
+    name: pin.name,
     lat: pin.lat,
     lng: pin.lng,
     style: pin.style || { variant: 'orange', size: 1.2 }
@@ -919,7 +911,7 @@ function reopenRename(marker, pin) {
 export function saveTracks(drawnTracks) {
   const saveData = drawnTracks.map(track => ({
     coords: track.points || [],
-    name: sanitizeInput(track.name || ''),
+    name: track.name || '',
     markerTypes: track.markerTypes || []
   }));
   localStorage.setItem('witd_tracks', JSON.stringify(saveData));
