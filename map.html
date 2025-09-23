@@ -6,7 +6,7 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
   
   <!-- Content Security Policy -->
-  <meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self' 'unsafe-inline' https://cdn.jsdelivr.net https://unpkg.com https://*.mapbox.com https://*.supabase.co; style-src 'self' 'unsafe-inline' https://*.mapbox.com https://cdn.jsdelivr.net; img-src 'self' data: https://*.mapbox.com; connect-src 'self' https://*.mapbox.com https://*.supabase.co https://api.whereisthedeer.com.au; object-src 'none'; base-uri 'self'; form-action 'self';">
+  <meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self' 'unsafe-inline' https://cdn.jsdelivr.net https://unpkg.com https://*.mapbox.com https://*.supabase.co; worker-src 'self' blob:; style-src 'self' 'unsafe-inline' https://*.mapbox.com https://cdn.jsdelivr.net; img-src 'self' data: https://*.mapbox.com; connect-src 'self' https://*.mapbox.com https://*.supabase.co https://api.whereisthedeer.com.au https://zones.whereisthedeer.com.au; object-src 'none'; base-uri 'self'; form-action 'self';">
 
   <!-- Favicon if you have it -->
   <link rel="icon" href="Images/favicon.ico" type="image/x-icon">
@@ -1539,17 +1539,7 @@ function clearProtectedModals() {
   console.log("🔄 Protected modals cleared");
 }
 
-// SECURITY: Debug function removed - window.debugPlan = function() {
-  console.log("🔍 Current plan state:", { currentUserPlan, planLoaded });
-  if (planLoaded) {
-    console.log("🔄 Resetting plan and re-fetching...");
-    planLoaded = false;
-    fetchUserPlan();
-  } else {
-    console.log("📡 Fetching plan...");
-    fetchUserPlan();
-  }
-};
+// SECURITY: Debug function removed - window.debugPlan = function() { ... };
 
 
 
@@ -2557,42 +2547,6 @@ window.restoreButtonFunctionality = restoreButtonFunctionality;
 
 // Immediate premium test function
 // SECURITY: Debug function removed - window.testPremium = function() { ... };
-  
-  // Force re-enable all buttons by removing protection and styling
-  const allButtons = document.querySelectorAll('.popup-btn, .species-btn, button[data-layer]');
-  allButtons.forEach(btn => {
-    // Remove disabled class and attribute
-    btn.classList.remove('disabled');
-    btn.removeAttribute('disabled');
-    
-    // Remove any click event listeners that might be blocking
-    const newBtn = btn.cloneNode(true);
-    btn.parentNode.replaceChild(newBtn, btn);
-    
-    console.log(`[Test] Re-enabled button:`, newBtn.textContent.trim());
-  });
-  
-  // Restore functionality for specific buttons
-  restoreButtonFunctionality();
-  
-  // Check if buttons are enabled
-  const disabledButtons = document.querySelectorAll('.popup-btn.disabled');
-  console.log("Disabled buttons found:", disabledButtons.length);
-  
-  // Hide any upgrade modals
-  const upgradeMessage = document.getElementById('upgradeMessage');
-  if (upgradeMessage) {
-    upgradeMessage.style.display = 'none';
-    console.log("Hidden upgrade message modal");
-  }
-  
-  return {
-    plan: currentUserPlan,
-    user: loggedInUser?.email,
-    disabledButtons: disabledButtons.length,
-    totalButtons: allButtons.length
-  };
-};
 
 // Function to restore button functionality
 function restoreButtonFunctionality() {
