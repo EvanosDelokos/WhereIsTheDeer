@@ -4,9 +4,6 @@
   <meta charset="UTF-8" />
   <title>WhereIsTheDeer Map</title>
   <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
-  
-  <!-- Basic Content Security Policy (Conservative) -->
-  <meta http-equiv="Content-Security-Policy" content="default-src 'self' 'unsafe-inline' 'unsafe-eval' data: blob:; script-src 'self' 'unsafe-inline' 'unsafe-eval' https://*.mapbox.com https://*.supabase.co https://cdn.jsdelivr.net; style-src 'self' 'unsafe-inline' https://*.mapbox.com; img-src 'self' data: https://*.mapbox.com; connect-src 'self' https://*.mapbox.com https://*.supabase.co https://api.whereisthedeer.com.au https://zones.whereisthedeer.com.au;">
 
   <!-- Favicon if you have it -->
   <link rel="icon" href="Images/favicon.ico" type="image/x-icon">
@@ -29,9 +26,8 @@
     );
 
     // 🗺️ Mapbox Configuration
-    // Mapbox token configured securely
+    // Mapbox token configured
     const MAPBOX_TOKEN = 'pk.eyJ1IjoiZXZhbmtva2EiLCJhIjoiY21lNWJmY3F2MHJzOTJrb2h1MWl4eDZpMCJ9.5ZEQqD207yalsIQLX5tpdg';
-    mapboxgl.accessToken = MAPBOX_TOKEN;
     
     // Default map center and zoom (Victoria, Australia)
     const DEFAULT_CENTER = [-37.81, 144.95];
@@ -1539,18 +1535,18 @@ function clearProtectedModals() {
   console.log("🔄 Protected modals cleared");
 }
 
-// SECURITY: Commented out debug function to prevent bypass
-// window.debugPlan = function() {
-//   console.log("🔍 Current plan state:", { currentUserPlan, planLoaded });
-//   if (planLoaded) {
-//     console.log("🔄 Resetting plan and re-fetching...");
-//     planLoaded = false;
-//     fetchUserPlan();
-//   } else {
-//     console.log("📡 Fetching plan...");
-//     fetchUserPlan();
-//   }
-// };
+// Debug function to check and reset plan
+window.debugPlan = function() {
+  console.log("🔍 Current plan state:", { currentUserPlan, planLoaded });
+  if (planLoaded) {
+    console.log("🔄 Resetting plan and re-fetching...");
+    planLoaded = false;
+    fetchUserPlan();
+  } else {
+    console.log("📡 Fetching plan...");
+    fetchUserPlan();
+  }
+};
 
 
 
@@ -2232,19 +2228,19 @@ function restoreOriginalButtonFunctionality() {
   console.log("✅ Button functionality restored");
 }
 
-// SECURITY: Commented out debug function to prevent bypass
-// window.testPremiumFunctionality = function() {
-//   console.log("🧪 Testing premium functionality...");
-//   console.log("Current user plan:", currentUserPlan);
-//   console.log("Current user:", loggedInUser?.email);
-//   
-//   if (currentUserPlan === 'premium') {
-//     console.log("✅ User is premium - restoring functionality");
-//     restoreOriginalButtonFunctionality();
-//   } else {
-//     console.log("❌ User is not premium");
-//   }
-// };
+// Global function for testing - can be called from console
+window.testPremiumFunctionality = function() {
+  console.log("🧪 Testing premium functionality...");
+  console.log("Current user plan:", currentUserPlan);
+  console.log("Current user:", loggedInUser?.email);
+  
+  if (currentUserPlan === 'premium') {
+    console.log("✅ User is premium - restoring functionality");
+    restoreOriginalButtonFunctionality();
+  } else {
+    console.log("❌ User is not premium");
+  }
+};
 
 // Styled confirmation dialog function
 function showStyledConfirm(message, onConfirm, onCancel) {
@@ -2327,18 +2323,18 @@ function showStyledMessage(message, title = "Message") {
   document.body.appendChild(messagePopup);
 }
 
-// SECURITY: Commented out debug function to prevent bypass
-// window.debugButtonListeners = function() {
-//   const buttons = document.querySelectorAll('.popup-btn, .species-btn, button[data-layer]');
-//   buttons.forEach(btn => {
-//     console.log(`${btn.id || btn.textContent.trim()}:`, {
-//       onclick: !!btn.onclick,
-//       disabled: btn.disabled,
-//       hasDisabledClass: btn.classList.contains('disabled'),
-//       opacity: btn.style.opacity
-//     });
-//   });
-// };
+// Debug helper to check button event listeners
+window.debugButtonListeners = function() {
+  const buttons = document.querySelectorAll('.popup-btn, .species-btn, button[data-layer]');
+  buttons.forEach(btn => {
+    console.log(`${btn.id || btn.textContent.trim()}:`, {
+      onclick: !!btn.onclick,
+      disabled: btn.disabled,
+      hasDisabledClass: btn.classList.contains('disabled'),
+      opacity: btn.style.opacity
+    });
+  });
+};
 
 supabase.auth.getUser().then(({ data: { user } }) => {
   if (user) {
@@ -2563,59 +2559,58 @@ window.inspectButtons = function() {
 };
 
 // Make functions globally accessible for testing
-// SECURITY: Commented out debug functions to prevent bypass
-// window.setPremiumStatus = setPremiumStatus;
+window.setPremiumStatus = setPremiumStatus;
 window.setUserPremiumInDatabase = setUserPremiumInDatabase;
 window.checkUserPlanStatus = checkUserPlanStatus;
 window.restoreButtonFunctionality = restoreButtonFunctionality;
 
-// SECURITY: Commented out premium bypass function
-// window.testPremium = function() {
-//   console.log("🧪 Testing premium status...");
-//   console.log("Current plan:", currentUserPlan);
-//   console.log("Current user:", loggedInUser?.email);
-//   
-//   // Try to set premium immediately
-//   setPremiumStatus(true);
-//   
-//   // Force apply premium styling
-//   applyPremiumStyling();
-//   
-//   // Force re-enable all buttons by removing protection and styling
-//   const allButtons = document.querySelectorAll('.popup-btn, .species-btn, button[data-layer]');
-//   allButtons.forEach(btn => {
-//     // Remove disabled class and attribute
-//     btn.classList.remove('disabled');
-//     btn.removeAttribute('disabled');
-//     
-//     // Remove any click event listeners that might be blocking
-//     const newBtn = btn.cloneNode(true);
-//     btn.parentNode.replaceChild(newBtn, btn);
-//     
-//     console.log(`[Test] Re-enabled button:`, newBtn.textContent.trim());
-//   });
-//   
-//   // Restore functionality for specific buttons
-//   restoreButtonFunctionality();
-//   
-//   // Check if buttons are enabled
-//   const disabledButtons = document.querySelectorAll('.popup-btn.disabled');
-//   console.log("Disabled buttons found:", disabledButtons.length);
-//   
-//   // Hide any upgrade modals
-//   const upgradeMessage = document.getElementById('upgradeMessage');
-//   if (upgradeMessage) {
-//     upgradeMessage.style.display = 'none';
-//     console.log("Hidden upgrade message modal");
-//   }
-//   
-//   return {
-//     plan: currentUserPlan,
-//     user: loggedInUser?.email,
-//     disabledButtons: disabledButtons.length,
-//     totalButtons: allButtons.length
-//   };
-// };
+// Immediate premium test function
+window.testPremium = function() {
+  console.log("🧪 Testing premium status...");
+  console.log("Current plan:", currentUserPlan);
+  console.log("Current user:", loggedInUser?.email);
+  
+  // Try to set premium immediately
+  setPremiumStatus(true);
+  
+  // Force apply premium styling
+  applyPremiumStyling();
+  
+  // Force re-enable all buttons by removing protection and styling
+  const allButtons = document.querySelectorAll('.popup-btn, .species-btn, button[data-layer]');
+  allButtons.forEach(btn => {
+    // Remove disabled class and attribute
+    btn.classList.remove('disabled');
+    btn.removeAttribute('disabled');
+    
+    // Remove any click event listeners that might be blocking
+    const newBtn = btn.cloneNode(true);
+    btn.parentNode.replaceChild(newBtn, btn);
+    
+    console.log(`[Test] Re-enabled button:`, newBtn.textContent.trim());
+  });
+  
+  // Restore functionality for specific buttons
+  restoreButtonFunctionality();
+  
+  // Check if buttons are enabled
+  const disabledButtons = document.querySelectorAll('.popup-btn.disabled');
+  console.log("Disabled buttons found:", disabledButtons.length);
+  
+  // Hide any upgrade modals
+  const upgradeMessage = document.getElementById('upgradeMessage');
+  if (upgradeMessage) {
+    upgradeMessage.style.display = 'none';
+    console.log("Hidden upgrade message modal");
+  }
+  
+  return {
+    plan: currentUserPlan,
+    user: loggedInUser?.email,
+    disabledButtons: disabledButtons.length,
+    totalButtons: allButtons.length
+  };
+};
 
 // Function to restore button functionality
 function restoreButtonFunctionality() {
