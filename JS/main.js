@@ -1,5 +1,22 @@
 console.log("Module loaded: main.js");
 
+// Central premium validation function
+function requirePremium(action) {
+  if (!window.isPremium && !window.currentUserPlan === 'premium') {
+    showUpgradeMessage();
+    return false;
+  }
+  action();
+  return true;
+}
+
+// Show upgrade message for non-premium users
+function showUpgradeMessage() {
+  console.log("[Premium] Premium feature blocked - showing upgrade message");
+  // You can implement a proper upgrade modal here
+  alert("This feature requires a premium subscription. Please upgrade to continue.");
+}
+
 // Initialize Supabase client ONCE, early in your app (if not already done)
 if (!window.supabaseClient) {
   window.supabaseClient = window.supabase.createClient(
@@ -397,6 +414,10 @@ function showSignedOutNotification() {
     }
   }, 5000);
 }
+
+// Make premium validation functions globally available
+window.requirePremium = requirePremium;
+window.showUpgradeMessage = showUpgradeMessage;
 
 // TODO: Any glue code if needed
 // Security: Removed debug logs that exposed sensitive configuration

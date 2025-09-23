@@ -1,6 +1,14 @@
 console.log("Module loaded: pinManager (Mapbox GL JS + DivIcon Label + Centered + Reload)");
 console.log("🔍 pinManager.js loaded successfully");
 
+// Input sanitization utility to prevent XSS
+function sanitizeInput(str) {
+  if (typeof str !== 'string') return '';
+  const div = document.createElement("div");
+  div.innerText = str;
+  return div.innerHTML;
+}
+
 // ============================================================================
 // UNIFIED PIN BUILDER FUNCTIONS
 // ============================================================================
@@ -555,12 +563,13 @@ document.addEventListener("DOMContentLoaded", () => {
      saveBtn.addEventListener("click", savePin);
      cancelBtn.addEventListener("click", cancelPin);
 
-     async function savePin() {
-       const name = input.value.trim() || "Unnamed Pin";
-       
-       // Update pin data
-       pin.name = name;
-       pinData.name = name;
+    async function savePin() {
+      const rawName = input.value.trim() || "Unnamed Pin";
+      const name = sanitizeInput(rawName);
+      
+      // Update pin data
+      pin.name = name;
+      pinData.name = name;
        
        // Create popup using unified builder
        const popup = createPinPopup(pinData);
@@ -918,11 +927,12 @@ document.addEventListener("DOMContentLoaded", () => {
       marker.togglePopup();
     });
 
-    async function save() {
-      const newName = input.value.trim();
-      if (!newName) return;
+  async function save() {
+    const rawNewName = input.value.trim();
+    if (!rawNewName) return;
 
-      pin.name = newName;
+    const newName = sanitizeInput(rawNewName);
+    pin.name = newName;
       
       // Update label
       if (pin.labelMarker && pin.labelMarker.element) {

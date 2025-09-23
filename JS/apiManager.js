@@ -4,12 +4,37 @@ class ApiManager {
   constructor() {
     // Migrated to Supabase Edge Functions - no more Railway dependency
     this.supabase = null;
+    
+    // Secure configuration - use environment variables when available
+    this.SUPABASE_URL = this.getSupabaseUrl();
+    this.SUPABASE_ANON_KEY = this.getSupabaseKey();
+  }
+  
+  // Get Supabase key from environment or fallback
+  getSupabaseKey() {
+    // Try to get from window environment variables (set by build tools)
+    if (window.VITE_SUPABASE_ANON_KEY) {
+      return window.VITE_SUPABASE_ANON_KEY;
+    }
+    // Fallback for development (should be replaced with environment variable in production)
+    return "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InBkc2tva2lsc2FsamhhZ3Z3YXpuIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NTM2MTQwOTUsImV4cCI6MjA2OTE5MDA5NX0.ekpHjsXv55MgOvAVJNYdp4wNuGkGhZghMt8DWfzZikE";
+  }
+  
+  // Get Supabase URL from environment or fallback
+  getSupabaseUrl() {
+    // Try to get from window environment variables (set by build tools)
+    if (window.VITE_SUPABASE_URL) {
+      return window.VITE_SUPABASE_URL;
+    }
+    // Fallback for development
+    return "https://pdskokilsaljhagvwazn.supabase.co";
   }
 
   // Get the supabase client when needed
   getSupabaseClient() {
     if (!this.supabase) {
-      this.supabase = window.supabase || supabase;
+      // Use secure configuration instead of global supabase
+      this.supabase = window.supabase.createClient(this.SUPABASE_URL, this.SUPABASE_ANON_KEY);
     }
     return this.supabase;
   }
@@ -115,8 +140,14 @@ class ApiManager {
 
   // Secure API base URL - enforce HTTPS
   getApiBaseUrl() {
-    // Force HTTPS in production
-    const baseUrl = 'https://api.whereisthedeer.com.au';
+    // Try to get from window environment variables first
+    let baseUrl;
+    if (window.VITE_API_URL) {
+      baseUrl = window.VITE_API_URL;
+    } else {
+      // Fallback for development
+      baseUrl = 'https://api.whereisthedeer.com.au';
+    }
     
     // Validate URL security
     if (!baseUrl.startsWith('https://')) {
@@ -126,13 +157,7 @@ class ApiManager {
     return baseUrl;
   }
 
-  // Get Supabase client
-  getSupabaseClient() {
-    if (!this.supabase) {
-      this.supabase = window.supabase || supabase;
-    }
-    return this.supabase;
-  }
+  // Get Supabase client method is defined above in constructor
 
   // Check if user has premium access
   async checkPremiumAccess() {

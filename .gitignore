@@ -20,3 +20,6 @@ witd-api/node_modules/
 
 # OS + editor junk
 Thumbs.db
+
+# Environment variables
+.env

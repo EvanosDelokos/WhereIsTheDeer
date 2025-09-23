@@ -4,6 +4,14 @@ if (!window.journalDataKey) {
   window.journalDataKey = 'witd_journal_entries';
 }
 
+// Input sanitization utility to prevent XSS
+function sanitizeInput(str) {
+  if (typeof str !== 'string') return '';
+  const div = document.createElement("div");
+  div.innerText = str;
+  return div.innerHTML;
+}
+
 // Fallback to localStorage for offline functionality
 function loadJournalEntries() {
   const raw = localStorage.getItem(window.journalDataKey);
@@ -354,16 +362,16 @@ function viewJournalEntry(index) {
 
 async function handleJournalFormSubmit(e) {
   e.preventDefault();
-  const note = document.getElementById('journalNote').value.trim();
-  const title = document.getElementById('journalTitle').value.trim();
-  const coords = document.getElementById('journalCoords').value.trim();
+  const rawNote = document.getElementById('journalNote').value.trim();
+  const rawTitle = document.getElementById('journalTitle').value.trim();
+  const rawCoords = document.getElementById('journalCoords').value.trim();
   
-  if (!note) return;
+  if (!rawNote) return;
   
   const entry = {
-    title,
-    note,
-    coords,
+    title: sanitizeInput(rawTitle),
+    note: sanitizeInput(rawNote),
+    coords: sanitizeInput(rawCoords),
     time: Date.now()
   };
   

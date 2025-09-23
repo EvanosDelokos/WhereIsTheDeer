@@ -1,5 +1,13 @@
 console.log("Module loaded: gpxManager (Mapbox GL JS)");
 
+// Input sanitization utility to prevent XSS
+function sanitizeInput(str) {
+  if (typeof str !== 'string') return '';
+  const div = document.createElement("div");
+  div.innerText = str;
+  return div.innerHTML;
+}
+
 // Remove ES6 import - use global functions instead
 // import { saveGpxFiles, loadGpxFiles } from './storeManager.js';
 
@@ -371,7 +379,8 @@ function initGpxManager(map) {
 
   function parseGpxToGeoJson(gpxContent, fileName) {
     try {
-      console.log(`[GPX] Parsing GPX content for ${fileName}`);
+      const safeFileName = sanitizeInput(fileName);
+      console.log(`[GPX] Parsing GPX content for ${safeFileName}`);
       const parser = new DOMParser();
       const xmlDoc = parser.parseFromString(gpxContent, 'text/xml');
       
@@ -418,7 +427,7 @@ function initGpxManager(map) {
           trackFeatures.push({
             type: 'Feature',
             properties: {
-              name: fileName || `Track ${i + 1}`,
+              name: safeFileName || `Track ${i + 1}`,
               type: 'gpx-track'
             },
             geometry: {
@@ -923,7 +932,7 @@ function initGpxManager(map) {
           trackLabelEl.innerHTML = `
             <div class="track-label-popup">
               <div class="track-label-header">
-                <span class="track-label-title">${fileName.replace('.gpx', '')}</span>
+                <span class="track-label-title">${sanitizeInput(fileName).replace('.gpx', '')}</span>
                 <button class="track-delete-btn" title="Delete Track">
                   <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
                     <polyline points="3,6 5,6 21,6"></polyline>

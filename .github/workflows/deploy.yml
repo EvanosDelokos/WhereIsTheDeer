@@ -1,0 +1,64 @@
+name: Deploy to GitHub Pages
+
+on:
+  push:
+    branches: [ main ]
+  pull_request:
+    branches: [ main ]
+
+jobs:
+  build-and-deploy:
+    runs-on: ubuntu-latest
+    
+    steps:
+    - name: Checkout
+      uses: actions/checkout@v4
+      
+    - name: Setup Node.js
+      uses: actions/setup-node@v4
+      with:
+        node-version: '18'
+        
+    - name: Setup Pages
+      uses: actions/configure-pages@v4
+      
+    - name: Build with environment variables
+      run: |
+        # Create a simple build script that injects environment variables
+        npm install -g vite
+        
+        # Create a simple index.html that loads your map.html
+        cp map.html dist/index.html
+        
+        # Copy all static assets
+        cp -r CSS dist/
+        cp -r JS dist/
+        cp -r Images dist/
+        cp -r Data dist/
+        cp CNAME dist/
+        
+        # Create a script that injects environment variables
+        cat > dist/inject-env.js << 'EOF'
+        // Inject environment variables into window object
+        window.VITE_SUPABASE_URL = '${{ secrets.VITE_SUPABASE_URL }}';
+        window.VITE_SUPABASE_ANON_KEY = '${{ secrets.VITE_SUPABASE_ANON_KEY }}';
+        window.VITE_MAPBOX_TOKEN = '${{ secrets.VITE_MAPBOX_TOKEN }}';
+        window.VITE_API_URL = '${{ secrets.VITE_API_URL }}';
+        window.VITE_ZONES_API_URL = '${{ secrets.VITE_ZONES_API_URL }}';
+        window.VITE_ENV = '${{ secrets.VITE_ENV }}';
+        EOF
+        
+        # Inject the script into index.html
+        sed -i '/<\/head>/i <script src="inject-env.js"></script>' dist/index.html
+        
+    - name: Upload artifact
+      uses: actions/upload-pages-artifact@v3
+      with:
+        path: './dist'
+        
+    - name: Deploy to GitHub Pages
+      id: deployment
+      uses: actions/deploy-pages@v4
+      
+    - name: Output deployment URL
+      run: echo "Deployment URL: https://evanosdelokos.github.io/WhereIsTheDeer/"
