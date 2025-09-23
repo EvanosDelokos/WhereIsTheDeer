@@ -1,45 +1,219 @@
-console.log("Module loaded: layerManager");
+console.log("Module loaded: layerManager (Mapbox GL JS)");
 
 document.addEventListener("DOMContentLoaded", () => {
-  const map = window.WITD.map;
-
-  // --- Base layers ---
-  const terrain = L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
-    attribution: '© OpenStreetMap contributors',
-    maxZoom: 19
-  });
-
-  const satellite = L.tileLayer('https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}', {
-    attribution: '© Esri World Imagery',
-    maxZoom: 19
-  });
-
-  const contours = L.tileLayer('https://{s}.tile.opentopomap.org/{z}/{x}/{y}.png', {
-    attribution: '© OpenTopoMap',
-    maxZoom: 14
-  });
-
-  terrain.addTo(map);
-
-  window.WITD.baseLayers = { terrain, satellite, contours };
-  window.WITD.activeSpeciesLayer = null; // ✅ Track active species
-
-  console.log("Layer Manager ready: Terrain loaded by default.");
-
+  // Wait for map to be initialized
+  const waitForMap = () => {
+    if (window.WITD && window.WITD.map) {
+      initializeLayerManager();
+    } else {
+      setTimeout(waitForMap, 100);
+    }
+  };
+  
+  waitForMap();
 });
 
-// --- Base layer switch ---
-window.switchBaseLayer = function(name) {
+function initializeLayerManager() {
   const map = window.WITD.map;
-  const layers = window.WITD.baseLayers;
+  
+  if (!map) {
+    console.warn("Map not available for layer manager");
+    return;
+  }
 
-  Object.values(layers).forEach(layer => map.removeLayer(layer));
+  // --- Base layer styles ---
+  const baseLayers = {
+    terrain: 'mapbox://styles/mapbox/outdoors-v12',
+    satellite: 'mapbox://styles/mapbox/satellite-streets-v12',
+    contours: 'mapbox://styles/mapbox/outdoors-v12', // Using outdoors for contours
+    hybrid: 'mapbox://styles/mapbox/satellite-v9' // Satellite base for hybrid
+  };
 
-  if (layers[name.toLowerCase()]) {
-    layers[name.toLowerCase()].addTo(map);
-  } else if (layers[name]) {
-    layers[name].addTo(map);
+  // Store base layers for external access
+  window.WITD.baseLayers = baseLayers;
+  window.WITD.activeSpeciesLayer = null;
+
+  console.log("Layer Manager ready: Mapbox styles configured.");
+
+  // Set default active layer (Terrain)
+  const layerButtons = document.querySelectorAll('button[data-layer]');
+  layerButtons.forEach(btn => {
+    btn.classList.remove('active');
+    if (btn.getAttribute('data-layer').toLowerCase() === 'terrain') {
+      btn.classList.add('active');
+    }
+  });
+
+  // Add terrain source and layer for contours if needed
+  map.once('style.load', () => {
+    // Add terrain source for contours
+    if (!map.getSource('mapbox-terrain')) {
+      map.addSource('mapbox-terrain', {
+        type: 'raster-dem',
+        url: 'mapbox://mapbox.terrain-rgb'
+      });
+    }
+  });
+}
+
+// --- Base layer switch function ---
+window.switchBaseLayer = function(name) {
+  const map = window.WITD?.map;
+  if (!map) {
+    console.warn("Map not available for layer switching");
+    return;
+  }
+
+  const layers = window.WITD?.baseLayers;
+  if (!layers) {
+    console.warn("Base layers not configured");
+    return;
+  }
+
+  const layerName = name.toLowerCase();
+  const newStyle = layers[layerName];
+
+  if (newStyle) {
+    console.log(`Switching to ${name} layer:`, newStyle);
+    
+    // Update button active states
+    const layerButtons = document.querySelectorAll('button[data-layer]');
+    layerButtons.forEach(btn => {
+      btn.classList.remove('active');
+      if (btn.getAttribute('data-layer').toLowerCase() === layerName) {
+        btn.classList.add('active');
+      }
+    });
+    
+    // Store current view state
+    const currentCenter = map.getCenter();
+    const currentZoom = map.getZoom();
+    const currentPitch = map.getPitch();
+    const currentBearing = map.getBearing();
+
+    // Switch style
+    map.setStyle(newStyle);
+
+    // Restore view state after style loads
+    map.once('style.load', () => {
+      map.setCenter(currentCenter);
+      map.setZoom(currentZoom);
+      map.setPitch(currentPitch);
+      map.setBearing(currentBearing);
+      
+      // Re-add terrain source if switching to contours
+      if (layerName === 'contours' && !map.getSource('mapbox-terrain')) {
+        map.addSource('mapbox-terrain', {
+          type: 'raster-dem',
+          url: 'mapbox://mapbox.terrain-rgb'
+        });
+      }
+      
+      // Handle hybrid layer - add DEM and contour sources
+      if (layerName === 'hybrid') {
+        // Add raster-dem source for terrain
+        if (!map.getSource('mapbox-dem')) {
+          map.addSource('mapbox-dem', {
+            type: 'raster-dem',
+            url: 'mapbox://mapbox.terrain-rgb',
+            tileSize: 512,
+            maxzoom: 14
+          });
+        }
+        
+        // Set terrain with exaggeration
+        map.setTerrain({ source: 'mapbox-dem', exaggeration: 1.2 });
+        
+        // Add vector source for contours
+        if (!map.getSource('terrain-data')) {
+          map.addSource('terrain-data', {
+            type: 'vector',
+            url: 'mapbox://mapbox.mapbox-terrain-v2'
+          });
+        }
+        
+        // Add minor contour lines (every 20m, thin grey)
+        if (!map.getLayer('contours-minor')) {
+          map.addLayer({
+            id: 'contours-minor',
+            type: 'line',
+            source: 'terrain-data',
+            'source-layer': 'contour',
+            filter: ['!=', ['%', ['get', 'ele'], 100], 0],
+            paint: {
+              'line-color': '#888888',
+              'line-width': 1
+            }
+          });
+        }
+        
+        // Add major contour lines (every 100m, thicker, white)
+        if (!map.getLayer('contours-major')) {
+          map.addLayer({
+            id: 'contours-major',
+            type: 'line',
+            source: 'terrain-data',
+            'source-layer': 'contour',
+            filter: ['==', ['%', ['get', 'ele'], 100], 0],
+            paint: {
+              'line-color': '#ffffff',
+              'line-width': 1.5
+            }
+          });
+        }
+        
+        // Add 100m labels (always visible, zoom >= 10)
+        if (!map.getLayer('contour-labels-100m')) {
+          map.addLayer({
+            id: 'contour-labels-100m',
+            type: 'symbol',
+            source: 'terrain-data',
+            'source-layer': 'contour',
+            filter: ['==', ['%', ['get', 'ele'], 100], 0],
+            minzoom: 10,
+            layout: {
+              'symbol-placement': 'line',
+              'symbol-spacing': 400,
+              'text-field': ['concat', ['get', 'ele'], ' m'],
+              'text-size': 11,
+              'text-font': ['Open Sans Bold', 'Arial Unicode MS Bold']
+            },
+            paint: {
+              'text-color': '#ffffff',
+              'text-halo-color': '#000000',
+              'text-halo-width': 1.5
+            }
+          });
+        }
+        
+        // Add 50m labels (only visible zoom >= 13)
+        if (!map.getLayer('contour-labels-50m')) {
+          map.addLayer({
+            id: 'contour-labels-50m',
+            type: 'symbol',
+            source: 'terrain-data',
+            'source-layer': 'contour',
+            filter: ['==', ['%', ['get', 'ele'], 50], 0],
+            minzoom: 13,
+            layout: {
+              'symbol-placement': 'line',
+              'symbol-spacing': 600,
+              'text-field': ['concat', ['get', 'ele'], ' m'],
+              'text-size': 10,
+              'text-font': ['Open Sans Regular', 'Arial Unicode MS Regular']
+            },
+            paint: {
+              'text-color': '#ffffff',
+              'text-halo-color': '#000000',
+              'text-halo-width': 2
+            }
+          });
+        }
+      }
+      
+      console.log(`Successfully switched to ${name} layer`);
+    });
   } else {
-    console.warn(`Base layer "${name}" not found.`);
+    console.warn(`Base layer "${name}" not found. Available layers:`, Object.keys(layers));
   }
 };

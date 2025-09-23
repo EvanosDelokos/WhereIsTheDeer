@@ -1,8 +1,4 @@
 console.log("Module loaded: storeManager (Mapbox GL JS)");
-console.log("🔍 storeManager.js loaded successfully");
-
-// Import unified pin builder functions
-import { createPinMarker, createPinPopup, createLabelElement, buildPinPopupHTML } from './pinManager.js';
 
 // ============================================================================
 // NEW PIN MANAGEMENT FUNCTIONS
@@ -314,8 +310,7 @@ export async function savePins(customPins) {
   const saveData = customPins.map(pin => ({
     name: pin.name,
     lat: pin.lat,
-    lng: pin.lng,
-    style: pin.style || { variant: 'orange', size: 1.2 }
+    lng: pin.lng
   }));
   
   // Save to localStorage
@@ -350,7 +345,6 @@ export async function savePins(customPins) {
 }
 
 export async function loadPins(map, customPins, attachPopupActions) {
-  console.log('🚨 [loadPins] FUNCTION CALLED with map:', map, 'customPins:', customPins);
   // 🔧 Safe JSON.parse with error handling
   let savedPins = [];
   try {
@@ -360,20 +354,11 @@ export async function loadPins(map, customPins, attachPopupActions) {
     savedPins = [];
   }
   
-  // Check if localStorage was recently updated (within last 5 seconds) - indicates local clear operation
-  const lastLocalUpdate = localStorage.getItem('witd_pins_last_update');
-  const now = Date.now();
-  const isRecentLocalUpdate = lastLocalUpdate && (now - parseInt(lastLocalUpdate)) < 5000;
-  
-  // If localStorage was recently updated, prioritize it over Supabase
-  if (isRecentLocalUpdate) {
-    console.log('[Pins] Recent localStorage update detected, skipping Supabase load');
-  } else {
-    // Try to load from Supabase if user is authenticated
-    try {
-      const { data: { user } } = await supabase.auth.getUser();
-      
-      if (user) {
+  // Try to load from Supabase if user is authenticated
+  try {
+    const { data: { user } } = await supabase.auth.getUser();
+    
+    if (user) {
       // First check if the user_pins table exists by trying to query it
       try {
         const { data, error } = await supabase
@@ -458,303 +443,214 @@ export async function loadPins(map, customPins, attachPopupActions) {
         console.log('[Pins] Table operation failed, using localStorage:', tableError.message);
       }
     }
-    } catch (error) {
-      console.log('[Pins] Supabase load failed, using localStorage:', error.message);
-    }
+  } catch (error) {
+    console.log('[Pins] Supabase load failed, using localStorage:', error.message);
   }
   
-  // Convert pins to Mapbox format and add them to the map using unified builder
-  console.log('🚨 [loadPins] Processing', savedPins.length, 'saved pins');
+  // Convert pins to the same format as normal pins and add them to the map
   savedPins.forEach((data, index) => {
-    console.log('🚨 [loadPins] Processing pin', index, ':', data);
     try {
       // Create a unique ID for each pin
       const pinId = `custom-pin-${index}`;
+      const labelId = `custom-label-${index}`;
       
-      // Prepare pin data with style (back-compat default if older saves lack style)
-      const pinData = {
-        id: pinId,
-        name: data.name,
-        lng: data.lng,
-        lat: data.lat,
-        style: data.style || { variant: 'orange', size: 1.2 }
-      };
-      
-      // Create Mapbox marker using unified builder
-      const marker = createPinMarker(pinData, { onClick: () => marker.togglePopup() });
-      marker.addTo(map);
-      
-      // Create popup using unified builder
-      const popup = createPinPopup(pinData);
-      marker.setPopup(popup);
-      
-      // Force the popup to be rendered by opening and closing it
-      marker.togglePopup();
-      marker.togglePopup();
-      
-      // Create label marker
-      const labelMarker = new mapboxgl.Marker({
-        element: createLabelElement(data.name),
-        anchor: 'bottom'
+      // Create Mapbox marker with the same styling as normal pins
+      const marker = new mapboxgl.Marker({
+        color: '#ff6600',
+        scale: 1.2
       })
       .setLngLat([data.lng, data.lat])
       .addTo(map);
-      
-      // Create pin object for management
-      const pin = { 
-        marker: { id: pinId, element: marker }, 
-        name: data.name, 
-        lat: data.lat, 
-        lng: data.lng, 
-        labelMarker: { id: `label-${pinId}`, element: labelMarker },
-        style: pinData.style
-      };
-      customPins.push(pin);
-      
-      // Bind popup actions (with built-in delay and retry logic)
-      console.log('[loadPins] About to bind popup actions for loaded pin:', data.name);
-      bindPopupActions(marker, pin);
+        map.addSource(pinId, {
+          type: 'geojson',
+          data: {
+            type: 'Feature',
+            geometry: {
+              type: 'Point',
+              coordinates: [data.lng, data.lat] // Mapbox uses [lng, lat] order
+            },
+            properties: {
+              name: data.name,
+              pinId: pinId
+            }
+          }
+        });
         
-      console.log(`[Pins] Added pin: ${data.name} at [${data.lat}, ${data.lng}]`);
+        // Add pin marker layer
+        map.addLayer({
+          id: pinId,
+          type: 'symbol',
+          source: pinId,
+          layout: {
+            'icon-image': 'RedMarkerPin', // Use existing pin icon
+            'icon-size': 0.05,
+            'icon-allow-overlap': true
+          }
+        });
+        
+        // Add label layer
+        map.addLayer({
+          id: labelId,
+          type: 'symbol',
+          source: pinId,
+          layout: {
+            'text-field': data.name,
+            'text-size': 12,
+            'text-offset': [0, -2],
+            'text-anchor': 'bottom',
+            'text-allow-overlap': true
+          },
+          paint: {
+            'text-color': '#333',
+            'text-halo-color': '#fff',
+            'text-halo-width': 2
+          }
+        });
+        
+        // Create pin object for management
+        const pin = { 
+          id: pinId, 
+          labelId: labelId,
+          name: data.name, 
+          lat: data.lat, 
+          lng: data.lng,
+          source: pinId
+        };
+        customPins.push(pin);
+        
+        // Add click event to the pin
+        map.on('click', pinId, (e) => {
+          e.preventDefault();
+          
+          // Create popup content
+          const popupContent = document.createElement('div');
+          popupContent.innerHTML = `
+            <b>${data.name}</b><br>
+            Lat: ${data.lat.toFixed(5)}<br>
+            Lon: ${data.lng.toFixed(5)}<br><br>
+            <button class="rename-btn">✏️ Rename</button>
+            <button class="delete-btn">🗑️ Delete</button>
+            <button class="journal-btn">📓 Send to Journal</button>
+          `;
+          
+          // Add event listeners to buttons
+          const renameBtn = popupContent.querySelector('.rename-btn');
+          const deleteBtn = popupContent.querySelector('.delete-btn');
+          const journalBtn = popupContent.querySelector('.journal-btn');
+          
+          renameBtn.addEventListener('click', () => {
+            if (attachPopupActions && attachPopupActions.reopenRename) {
+              attachPopupActions.reopenRename(pin, pin);
+            }
+          });
+          
+          deleteBtn.addEventListener('click', () => {
+            // Remove pin from map
+            if (map.getLayer(pinId)) map.removeLayer(pinId);
+            if (map.getLayer(labelId)) map.removeLayer(labelId);
+            if (map.getSource(pinId)) map.removeSource(pinId);
+            
+            // Remove from customPins array
+            const pinIndex = customPins.indexOf(pin);
+            if (pinIndex > -1) customPins.splice(pinIndex, 1);
+            
+            // Save updated pins
+            savePins(customPins);
+          });
+          
+          journalBtn.addEventListener('click', () => {
+            if (typeof initJournal === "function") {
+              initJournal();
+              setTimeout(() => {
+                const journalModal = document.getElementById('journalModal');
+                const journalBtn = document.getElementById('toolbarJournalBtn');
+                if (typeof openPopupAboveButton === 'function') {
+                  openPopupAboveButton(journalModal, journalBtn, true);
+                }
+    
+                const titleEl = document.getElementById('journalTitle');
+                const coordsEl = document.getElementById('journalCoords');
+                const noteEl = document.getElementById('journalNote');
+    
+                if (titleEl && coordsEl && noteEl) {
+                  titleEl.value = pin.name;
+                  coordsEl.value = `${pin.lat.toFixed(5)}, ${pin.lng.toFixed(5)}`;
+                  noteEl.focus();
+                }
+    
+                if (typeof openPopup !== 'undefined' && typeof openButton !== 'undefined' && typeof positionPopup === 'function') {
+                  positionPopup(openPopup, openButton, openAlignRight);
+                }
+              }, 50);
+            } else {
+              alert("Journal module not loaded.");
+            }
+          });
+          
+          // Show popup
+          new mapboxgl.Popup()
+            .setLngLat([data.lng, data.lat])
+            .setDOMContent(popupContent)
+            .addTo(map);
+        });
+        
+        console.log(`[Pins] Added pin: ${data.name} at [${data.lat}, ${data.lng}]`);
+      }
     } catch (error) {
       console.error(`[Pins] Error adding pin ${data.name}:`, error);
     }
   });
 }
 
-// Helper function to bind popup actions (copied from pinManager.js)
+// Helper function to create label element (same as in pinManager.js)
+function createLabelElement(name) {
+  const labelDiv = document.createElement('div');
+  labelDiv.className = 'marker-text-box';
+  labelDiv.innerHTML = `<div class="label-inner">${name}</div>`;
+  return labelDiv;
+}
+
+// Helper function to bind popup actions (same as in pinManager.js)
 function bindPopupActions(marker, pin) {
-  console.log('[bindPopupActions] Called for pin:', pin.name);
+  const popup = marker.getPopup();
+  const popupElement = popup.getElement();
   
-  // Try to get popup element with retries
-  let attempts = 0;
-  const maxAttempts = 50; // Increased from 20
-  
-  const tryBind = () => {
-    attempts++;
-    console.log(`[bindPopupActions] Attempt ${attempts}/${maxAttempts} for pin:`, pin.name);
-    
-    const popup = marker.getPopup();
-    console.log('[bindPopupActions] Popup object:', popup);
-    
-    if (popup) {
-      const popupElement = popup.getElement();
-      console.log('[bindPopupActions] Popup element:', popupElement);
-      
-      if (popupElement) {
-        console.log('[bindPopupActions] Popup element found, checking for buttons...');
-        const buttons = popupElement.querySelectorAll('button');
-        console.log('[bindPopupActions] Found buttons:', buttons.length);
-        
-        if (buttons.length > 0) {
-          console.log('[bindPopupActions] Binding actions for pin:', pin.name);
-          bindActionsToPopup(popupElement, marker, pin);
-          return;
-        } else {
-          console.log('[bindPopupActions] Popup element exists but no buttons found, retrying...');
-        }
-      }
-    }
-    
-    if (attempts < maxAttempts) {
-      console.log('[bindPopupActions] Popup element not ready, retrying in 200ms...');
-      setTimeout(tryBind, 200);
-    } else {
-      console.error('[bindPopupActions] Failed to get popup element after', maxAttempts, 'attempts');
-      // Try alternative approach - bind to marker click event
-      console.log('[bindPopupActions] Trying alternative approach - binding to marker click');
-      bindToMarkerClick(marker, pin);
-    }
-  };
-  
-  // Start binding after a longer initial delay to ensure map is fully loaded
-  setTimeout(tryBind, 1000);
-}
-
-// Alternative approach - bind to marker click event when popup buttons fail
-function bindToMarkerClick(marker, pin) {
-  console.log('[bindToMarkerClick] Binding to marker click for pin:', pin.name);
-  
-  marker.getElement().addEventListener('click', (e) => {
-    e.stopPropagation();
-    console.log('[bindToMarkerClick] Marker clicked, showing custom popup for pin:', pin.name);
-    
-    // Create a custom popup with working buttons
-    showCustomPinPopup(marker, pin);
-  });
-}
-
-// Show custom popup with working buttons
-function showCustomPinPopup(marker, pin) {
-  // Remove existing popup
-  if (marker.getPopup()) {
-    marker.getPopup().remove();
-  }
-  
-  // Create custom popup content
-  const popupContent = document.createElement('div');
-  popupContent.className = 'custom-pin-popup';
-  popupContent.innerHTML = `
-    <div class="pin-popup-content">
-      <h3>${pin.name}</h3>
-      <p>Lat: ${pin.lat.toFixed(6)}, Lng: ${pin.lng.toFixed(6)}</p>
-      <div class="pin-popup-buttons">
-        <button class="rename-btn" style="background: #007bff; color: white; border: none; padding: 8px 12px; border-radius: 4px; margin: 4px; cursor: pointer;">Rename</button>
-        <button class="delete-btn" style="background: #dc3545; color: white; border: none; padding: 8px 12px; border-radius: 4px; margin: 4px; cursor: pointer;">Delete</button>
-        <button class="journal-btn" style="background: #28a745; color: white; border: none; padding: 8px 12px; border-radius: 4px; margin: 4px; cursor: pointer;">Journal</button>
-      </div>
-    </div>
-  `;
-  
-  // Create new popup
-  const popup = new mapboxgl.Popup({
-    closeButton: true,
-    closeOnClick: false
-  }).setDOMContent(popupContent);
-  
-  marker.setPopup(popup);
-  popup.addTo(window.WITD.map);
-  
-  // Bind actions to the custom popup
-  bindActionsToPopup(popupContent, marker, pin);
-}
-
-function bindActionsToPopup(popupElement, marker, pin) {
-  console.log('[bindActionsToPopup] Binding actions to popup element for pin:', pin.name);
+  if (!popupElement) return;
   
   const renameBtn = popupElement.querySelector('.rename-btn');
   const deleteBtn = popupElement.querySelector('.delete-btn');
   const journalBtn = popupElement.querySelector('.journal-btn');
   
-  console.log('[bindActionsToPopup] Found buttons:', {
-    rename: !!renameBtn,
-    delete: !!deleteBtn,
-    journal: !!journalBtn
-  });
-  
   if (renameBtn) {
-    // Remove any existing listeners to prevent duplicates
-    renameBtn.replaceWith(renameBtn.cloneNode(true));
-    const newRenameBtn = popupElement.querySelector('.rename-btn');
-    newRenameBtn.addEventListener('click', (e) => {
-      e.stopPropagation();
-      console.log('[bindActionsToPopup] Rename button clicked for pin:', pin.name);
-      reopenRename(marker, pin);
+    renameBtn.addEventListener('click', () => {
+      // For now, just log - this will be handled by the main pinManager
+      console.log('[Pins] Rename requested for pin:', pin.name);
     });
   }
   
   if (deleteBtn) {
-    // Remove any existing listeners to prevent duplicates
-    deleteBtn.replaceWith(deleteBtn.cloneNode(true));
-    const newDeleteBtn = popupElement.querySelector('.delete-btn');
-    newDeleteBtn.addEventListener('click', async (e) => {
-      e.stopPropagation();
-      console.log('[bindActionsToPopup] Delete button clicked for pin:', pin.name);
-      // Create custom confirmation dialog
-      const confirmDialog = document.createElement('div');
-      confirmDialog.className = 'custom-confirm-dialog';
-      confirmDialog.innerHTML = `
-        <div class="confirm-dialog-content">
-          <div class="confirm-dialog-header">
-            <span class="confirm-dialog-icon">⚠️</span>
-            <span class="confirm-dialog-title">Delete Pin</span>
-          </div>
-          <div class="confirm-dialog-message">
-            Are you sure you want to delete pin "${pin.name}"?
-          </div>
-          <div class="confirm-dialog-buttons">
-            <button class="confirm-dialog-btn confirm-dialog-cancel">Cancel</button>
-            <button class="confirm-dialog-btn confirm-dialog-delete">Delete</button>
-          </div>
-        </div>
-      `;
+    deleteBtn.addEventListener('click', async () => {
+      // Remove from map
+      if (pin.marker && pin.marker.element) {
+        pin.marker.element.remove();
+      }
+      if (pin.labelMarker && pin.labelMarker.element) {
+        pin.labelMarker.element.remove();
+      }
       
-      // Add to body
-      document.body.appendChild(confirmDialog);
+      // Remove from customPins array
+      const pinIndex = customPins.indexOf(pin);
+      if (pinIndex > -1) {
+        customPins.splice(pinIndex, 1);
+      }
       
-      // Get button references
-      const cancelBtn = confirmDialog.querySelector('.confirm-dialog-cancel');
-      const deleteBtn = confirmDialog.querySelector('.confirm-dialog-delete');
-      
-      // Handle cancel
-      cancelBtn.addEventListener('click', () => {
-        document.body.removeChild(confirmDialog);
-      });
-      
-      // Handle delete
-      deleteBtn.addEventListener('click', async () => {
-        // Remove from map
-        if (pin.marker && pin.marker.element) {
-          pin.marker.element.remove();
-        }
-        if (pin.labelMarker && pin.labelMarker.element) {
-          pin.labelMarker.element.remove();
-        }
-        
-        // Remove from array
-        const index = window.customPins.indexOf(pin);
-        if (index > -1) {
-          window.customPins.splice(index, 1);
-        }
-        
-        // Remove from local pin data
-        const localIndex = window.localPinData.findIndex(p => 
-          p.lat === pin.lat && p.lng === pin.lng && p.label === pin.name
-        );
-        if (localIndex > -1) {
-          window.localPinData.splice(localIndex, 1);
-          console.log('[Pins] Removed from localPinData, remaining:', window.localPinData.length);
-        }
-        
-        await savePins(window.customPins);
-        
-        // Re-bind event listeners for all remaining pins
-        console.log('[Delete] Re-binding event listeners for remaining pins...');
-        window.customPins.forEach(remainingPin => {
-          if (remainingPin.marker && remainingPin.marker.element) {
-            const popup = remainingPin.marker.element.getPopup();
-            if (popup) {
-              // Force popup to be rendered again
-              remainingPin.marker.element.togglePopup();
-              remainingPin.marker.element.togglePopup();
-              
-              // Re-bind actions after a short delay
-              setTimeout(() => {
-                bindPopupActions(remainingPin.marker.element, remainingPin);
-              }, 200);
-            }
-          }
-        });
-        
-        // Close dialog
-        document.body.removeChild(confirmDialog);
-      });
-      
-      // Close on outside click
-      confirmDialog.addEventListener('click', (e) => {
-        if (e.target === confirmDialog) {
-          document.body.removeChild(confirmDialog);
-        }
-      });
-      
-      // Close on Escape key
-      const handleEscape = (e) => {
-        if (e.key === 'Escape') {
-          document.body.removeChild(confirmDialog);
-          document.removeEventListener('keydown', handleEscape);
-        }
-      };
-      document.addEventListener('keydown', handleEscape);
+      // Save updated pins
+      await savePins(customPins);
     });
   }
   
   if (journalBtn) {
-    // Remove any existing listeners to prevent duplicates
-    journalBtn.replaceWith(journalBtn.cloneNode(true));
-    const newJournalBtn = popupElement.querySelector('.journal-btn');
-    newJournalBtn.addEventListener('click', (e) => {
-      e.stopPropagation();
-      console.log('[bindActionsToPopup] Journal button clicked for pin:', pin.name);
+    journalBtn.addEventListener('click', () => {
       // Send pin to journal
       if (typeof window.initJournal === 'function') {
         // Get the journal button to simulate a click
@@ -792,118 +688,6 @@ function bindActionsToPopup(popupElement, marker, pin) {
         alert('Journal module not loaded. Please refresh the page.');
       }
     });
-  }
-}
-
-// Helper function to reopen rename dialog (copied from pinManager.js)
-function reopenRename(marker, pin) {
-  // Create styled container
-  const popupContent = document.createElement("div");
-  popupContent.className = "pin-drop-container";
-  
-  // Create header
-  const header = document.createElement("div");
-  header.className = "pin-drop-header";
-  header.innerHTML = '<span class="pin-drop-icon">✏️</span> <span class="pin-drop-title">Rename Pin</span>';
-  
-  // Create input container
-  const inputContainer = document.createElement("div");
-  inputContainer.className = "pin-drop-input-container";
-  
-  const input = document.createElement("input");
-  input.type = "text";
-  input.value = pin.name;
-  input.className = "pin-drop-input";
-  
-  inputContainer.appendChild(input);
-
-  // Create button container
-  const buttonContainer = document.createElement("div");
-  buttonContainer.className = "pin-drop-buttons";
-  
-  const saveBtn = document.createElement("button");
-  saveBtn.textContent = "Save Changes";
-  saveBtn.className = "pin-drop-btn pin-drop-save";
-
-  const cancelBtn = document.createElement("button");
-  cancelBtn.textContent = "Cancel";
-  cancelBtn.className = "pin-drop-btn pin-drop-cancel";
-  
-  buttonContainer.appendChild(cancelBtn);
-  buttonContainer.appendChild(saveBtn);
-  
-  // Assemble popup content
-  popupContent.appendChild(header);
-  popupContent.appendChild(inputContainer);
-  popupContent.appendChild(buttonContainer);
-
-  const renamePopup = new mapboxgl.Popup({
-    closeButton: false,
-    closeOnClick: false
-  }).setDOMContent(popupContent);
-
-  marker.setPopup(renamePopup);
-  marker.togglePopup();
-
-  setTimeout(() => input.focus(), 0);
-
-  input.addEventListener("keydown", (e) => {
-    if (e.key === "Enter") {
-      e.preventDefault();
-      save();
-    }
-  });
-
-  saveBtn.addEventListener("click", save);
-  cancelBtn.addEventListener("click", () => {
-    marker.setPopup(pin.originalPopup || marker.getPopup());
-    marker.togglePopup();
-  });
-
-  async function save() {
-    const newName = input.value.trim();
-    if (!newName) return;
-
-    pin.name = newName;
-    
-    // Update label
-    if (pin.labelMarker && pin.labelMarker.element) {
-      const newLabelElement = createLabelElement(newName);
-      pin.labelMarker.element.getElement().innerHTML = newLabelElement.innerHTML;
-    }
-    
-    // Update local pin data
-    const localIndex = window.localPinData.findIndex(p => 
-      p.lat === pin.lat && p.lng === pin.lng
-    );
-    if (localIndex > -1) {
-      window.localPinData[localIndex].label = newName;
-      console.log('[Pins] Updated localPinData for renamed pin:', window.localPinData[localIndex]);
-    }
-
-    // Restore original popup with new styled structure using the unified builder
-    const pinData = {
-      id: pin.marker.id,
-      name: newName,
-      lng: pin.lng,
-      lat: pin.lat,
-      style: pin.style || { variant: 'orange', size: 1.2 }
-    };
-    
-    const newPopup = createPinPopup(pinData);
-    
-    marker.setPopup(newPopup);
-    // Force the popup to be rendered by opening and closing it
-    marker.togglePopup();
-    marker.togglePopup();
-    
-    // Re-bind actions
-    console.log('[reopenRename save] About to re-bind popup actions for pin:', newName);
-    setTimeout(() => {
-      bindPopupActions(marker, pin);
-    }, 100);
-
-    await savePins(window.customPins);
   }
 }
 

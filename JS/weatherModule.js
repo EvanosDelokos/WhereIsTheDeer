@@ -10,17 +10,19 @@ document.addEventListener("DOMContentLoaded", () => {
   let weatherMarker = null;
   let hasAutoFetchedThisSession = false;
 
-  const weatherIcon = L.icon({
-    iconUrl: 'Images/WeatherPin.svg',
-    iconSize: [40, 40],
-    iconAnchor: [20, 40]
-  });
+  // Create custom weather marker element
+  const weatherIcon = createWeatherMarker();
 
   // Search input event listener for Enter key
   weatherSearch.addEventListener('keypress', function(e) {
     if (e.key === 'Enter') {
       const query = weatherSearch.value.trim();
       if (query) {
+        // Clear previous location confirmation
+        const locationConfirmation = document.getElementById('weatherLocationConfirmation');
+        if (locationConfirmation) {
+          locationConfirmation.classList.remove('show');
+        }
         fetchWeatherForLocation(query);
       }
     }
@@ -121,6 +123,12 @@ document.addEventListener("DOMContentLoaded", () => {
 
   // Manual trigger for current location
   useMyLocationBtn.addEventListener("click", () => {
+    // Clear previous location confirmation
+    const locationConfirmation = document.getElementById('weatherLocationConfirmation');
+    if (locationConfirmation) {
+      locationConfirmation.classList.remove('show');
+    }
+    
     if (navigator.geolocation) {
       const weatherOutputEl = document.getElementById("weatherOutput");
       if (weatherOutputEl) weatherOutputEl.innerHTML = "Getting your location...";
@@ -181,6 +189,13 @@ document.addEventListener("DOMContentLoaded", () => {
 
   // Extract weather fetching logic into reusable function
   function fetchWeatherForCoordinates(lat, lon, locationName) {
+    // Show location confirmation
+    const locationConfirmation = document.getElementById('weatherLocationConfirmation');
+    if (locationConfirmation) {
+      locationConfirmation.textContent = `🌤️ Weather for ${locationName}`;
+      locationConfirmation.classList.add('show');
+    }
+
     const weatherUrl = `https://api.open-meteo.com/v1/forecast?latitude=${lat}&longitude=${lon}&current_weather=true&daily=sunrise,sunset,temperature_2m_max,temperature_2m_min,precipitation_sum,windspeed_10m_max&hourly=precipitation_probability,temperature_2m,weathercode&timezone=auto`;
 
     fetch(weatherUrl)
@@ -325,7 +340,8 @@ document.addEventListener("DOMContentLoaded", () => {
 
         addWeatherMarker(lat, lon, locationName);
 
-        map.setView([lat, lon], 10);
+        // Center map on weather location (Mapbox uses [lng, lat])
+        map.flyTo({ center: [lon, lat], zoom: 10 });
       })
       .catch(error => {
         console.error('Weather fetch error:', error);
@@ -336,15 +352,28 @@ document.addEventListener("DOMContentLoaded", () => {
 
   function addWeatherMarker(lat, lon, query) {
     if (weatherMarker) {
-      map.removeLayer(weatherMarker);
+      weatherMarker.remove();
     }
-    weatherMarker = L.marker([lat, lon], { icon: weatherIcon }).addTo(map)
-      .bindPopup(`Weather for ${query}`, { offset: [0, -20] })
-      .openPopup();
+    
+    // Create Mapbox marker (note: Mapbox uses [lng, lat] order)
+    weatherMarker = new mapboxgl.Marker({
+      element: weatherIcon.cloneNode(true)
+    })
+    .setLngLat([lon, lat])
+    .addTo(map);
 
-    weatherMarker.on('click', () => {
+    // Create popup
+    const popup = new mapboxgl.Popup({ offset: 20 })
+      .setHTML(`Weather for ${query}`)
+      .setLngLat([lon, lat]);
+    
+    weatherMarker.setPopup(popup);
+    popup.addTo(map);
+
+    // Add click handler to remove marker
+    weatherMarker.getElement().addEventListener('click', () => {
       if (confirm('Remove this weather marker?')) {
-        map.removeLayer(weatherMarker);
+        weatherMarker.remove();
         weatherMarker = null;
       }
     });
@@ -389,6 +418,19 @@ document.addEventListener("DOMContentLoaded", () => {
       95: 'Thunderstorm'
     };
     return conditions[code] || 'Clear';
+  }
+
+  // Helper function to create weather marker
+  function createWeatherMarker() {
+    const marker = document.createElement('div');
+    marker.className = 'weather-marker';
+    marker.style.width = '40px';
+    marker.style.height = '40px';
+    marker.style.backgroundImage = 'url(Images/WeatherPin.svg)';
+    marker.style.backgroundSize = 'contain';
+    marker.style.backgroundRepeat = 'no-repeat';
+    marker.style.cursor = 'pointer';
+    return marker;
   }
 
   // Expose auto-fetch function for popup trigger

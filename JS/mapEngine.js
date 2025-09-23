@@ -1,32 +1,373 @@
 console.log("Module loaded: mapEngine");
 
-document.addEventListener("DOMContentLoaded", () => {
-  const map = L.map('map').setView([-36.5, 146.5], 7);
-
-  // Store the LocalityPolygon but do NOT add it to the map
-  fetch('https://witd-api-production.up.railway.app/locality')
-    .then(res => res.json())
-    .then(data => {
-      const localityLayer = L.geoJSON(data, {
-        style: {
-          color: '#666',
-          weight: 1,
-          opacity: 0.2,
-          fillOpacity: 0.05
+// Utility function to safely add sources and layers
+window.safeMapOperation = function(operation, retryDelay = 100) {
+  if (!window.WITD?.map) {
+    console.warn('Map not available for safe operation');
+    return false;
+  }
+  
+  const map = window.WITD.map;
+  
+  if (map.isStyleLoaded()) {
+    try {
+      operation();
+      return true;
+    } catch (error) {
+      console.error('Map operation failed:', error);
+      
+      // Check if it's a duplicate source/layer error
+      if (error.message && error.message.includes('already a source with ID')) {
+        console.log('Source already exists, skipping operation');
+        return true; // Don't retry for duplicate source errors
+      }
+      
+      return false;
+    }
+  } else {
+    console.log('Map style not loaded, waiting...');
+    map.once('load', () => {
+      console.log('Map style now loaded, retrying operation...');
+      setTimeout(() => {
+        if (map.isStyleLoaded()) {
+          try {
+            operation();
+          } catch (error) {
+            console.error('Map operation failed on retry:', error);
+            
+            // Check if it's a duplicate source/layer error
+            if (error.message && error.message.includes('already a source with ID')) {
+              console.log('Source already exists on retry, skipping operation');
+              return; // Don't retry for duplicate source errors
+            }
+          }
         }
-      });
-
-      // Stored globally in case you want to toggle later
-      window.WITD = window.WITD || {};
-      window.WITD.localityLayer = localityLayer;
+      }, retryDelay);
     });
+    return false;
+  }
+};
 
-  // Optional: scale control
-  L.control.scale({ position: 'bottomright' }).addTo(map);
+document.addEventListener("DOMContentLoaded", () => {
+  // Check if Mapbox token is configured
+  if (typeof MAPBOX_TOKEN === 'undefined' || MAPBOX_TOKEN === 'YOUR_MAPBOX_TOKEN_HERE') {
+    console.error('❌ Please configure your Mapbox token in map.html');
+    document.getElementById('map').innerHTML = `
+      <div style="display: flex; align-items: center; justify-content: center; height: 100%; background: #f0f0f0; color: #666; font-family: Arial, sans-serif;">
+        <div style="text-align: center; padding: 20px;">
+          <h3>🗺️ Mapbox Token Required</h3>
+          <p>Please replace 'YOUR_MAPBOX_TOKEN_HERE' in map.html with your actual Mapbox token.</p>
+          <p><a href="https://account.mapbox.com/access-tokens/" target="_blank">Get your token here</a></p>
+        </div>
+      </div>
+    `;
+    return;
+  }
 
-  // Expose map
+  // Define default center and zoom (Melbourne CBD, Australia)
+  // Note: Mapbox uses [longitude, latitude] format
+  const DEFAULT_CENTER = [144.9631, -37.8136];
+  const DEFAULT_ZOOM = 7;
+
+  // Set Mapbox token
+  mapboxgl.accessToken = MAPBOX_TOKEN;
+
+  // Initialize Mapbox map
+  const map = new mapboxgl.Map({
+    container: 'map',
+    style: 'mapbox://styles/mapbox/standard-satellite', // High resolution + labels + terrain support
+    center: DEFAULT_CENTER,
+    zoom: DEFAULT_ZOOM,
+    pitch: 0,
+    bearing: 0,
+    antialias: true
+  });
+
+  // Add navigation controls (zoom, compass, pitch)
+  map.addControl(new mapboxgl.NavigationControl(), 'top-right');
+
+  // Add scale control
+  map.addControl(new mapboxgl.ScaleControl({
+    maxWidth: 100,
+    unit: 'metric'
+  }), 'bottom-right');
+
+  // Add fullscreen control
+  map.addControl(new mapboxgl.FullscreenControl(), 'top-right');
+
+  // Reposition Mapbox controls after map loads
+  map.on('load', () => {
+    // Function to reposition controls
+    const repositionControls = () => {
+      // Move attribution control up
+      const attributionControl = document.querySelector('.mapboxgl-ctrl-attrib');
+      if (attributionControl) {
+        attributionControl.style.bottom = '70px';
+        attributionControl.style.marginBottom = '0';
+        attributionControl.style.zIndex = '5000';
+        console.log('Attribution control repositioned');
+      }
+      
+      // Move scale control up
+      const scaleControl = document.querySelector('.mapboxgl-ctrl-scale');
+      if (scaleControl) {
+        scaleControl.style.bottom = '100px';
+        scaleControl.style.marginBottom = '0';
+        scaleControl.style.zIndex = '5000';
+        console.log('Scale control repositioned');
+      }
+    };
+    
+    // Try immediately
+    repositionControls();
+    
+    // Also try after a delay in case controls are added later
+    setTimeout(repositionControls, 100);
+    setTimeout(repositionControls, 500);
+    setTimeout(repositionControls, 1000);
+  });
+
+  // Add map click listener to close all popups
+  map.on('click', (e) => {
+    // Only close popups if clicking on the map itself, not on controls or popups
+    if (e.originalEvent && e.originalEvent.target === map.getCanvas()) {
+      // Check if closeAllDropdownsAndModals function exists and call it
+      if (typeof window.closeAllDropdownsAndModals === 'function') {
+        window.closeAllDropdownsAndModals();
+      }
+    }
+  });
+
+  // GPX label visibility based on zoom level
+  map.on('zoomend', () => {
+    const hide = map.getZoom() < 12;
+    document.querySelectorAll('.gpx-label, .track-label')
+      .forEach(el => el.style.display = hide ? 'none' : '');
+  });
+
+  // Custom 2D/3D Toggle Control
+  class ViewModeControl {
+    constructor() {
+      this.is3D = false;
+      this.map = null;
+    }
+
+    onAdd(map) {
+      this.map = map;
+      this.container = document.createElement('div');
+      this.container.className = 'mapboxgl-ctrl mapboxgl-ctrl-group';
+      this.container.style.marginTop = '10px';
+      
+      this.button = document.createElement('button');
+      this.button.className = 'mapboxgl-ctrl-icon';
+      this.button.type = 'button';
+      this.button.style.cssText = `
+        width: 30px;
+        height: 30px;
+        background: white;
+        border: 1px solid #ccc;
+        border-radius: 4px;
+        cursor: pointer;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        font-size: 16px;
+        transition: all 0.2s ease;
+      `;
+      this.button.innerHTML = '🛩️';
+      this.button.title = 'Toggle 2D/3D View';
+      
+      this.button.addEventListener('click', () => this.toggleView());
+      this.container.appendChild(this.button);
+      
+      return this.container;
+    }
+
+    toggleView() {
+      this.is3D = !this.is3D;
+      
+      if (this.is3D) {
+        // Switch to 3D view with terrain (use standard-satellite for better terrain compatibility)
+        this.map.setStyle('mapbox://styles/mapbox/standard-satellite');
+        
+        // Wait for style to load, then add terrain
+        this.map.once('style.load', () => {
+          // Add terrain source using the working example format
+          this.map.addSource('mapbox-dem', {
+            'type': 'raster-dem',
+            'url': 'mapbox://mapbox.mapbox-terrain-dem-v1',
+            'tileSize': 512,
+            'maxzoom': 14
+          });
+          
+          // Set terrain with exaggerated height (like your working example)
+          this.map.setTerrain({ 
+            'source': 'mapbox-dem', 
+            'exaggeration': 1.4 
+          });
+          
+          // Set 3D view parameters
+          this.map.easeTo({
+            pitch: 60,
+            duration: 1000
+          });
+          
+          this.button.innerHTML = '🗺️';
+          this.button.title = 'Switch to 2D View';
+          this.button.style.background = '#e3f2fd';
+        });
+      } else {
+        // Switch to 2D view (high resolution + labels)
+        this.map.setStyle('mapbox://styles/mapbox/standard-satellite');
+        
+        // Wait for style to load, then remove terrain
+        this.map.once('style.load', () => {
+          // Remove terrain
+          this.map.setTerrain(null);
+          
+          // Remove terrain source if it exists
+          if (this.map.getSource('mapbox-dem')) {
+            this.map.removeSource('mapbox-dem');
+          }
+          
+          // Set 2D view parameters
+          this.map.easeTo({
+            pitch: 0,
+            duration: 1000
+          });
+          
+          this.button.innerHTML = '🛩️';
+          this.button.title = 'Switch to 2D View';
+          this.button.style.background = 'white';
+        });
+      }
+      
+      // Call map.resize() after view change
+      setTimeout(() => {
+        this.map.resize();
+      }, 1100);
+    }
+
+    onRemove() {
+      this.container.parentNode.removeChild(this.container);
+      this.map = null;
+    }
+  }
+
+  // Add custom view mode control
+  map.addControl(new ViewModeControl(), 'top-right');
+
+  // Custom Home Button Control
+  class HomeControl {
+    constructor() {
+      this.map = null;
+    }
+
+    onAdd(map) {
+      this.map = map;
+      this.container = document.createElement('div');
+      this.container.className = 'mapboxgl-ctrl mapboxgl-ctrl-group';
+      this.container.style.marginTop = '10px';
+      
+      this.button = document.createElement('button');
+      this.button.className = 'mapboxgl-ctrl-icon';
+      this.button.type = 'button';
+      this.button.style.cssText = `
+        width: 30px;
+        height: 30px;
+        background: white;
+        border: 1px solid #ccc;
+        border-radius: 4px;
+        cursor: pointer;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        font-size: 16px;
+        transition: all 0.2s ease;
+      `;
+      this.button.innerHTML = '🏠';
+      this.button.title = 'Go to Default View';
+      
+      this.button.addEventListener('click', () => this.goHome());
+      this.container.appendChild(this.button);
+      
+      return this.container;
+    }
+
+            goHome() {
+          this.map.easeTo({
+            center: [146.5, -36.5], // Victoria, Australia [lng, lat]
+            zoom: 7,
+            pitch: 0,
+            bearing: 0,
+            duration: 1000
+          });
+        }
+
+    onRemove() {
+      this.container.parentNode.removeChild(this.container);
+      this.map = null;
+    }
+  }
+
+  // Add home control
+  map.addControl(new HomeControl(), 'top-right');
+
+  // Mobile gesture handling
+  if ('ontouchstart' in window) {
+    // Disable single-finger drag rotation on mobile
+    map.dragRotate.disable();
+    
+    // Enable two-finger rotation and pitch
+    map.touchZoomRotate.enable();
+    map.touchZoomRotate.enableRotation = true;
+    map.touchZoomRotate.enablePitch = true;
+  }
+
+  // Handle window resize
+  window.addEventListener('resize', () => {
+    map.resize();
+  });
+
+  // Expose map globally
   window.WITD = window.WITD || {};
   window.WITD.map = map;
 
-  console.log("Map initialized and ready.");
+  // Wait for map style to be fully loaded before initializing modules
+  map.on('load', () => {
+    console.log("Map style fully loaded, initializing modules...");
+    
+    // Initialize the drawing module
+    if (window.WITD.draw) {
+      window.WITD.draw.init(map);
+      console.log("Drawing module initialized");
+    } else {
+      console.log("Drawing module not loaded yet");
+    }
+
+    console.log("Mapbox GL JS map initialized and ready.");
+    
+    // Load saved GPX files for premium users after map is ready
+    // DISABLED: Using new Mapbox GPX manager instead
+    // if (window.currentUserPlan === 'premium') {
+    //   window.gpxLoadTimeout = setTimeout(() => {
+    //     if (typeof loadGpxFiles === 'function' && !window.gpxCleared) {
+    //       loadGpxFiles();
+    //     }
+    //   }, 1500); // Wait for map to be fully ready
+    // }
+  });
+
+  // Also handle the case where the map might already be loaded
+  if (map.isStyleLoaded()) {
+    console.log("Map style already loaded, initializing modules immediately...");
+    
+    // Initialize the drawing module
+    if (window.WITD.draw) {
+      window.WITD.draw.init(map);
+      console.log("Drawing module initialized");
+    } else {
+      console.log("Drawing module not loaded yet");
+    }
+  }
 });

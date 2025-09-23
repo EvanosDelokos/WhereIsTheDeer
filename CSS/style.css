@@ -1,6 +1,36 @@
 
 /* === BASE STYLES === */
 
+/* === GPX TRACK STYLING === */
+
+/* Custom GPX Pin Styling */
+.custom-gpx-pin .pin-dot {
+  width: 18px;
+  height: 18px;
+  background: #ff6600;
+  border-radius: 50%;
+  border: 2px solid #fff;
+  box-shadow: 0 0 4px rgba(0,0,0,0.5);
+}
+
+/* Track Labels and Popups */
+.mapboxgl-popup-content {
+  font-size: 14px;
+  padding: 6px;
+}
+
+/* GPX Track Labels */
+.mapboxgl-popup-content-wrapper {
+  background: rgba(255, 255, 255, 0.95);
+  border: 1px solid #ccc;
+  border-radius: 4px;
+  box-shadow: 0 2px 4px rgba(0,0,0,0.2);
+}
+
+/* GPX styling now handled by Mapbox GL JS clustering system */
+
+
+
 
 
 /* === MAP CONTAINER === */
@@ -12,6 +42,74 @@
   top: 0;
   left: 0;
   z-index: 0;
+}
+
+/* Mapbox GL JS specific styles */
+.mapboxgl-ctrl-group {
+  background: white;
+  border: 1px solid #ccc;
+  border-radius: 4px;
+  box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+}
+
+.mapboxgl-ctrl-group button {
+  background: white;
+  border: none;
+  border-bottom: 1px solid #ccc;
+  color: #666;
+  cursor: pointer;
+  display: block;
+  font-size: 16px;
+  height: 30px;
+  padding: 0;
+  width: 30px;
+  transition: all 0.2s ease;
+}
+
+.mapboxgl-ctrl-group button:hover {
+  background: #f0f0f0;
+  color: #333;
+}
+
+.mapboxgl-ctrl-group button:last-child {
+  border-bottom: none;
+}
+
+.mapboxgl-ctrl-group button.mapboxgl-ctrl-icon {
+  background-size: 20px;
+  background-repeat: no-repeat;
+  background-position: center;
+}
+
+/* Custom control button styling */
+.mapboxgl-ctrl-group button[title*="Toggle 2D/3D"],
+.mapboxgl-ctrl-group button[title*="Go to Default"] {
+  font-size: 18px;
+  font-weight: bold;
+}
+
+/* Mapbox popup styling to match existing theme */
+.mapboxgl-popup-content {
+  background: rgba(255, 255, 255, 0.95);
+  border: 1px solid #ccc;
+  border-radius: 4px;
+  box-shadow: 0 2px 4px rgba(0,0,0,0.2);
+  font-size: 14px;
+  padding: 6px;
+}
+
+.mapboxgl-popup-tip {
+  border-top-color: rgba(255, 255, 255, 0.95);
+}
+
+.mapboxgl-popup-close-button {
+  color: #666;
+  font-size: 16px;
+  padding: 4px 8px;
+}
+
+.mapboxgl-popup-close-button:hover {
+  color: #333;
 }
 
 /* Desktop: Adjust map height to account for bottom toolbar */
@@ -209,12 +307,289 @@
 /* === JOURNAL MODAL === */
 
 #journalModal {
-  width: 400px;
-  height: 520px; /* fixed outer container */
+  width: 90vw !important;      /* scale with screen width */
+  max-width: 800px !important; /* cap max width on large screens */
+  height: 520px;               /* keep existing height */
   display: flex;
   flex-direction: column;
   overflow: hidden;
   box-sizing: border-box;
+}
+
+/* Lock journal modal position - prevent dynamic repositioning */
+#journalModal.modern-popup {
+  position: fixed !important;
+  transform: none !important;
+  transition: none !important;
+}
+
+/* === UNIFIED PIN STYLES === */
+.witd-pin { 
+  position: relative; 
+  width: 36px; 
+  height: 48px; 
+  cursor: pointer;
+}
+
+.witd-pin-svg { 
+  display: block; 
+  width: 36px; 
+  height: 48px; 
+}
+
+/* Match the live on-drop colors */
+.witd-pin--orange .pin-body { 
+  fill: #ff7a00; 
+}
+
+.witd-pin--orange .pin-center { 
+  fill: #ffffff; 
+}
+
+/* Additional pin color variants */
+.witd-pin--red .pin-body { 
+  fill: #e74c3c; 
+}
+
+.witd-pin--red .pin-center { 
+  fill: #c0392b; 
+}
+
+.witd-pin--green .pin-body { 
+  fill: #27ae60; 
+}
+
+.witd-pin--green .pin-center { 
+  fill: #2ecc71; 
+}
+
+.witd-pin--yellow .pin-body { 
+  fill: #f1c40f; 
+}
+
+.witd-pin--yellow .pin-center { 
+  fill: #f39c12; 
+}
+
+.witd-pin--blue .pin-body { 
+  fill: #3498db; 
+}
+
+.witd-pin--blue .pin-center { 
+  fill: #2980b9; 
+}
+
+.witd-pin--purple .pin-body { 
+  fill: #9b59b6; 
+}
+
+.witd-pin--purple .pin-center { 
+  fill: #8e44ad; 
+}
+
+.witd-pin--brown .pin-body { 
+  fill: #8b4513; 
+}
+
+.witd-pin--brown .pin-center { 
+  fill: #a0522d; 
+}
+
+.witd-pin:hover { 
+  filter: brightness(1.05); 
+}
+
+/* === PIN DROP CONTAINER STYLES === */
+.pin-drop-container {
+  background: white;
+  border-radius: 12px;
+  box-shadow: 0 8px 32px rgba(0, 0, 0, 0.15);
+  padding: 16px;
+  min-width: 200px;
+  max-width: 240px;
+  border: 1px solid #e0e0e0;
+}
+
+/* === SAVED PIN POPUP STYLES === */
+.saved-pin-popup {
+  background: white;
+  border-radius: 12px;
+  box-shadow: 0 8px 32px rgba(0, 0, 0, 0.15);
+  padding: 16px;
+  min-width: 200px;
+  max-width: 240px;
+  border: 1px solid #e0e0e0;
+}
+
+.saved-pin-header {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  margin-bottom: 12px;
+  padding-bottom: 8px;
+  border-bottom: 2px solid #f0f0f0;
+}
+
+.saved-pin-icon {
+  font-size: 16px;
+  color: #ff6600;
+}
+
+.saved-pin-name {
+  font-size: 14px;
+  font-weight: 600;
+  color: #333;
+}
+
+.saved-pin-coords {
+  margin-bottom: 16px;
+  font-size: 12px;
+  color: #666;
+  line-height: 1.4;
+}
+
+.saved-pin-actions {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.saved-pin-btn {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  padding: 8px 12px;
+  border: none;
+  border-radius: 6px;
+  font-size: 12px;
+  font-weight: 500;
+  cursor: pointer;
+  transition: all 0.2s ease;
+  text-align: left;
+  width: 100%;
+}
+
+.saved-pin-btn.rename-btn {
+  background: #e3f2fd;
+  color: #1976d2;
+}
+
+.saved-pin-btn.rename-btn:hover {
+  background: #bbdefb;
+  transform: translateY(-1px);
+}
+
+.saved-pin-btn.delete-btn {
+  background: #ffebee;
+  color: #d32f2f;
+}
+
+.saved-pin-btn.delete-btn:hover {
+  background: #ffcdd2;
+  transform: translateY(-1px);
+}
+
+.saved-pin-btn.journal-btn {
+  background: #f3e5f5;
+  color: #7b1fa2;
+}
+
+.saved-pin-btn.journal-btn:hover {
+  background: #e1bee7;
+  transform: translateY(-1px);
+}
+
+/* Hide Mapbox popup background */
+.mapboxgl-popup-content {
+  background: transparent !important;
+  border: none !important;
+  box-shadow: none !important;
+  padding: 0 !important;
+}
+
+.mapboxgl-popup-tip {
+  display: none !important;
+}
+
+.pin-drop-header {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  margin-bottom: 12px;
+  padding-bottom: 8px;
+  border-bottom: 2px solid #f0f0f0;
+}
+
+.pin-drop-icon {
+  font-size: 16px;
+  color: #ff6600;
+}
+
+.pin-drop-title {
+  font-size: 14px;
+  font-weight: 600;
+  color: #333;
+}
+
+.pin-drop-input-container {
+  margin-bottom: 16px;
+}
+
+.pin-drop-input {
+  width: 100%;
+  padding: 8px 12px;
+  border: 2px solid #e0e0e0;
+  border-radius: 6px;
+  font-size: 13px;
+  transition: border-color 0.2s ease;
+  box-sizing: border-box;
+}
+
+.pin-drop-input:focus {
+  outline: none;
+  border-color: #ff6600;
+  box-shadow: 0 0 0 3px rgba(255, 102, 0, 0.1);
+}
+
+.pin-drop-input::placeholder {
+  color: #999;
+}
+
+.pin-drop-buttons {
+  display: flex;
+  gap: 8px;
+  justify-content: flex-end;
+}
+
+.pin-drop-btn {
+  padding: 6px 12px;
+  border: none;
+  border-radius: 6px;
+  font-size: 12px;
+  font-weight: 500;
+  cursor: pointer;
+  transition: all 0.2s ease;
+}
+
+.pin-drop-cancel {
+  background: #f5f5f5;
+  color: #666;
+}
+
+.pin-drop-cancel:hover {
+  background: #e8e8e8;
+  color: #333;
+}
+
+.pin-drop-save {
+  background: #ff6600;
+  color: white;
+}
+
+.pin-drop-save:hover {
+  background: #e55a00;
+  transform: translateY(-1px);
+  box-shadow: 0 4px 12px rgba(255, 102, 0, 0.3);
 }
 
 #journalModal > div:first-child {
@@ -231,7 +606,24 @@
 #journalForm input,
 #journalForm textarea {
   box-sizing: border-box;
-  max-width: 100%;
+  width: 100% !important; /* Force full width */
+  max-width: none !important; /* Remove max-width constraint */
+}
+
+#journalForm button,
+#journalModal .close-modal {
+  width: 100% !important; /* Force full width */
+  max-width: none !important; /* Remove max-width constraint */
+}
+
+/* Override all Journal modal form elements with maximum specificity */
+#journalModal.modern-popup #journalForm input,
+#journalModal.modern-popup #journalForm textarea,
+#journalModal.modern-popup #journalForm button,
+#journalModal.modern-popup .close-modal {
+  width: 100% !important;
+  max-width: none !important;
+  min-width: 0 !important;
 }
 
 #journalList {
@@ -314,9 +706,9 @@
 
 .marker-text-box .label-inner {
   position: absolute;
-  bottom: 100%;
+  bottom: calc(100% + 100px); /* place label 8px above the pin */
   left: 50%;
-  transform: translate(-50%, -70px); /* the -8px is the vertical lift */
+  transform: translateX(-50%); /* only center horizontally */
   background: white;
   border: none;
   padding: 4px 8px;
@@ -372,30 +764,7 @@
 
 
 /* === GPX STYLING === */
-
-.gpx-label {
-  background: rgba(255, 255, 255, 0.95);
-  border: 2px solid #333;
-  border-radius: 6px;
-  padding: 6px 10px;
-  font-size: 13px;
-  font-weight: 600;
-  white-space: nowrap; /* Single line only */
-  overflow: hidden; /* Hide overflow */
-  text-overflow: ellipsis; /* Show ellipsis for truncated text */
-  max-width: 300px; /* Maximum width */
-  min-width: 60px; /* Minimum width */
-  color: #333;
-  box-shadow: 0 2px 8px rgba(0,0,0,0.3), 0 1px 3px rgba(0,0,0,0.2);
-  cursor: default; /* Remove pointer cursor since no trash can */
-  position: absolute;
-  z-index: 10000;
-  text-align: center;
-  line-height: 1.2;
-  display: inline-block;
-  vertical-align: middle;
-  backdrop-filter: blur(2px); /* Subtle blur effect for better readability */
-}
+/* GPX labels now handled by Mapbox clustering system */
 
 #gpxList {
   width: 100%;
@@ -577,6 +946,288 @@ body, html {
   overflow: hidden;
 }
 
+/* === CUSTOM CONFIRMATION DIALOG STYLES === */
+.custom-confirm-dialog {
+  position: fixed;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  background: rgba(0, 0, 0, 0.5);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 10000;
+  backdrop-filter: blur(4px);
+}
+
+/* === UPGRADE MESSAGE STYLES === */
+.upgrade-message {
+  background: #fff;
+  border-radius: 22px;
+  box-shadow: 0 2px 24px rgba(0,0,0,0.18);
+  padding: 38px 32px 32px 32px;
+  max-width: 420px;
+  width: 90vw;
+  border: 3px solid #ffb3b3;
+  text-align: center;
+  position: relative;
+  animation: dialogSlideIn 0.2s ease-out;
+}
+
+.upgrade-icon {
+  font-size: 48px;
+  margin-bottom: 18px;
+  display: inline-block;
+}
+
+.upgrade-message h3 {
+  font-size: 2em;
+  font-weight: bold;
+  color: #333;
+  margin: 0 0 10px 0;
+}
+
+.upgrade-message p {
+  font-size: 1.1em;
+  color: #666;
+  line-height: 1.5;
+  margin: 0 0 22px 0;
+}
+
+/* Button styling to match SSS modal */
+.upgrade-message button {
+  background: #ff7e7e;
+  color: #fff;
+  border: none;
+  border-radius: 10px;
+  padding: 14px 38px;
+  font-size: 1.2em;
+  font-weight: bold;
+  margin-top: 10px;
+  cursor: pointer;
+  box-shadow: 0 2px 8px rgba(0,0,0,0.08);
+  transition: all 0.2s ease;
+}
+
+.upgrade-message button:hover {
+  background: #ff6b6b;
+  transform: translateY(-1px);
+  box-shadow: 0 4px 12px rgba(0,0,0,0.15);
+}
+
+/* === TRACK LABEL STYLES === */
+.track-label-container {
+  position: relative;
+  z-index: 1000;
+  display: inline-block;
+  max-width: 200px;
+}
+
+.track-label-popup {
+  background: white;
+  border-radius: 12px;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
+  border: 2px solid #e0e0e0;
+  padding: 8px 12px;
+  width: auto;
+  min-width: fit-content;
+  max-width: 200px;
+  animation: trackLabelSlideIn 0.3s ease-out;
+  position: relative;
+  display: inline-block;
+}
+
+.track-label-header {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.track-label-actions {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+}
+
+.track-label-title {
+  font-size: 14px;
+  font-weight: 600;
+  color: #333;
+  word-wrap: break-word;
+  word-break: break-word;
+  line-height: 1.2;
+  flex: 1;
+  min-width: 0;
+  outline: none;
+  border: 1px solid transparent;
+  border-radius: 4px;
+  padding: 2px 4px;
+  margin: -2px -4px;
+  transition: all 0.2s ease;
+  cursor: text;
+}
+
+.track-label-title:hover {
+  background-color: #f8f9fa;
+  border-color: #e9ecef;
+}
+
+.track-label-title.editing {
+  background-color: #fff;
+  border-color: #007bff;
+  box-shadow: 0 0 0 2px rgba(0, 123, 255, 0.25);
+  cursor: text;
+}
+
+.track-rename-btn {
+  background: #6c757d;
+  color: white;
+  border: none;
+  border-radius: 6px;
+  padding: 4px;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: all 0.2s ease;
+  min-width: 24px;
+  height: 24px;
+}
+
+.track-rename-btn:hover {
+  background: #5a6268;
+  transform: translateY(-1px);
+  box-shadow: 0 2px 8px rgba(108, 117, 125, 0.3);
+}
+
+.track-rename-btn svg {
+  width: 10px;
+  height: 10px;
+}
+
+.track-delete-btn {
+  background: #dc3545;
+  color: white;
+  border: none;
+  border-radius: 6px;
+  padding: 4px;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: all 0.2s ease;
+  min-width: 24px;
+  height: 24px;
+}
+
+.track-delete-btn:hover {
+  background: #c82333;
+  transform: translateY(-1px);
+  box-shadow: 0 2px 8px rgba(220, 53, 69, 0.3);
+}
+
+.track-delete-btn svg {
+  width: 10px;
+  height: 10px;
+}
+
+@keyframes trackLabelSlideIn {
+  from {
+    opacity: 0;
+    transform: scale(0.8) translateY(-10px);
+  }
+  to {
+    opacity: 1;
+    transform: scale(1) translateY(0);
+  }
+}
+
+.confirm-dialog-content {
+  background: white;
+  border-radius: 16px;
+  box-shadow: 0 20px 60px rgba(0, 0, 0, 0.3);
+  padding: 24px;
+  max-width: 400px;
+  width: 90%;
+  border: 1px solid #e0e0e0;
+  animation: dialogSlideIn 0.2s ease-out;
+}
+
+@keyframes dialogSlideIn {
+  from {
+    opacity: 0;
+    transform: scale(0.9) translateY(-20px);
+  }
+  to {
+    opacity: 1;
+    transform: scale(1) translateY(0);
+  }
+}
+
+.confirm-dialog-header {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  margin-bottom: 16px;
+  padding-bottom: 16px;
+  border-bottom: 1px solid #f0f0f0;
+}
+
+.confirm-dialog-icon {
+  font-size: 24px;
+}
+
+.confirm-dialog-title {
+  font-size: 18px;
+  font-weight: 600;
+  color: #333;
+}
+
+.confirm-dialog-message {
+  font-size: 16px;
+  color: #666;
+  line-height: 1.5;
+  margin-bottom: 24px;
+}
+
+.confirm-dialog-buttons {
+  display: flex;
+  gap: 12px;
+  justify-content: flex-end;
+}
+
+.confirm-dialog-btn {
+  padding: 10px 20px;
+  border: none;
+  border-radius: 8px;
+  font-size: 14px;
+  font-weight: 500;
+  cursor: pointer;
+  transition: all 0.2s ease;
+}
+
+.confirm-dialog-cancel {
+  background: #f5f5f5;
+  color: #666;
+}
+
+.confirm-dialog-cancel:hover {
+  background: #e8e8e8;
+  color: #333;
+}
+
+.confirm-dialog-delete {
+  background: #dc3545;
+  color: white;
+}
+
+.confirm-dialog-delete:hover {
+  background: #c82333;
+  transform: translateY(-1px);
+  box-shadow: 0 4px 12px rgba(220, 53, 69, 0.3);
+}
+
 .help-icon {
   font-weight: bold;
   font-size: 20px;
@@ -584,21 +1235,21 @@ body, html {
   cursor: pointer;
 }
 
-.leaflet-popup-content {
+.mapboxgl-popup-content {
   margin: 8px 12px !important;
   font-size: 16px;
 }
 
-.leaflet-popup-content-wrapper {
+.mapboxgl-popup-content-wrapper {
   padding: 8px 12px;
   border-radius: 8px;
 }
 
-.leaflet-popup-tip {
+.mapboxgl-popup-tip {
   display: none;
 }
 
-.leaflet-popup-close-button {
+.mapboxgl-popup-close-button {
   display: none; /* or style smaller if you want */
 }
 
@@ -686,28 +1337,293 @@ body, html {
   font-size: 16px;
 }
 
-.track-label {
+.start-label,
+.finish-label {
   background: white;
-  border: 1px solid #333;
-  border-radius: 6px;
-  padding: 6px 12px;
-  font-size: 16px;
-  font-weight: 500;
-  box-shadow: 0 1px 4px rgba(0,0,0,0.3);
-  cursor: pointer;
-  white-space: normal; /* Allow text to wrap naturally */
-  word-wrap: break-word; /* Break long words if needed */
-  word-break: break-word; /* Break words at any character if necessary */
-  max-width: 200px; /* Maximum width before wrapping */
-  min-width: 80px; /* Minimum width */
-  width: fit-content; /* Auto-size to content */
-  display: flex; /* Use flexbox for centering */
-  align-items: center; /* Vertical centering */
-  justify-content: center; /* Horizontal centering */
+  padding: 4px 8px;
+  border-radius: 8px;
+  font-size: 13px;
+  font-weight: 800;
+  box-shadow: 0 3px 6px rgba(0, 0, 0, 0.2);
+  border: 2px solid #333;
+  text-align: center;
+  white-space: nowrap;
+  font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
   line-height: 1.2;
+  letter-spacing: 0.5px;
+  text-transform: uppercase;
 }
 
-.leaflet-pane.zonesPane path {
+.start-label {
+  background-color: #4caf50;
+  color: white;
+  border-color: #333;
+  font-weight: 900;
+}
+
+.finish-label {
+  background-color: #f44336;
+  color: white;
+  border-color: #333;
+  font-weight: 900;
+}
+
+/* Track labels and clustering now handled by Mapbox GL JS */
+
+/* Multi-track control styling */
+.mapboxgl-control-multi-track {
+  z-index: 1000;
+}
+
+/* Modern Login Modal Styles */
+.login-modal {
+  position: fixed;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  background: rgba(0, 0, 0, 0.5);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 5000;
+  backdrop-filter: blur(4px);
+}
+
+.login-modal-content {
+  background: white;
+  border-radius: 20px;
+  padding: 32px;
+  width: 90%;
+  max-width: 400px;
+  box-shadow: 0 20px 40px rgba(0, 0, 0, 0.15);
+  position: relative;
+  animation: modalSlideIn 0.3s ease-out;
+}
+
+@keyframes modalSlideIn {
+  from {
+    opacity: 0;
+    transform: translateY(-20px) scale(0.95);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0) scale(1);
+  }
+}
+
+.login-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 24px;
+}
+
+.login-header h2 {
+  margin: 0;
+  font-size: 24px;
+  font-weight: 600;
+  color: #333;
+}
+
+.login-close {
+  background: none;
+  border: none;
+  font-size: 24px;
+  color: #999;
+  cursor: pointer;
+  padding: 0;
+  width: 32px;
+  height: 32px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 50%;
+  transition: background-color 0.2s, color 0.2s;
+}
+
+.login-close:hover {
+  background-color: #f5f5f5;
+  color: #666;
+}
+
+.login-form {
+  margin-bottom: 24px;
+}
+
+.form-group {
+  margin-bottom: 20px;
+}
+
+.form-group label {
+  display: block;
+  margin-bottom: 8px;
+  font-weight: 500;
+  color: #333;
+  font-size: 14px;
+}
+
+.form-group input {
+  width: 100%;
+  padding: 12px 16px;
+  border: 2px solid #e1e5e9;
+  border-radius: 12px;
+  font-size: 16px;
+  transition: border-color 0.2s, box-shadow 0.2s;
+  box-sizing: border-box;
+}
+
+.form-group input:focus {
+  outline: none;
+  border-color: #0074d9;
+  box-shadow: 0 0 0 3px rgba(0, 116, 217, 0.1);
+}
+
+.form-group input::placeholder {
+  color: #999;
+}
+
+.login-submit-btn {
+  width: 100%;
+  padding: 14px 24px;
+  background: #0074d9;
+  color: white;
+  border: none;
+  border-radius: 12px;
+  font-size: 16px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: background-color 0.2s, transform 0.1s;
+  margin-bottom: 16px;
+}
+
+.login-submit-btn:hover {
+  background: #0056b3;
+  transform: translateY(-1px);
+}
+
+.login-submit-btn:active {
+  transform: translateY(0);
+}
+
+.login-links {
+  text-align: center;
+  margin-bottom: 24px;
+}
+
+.forgot-password {
+  color: #0074d9;
+  text-decoration: none;
+  font-size: 14px;
+  font-weight: 500;
+  transition: color 0.2s;
+}
+
+.forgot-password:hover {
+  color: #0056b3;
+  text-decoration: underline;
+}
+
+.login-separator {
+  color: #ccc;
+  margin: 0 8px;
+}
+
+.signup-link,
+.login-link {
+  color: #0074d9;
+  text-decoration: none;
+  font-size: 14px;
+  font-weight: 500;
+  transition: color 0.2s;
+}
+
+.signup-link:hover,
+.login-link:hover {
+  color: #0056b3;
+  text-decoration: underline;
+}
+
+.login-divider {
+  position: relative;
+  text-align: center;
+  margin: 24px 0;
+}
+
+.divider-text {
+  background: white;
+  padding: 0 16px;
+  color: #666;
+  font-size: 14px;
+  font-weight: 500;
+  display: block;
+  margin-bottom: 10px;
+}
+
+.divider-line {
+  height: 1px;
+  background: #e1e5e9;
+  width: 100%;
+}
+
+.google-login-btn {
+  width: 100%;
+  padding: 12px 24px;
+  background: white;
+  color: #333;
+  border: 2px solid #e1e5e9;
+  border-radius: 12px;
+  font-size: 16px;
+  font-weight: 500;
+  cursor: pointer;
+  transition: background-color 0.2s, border-color 0.2s, transform 0.1s;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 12px;
+}
+
+.google-login-btn:hover {
+  background: #f8f9fa;
+  border-color: #d1d5db;
+  transform: translateY(-1px);
+}
+
+.google-login-btn:active {
+  transform: translateY(0);
+}
+
+.google-icon {
+  width: 20px;
+  height: 20px;
+  flex-shrink: 0;
+}
+
+/* Responsive Design */
+@media (max-width: 480px) {
+  .login-modal-content {
+    padding: 24px;
+    margin: 20px;
+    width: calc(100% - 40px);
+  }
+  
+  .login-header h2 {
+    font-size: 20px;
+  }
+  
+  .form-group input {
+    padding: 10px 14px;
+    font-size: 16px; /* Prevents zoom on iOS */
+  }
+  
+  .login-submit-btn,
+  .google-login-btn {
+    padding: 12px 20px;
+    font-size: 16px;
+  }
+}
+
+.mapboxgl-pane.zonesPane path {
   pointer-events: none !important;
 }
 
@@ -735,66 +1651,369 @@ body, html {
   margin: 0 auto;
 }
 
+/* Horizontal 1x2 layout for tools popup */
+.modern-popup .popup-grid-horizontal {
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  gap: 8px;
+  width: 100%;
+  max-width: 180px;
+  margin: 0 auto;
+  padding: 4px 2px;
+}
+
+/* GPX Modal specific grid styling for better spacing */
+#gpxModal .popup-grid {
+  gap: 16px 20px;
+  padding: 0 4px;
+}
+
 .modern-popup .popup-btn {
-  background: #f7f7f7;
-  border: none;
+  background: #f9f9f9;
+  border: 1px solid #e8e8e8;
   border-radius: 10px;
-  font-size: 1.15em;
-  padding: 14px 0 10px 0;
+  font-size: 0.9em;
+  padding: 12px 16px;
   cursor: pointer;
-  transition: background 0.18s, transform 0.13s;
-  box-shadow: 0 1px 3px rgba(0,0,0,0.04);
+  transition: all 0.2s ease;
+  box-shadow: 0 1px 4px rgba(0,0,0,0.08);
   display: flex;
   flex-direction: column;
   align-items: center;
+  justify-content: center;
+  text-align: center;
   font-weight: 500;
+  min-width: 80px;
+  min-height: 56px;
+  flex: 0 0 auto;
+  width: 100px;
+}
+
+/* GPX Modal specific button styling for equal sizing and alignment */
+#gpxModal .popup-btn {
+  min-width: 120px;
+  width: 100%;
+  height: 80px;
+  justify-content: center;
+  text-align: center;
+  padding: 12px 8px 8px 8px;
+}
+
+#gpxModal .popup-btn span {
+  margin-top: 4px;
+  font-size: 0.9em;
+  line-height: 1.2;
 }
 
 .modern-popup .popup-btn:hover {
-  background: #eaf4ff;
-  transform: scale(1.045);
+  background: #ffffff;
+  border-color: #d0d0d0;
+  transform: translateY(-1px);
+  box-shadow: 0 2px 8px rgba(0,0,0,0.12);
 }
 
-/* Optional arrow/tail for popup */
+.modern-popup .popup-btn span {
+  margin-top: 3px;
+  font-size: 0.85em;
+  line-height: 1.2;
+  font-weight: 500;
+  text-align: center;
+  width: 100%;
+}
+
+/* Disabled button styling for premium features */
+.popup-btn.disabled,
+button[data-layer].disabled,
+.species-btn.disabled {
+  opacity: 0.5;
+  cursor: pointer !important; /* Keep clickable for upgrade popup */
+  filter: grayscale(0.5);
+  transition: opacity 0.2s ease;
+}
+
+.popup-btn.disabled:hover,
+button[data-layer].disabled:hover,
+.species-btn.disabled:hover {
+  background-color: inherit;
+  box-shadow: none;
+}
+
+/* Optional arrow/tail for popup - HIDDEN */
 .modern-popup-arrow {
-  position: absolute;
-  left: 50%;
-  transform: translateX(-50%);
-  bottom: -12px;
-  width: 28px;
-  height: 14px;
-  pointer-events: none;
-  z-index: 9999; /* Raised to ensure visibility above popup content */
-  display: block;
+  display: none !important; /* Hide all popup arrows/triangles */
 }
 .modern-popup-arrow svg {
-  display: block;
+  display: none !important;
+}
+
+/* === Tool Submenu System === */
+.tool-submenu {
+  position: fixed;
+  z-index: 3500;
+  background: #fff;
+  border-radius: 16px;
+  box-shadow: 0 8px 32px rgba(0,0,0,0.15), 0 2px 8px rgba(0,0,0,0.1);
+  padding: 0;
+  width: 300px !important;
+  min-width: 300px !important;
+  max-width: 90vw;
+  max-height: 75vh; /* Reduced height since pin settings removed */
+  overflow-y: auto;
+  overflow-x: hidden;
+  left: 20px;
+  bottom: 64px; /* Match layers popup positioning */
+  transform: none;
+}
+
+.submenu-header {
+  display: flex;
+  align-items: center;
+  padding: 12px 16px;
+  border-bottom: 1px solid #e5e5e5;
+  background: #f8f9fa;
+  border-radius: 16px 16px 0 0;
+}
+
+.back-btn {
+  background: #6c757d;
+  color: white;
+  border: none;
+  border-radius: 8px;
+  padding: 8px 12px;
+  margin-right: 12px;
+  cursor: pointer;
+  font-size: 14px;
+  transition: background 0.2s;
+}
+
+.back-btn:hover {
+  background: #5a6268;
+}
+
+.submenu-header h3 {
+  margin: 0;
+  font-size: 18px;
+  font-weight: 600;
+  color: #333;
+}
+
+.submenu-content {
+  padding: 12px; /* Restored original padding */
+}
+
+.submenu-section {
+  margin-bottom: 12px; /* Restored original margin */
+}
+
+.submenu-section:last-child {
+  margin-bottom: 0;
+}
+
+.submenu-section h4 {
+  margin: 0 0 8px 0;
+  font-size: 12px;
+  font-weight: 600;
+  color: #666;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+}
+
+/* Pin Styles Grid */
+.pin-styles-grid {
+  display: grid;
+  grid-template-columns: repeat(2, 1fr);
+  gap: 4px; /* Tighter spacing between buttons */
+}
+
+.draw-tools-grid,
+.measure-tools-grid {
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  gap: 6px;
+}
+
+.pin-style-btn,
+.draw-tool-btn,
+.measure-tool-btn {
+  background: #f7f7f7;
+  border: 1px solid #dee2e6; /* Match action button border */
+  border-radius: 6px; /* Match action button border radius */
+  padding: 6px 8px; /* Adjusted padding to center circles vertically */
+  cursor: pointer;
+  transition: all 0.2s;
+  text-align: left; /* Left align for consistent circle positioning */
+  font-size: 11px;
+  display: flex;
+  align-items: center;
+  justify-content: flex-start; /* Start from left for consistent alignment */
+}
+
+.pin-style-btn:hover,
+.draw-tool-btn:hover,
+.measure-tool-btn:hover {
+  background: #eaf4ff;
+  border-color: #b3d8ff;
+  transform: scale(1.05);
+}
+
+.pin-style-btn.active,
+.draw-tool-btn.active,
+.measure-tool-btn.active {
+  background: #007bff;
+  color: white;
+  border-color: #0056b3;
+}
+
+/* Active state for layer buttons */
+button[data-layer].active {
+  background: #007bff !important;
+  color: white !important;
+  border-color: #0056b3 !important;
+  box-shadow: 0 2px 8px rgba(0, 123, 255, 0.3) !important;
+}
+
+.pin-style-btn span,
+.draw-tool-btn span,
+.measure-tool-btn span {
+  font-size: 12px; /* Match Place Pin button text size */
+  font-weight: 500;
+  vertical-align: middle; /* Align text consistently with circles */
+}
+
+.pin-color-preview {
+  width: 16px;
+  height: 16px;
+  border-radius: 50%;
+  border: 2px solid #fff;
+  box-shadow: 0 2px 4px rgba(0,0,0,0.2);
+  margin-right: 6px; /* Space between circle and text */
+  flex-shrink: 0; /* Prevent circle from shrinking */
+}
+
+/* Action Buttons */
+.action-buttons {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 6px;
+}
+
+.action-btn {
+  background: #f8f9fa;
+  border: 1px solid #dee2e6;
+  border-radius: 6px;
+  padding: 8px 10px;
+  cursor: pointer;
+  font-size: 12px; /* Match pin color button text size */
+  font-weight: 500; /* Match pin color button text weight */
+  transition: all 0.2s;
+  text-align: left;
+}
+
+.action-btn:hover {
+  background: #e9ecef;
+  border-color: #adb5bd;
+}
+
+.action-btn:active {
+  background: #dee2e6;
+}
+
+/* Setting Controls */
+.setting-controls {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.setting-controls label {
+  display: flex;
+  align-items: center;
+  font-size: 12px;
+  color: #555;
+  gap: 8px;
+}
+
+.setting-controls input[type="range"] {
+  width: 100%;
+  margin: 2px 0;
+}
+
+.setting-controls input[type="color"] {
+  width: 32px;
+  height: 24px;
+  border: 1px solid #ddd;
+  border-radius: 4px;
+  cursor: pointer;
+}
+
+.setting-controls select {
+  padding: 6px 8px;
+  border: 1px solid #ddd;
+  border-radius: 4px;
+  font-size: 12px;
+  background: white;
+}
+
+/* Style Controls */
+.style-controls {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 8px;
+  align-items: center;
+}
+
+/* Desktop positioning for larger screens */
+@media (min-width: 900px) {
+  .tool-submenu {
+    bottom: 64px; /* Match layers popup positioning */
+  }
+}
+
+/* Mobile Responsive for Submenus */
+@media (max-width: 768px) {
+  .tool-submenu {
+    width: 300px !important;
+    min-width: 300px !important;
+    max-width: 90vw;
+    left: 10px;
+    bottom: 64px; /* Match layers popup positioning */
+    transform: none;
+  }
+  
+  .pin-styles-grid,
+  .draw-tools-grid,
+  .measure-tools-grid {
+    grid-template-columns: repeat(2, 1fr);
+  }
+  
+  .action-buttons {
+    grid-template-columns: 1fr;
+  }
+  
+  .style-controls {
+    grid-template-columns: 1fr;
+  }
 }
 
 
 
 /* Specific: position Tools popup above toolbar */
-/* #toolsDropdown.modern-popup {
+#toolsDropdown.modern-popup {
   bottom: 64px;
   width: max-content;
-  min-width: 240px;
+  min-width: 180px;
   max-width: 95vw;
-  padding-bottom: 18px;
-} */
-
-/* Remove all left/right/margin overrides for #toolsDropdown.modern-popup so JS can control position */
-/* #toolsDropdown.modern-popup {
-  bottom: 64px;
-  width: max-content;
-  min-width: 240px;
-  max-width: 95vw;
-  padding-bottom: 18px;
-} */
+  padding: 6px 2px 2px 2px;
+  display: flex;
+  align-items: flex-end;
+  justify-content: center;
+} 
 
 @media (max-width: 600px) {
   #toolsDropdown.modern-popup {
     min-width: 180px;
-    padding: 12px 6px 14px 6px;
+    padding: 6px 2px 2px 2px;
   }
   .modern-popup .popup-grid {
     gap: 10px 8px;
@@ -855,12 +2074,12 @@ body, html {
     font-size: 16px;
   }
   
-  .leaflet-popup-content {
+  .mapboxgl-popup-content {
     margin: 6px 10px !important;
     font-size: 14px;
   }
   
-  .leaflet-popup-content-wrapper {
+  .mapboxgl-popup-content-wrapper {
     padding: 6px 10px;
     border-radius: 6px;
   }
@@ -899,13 +2118,7 @@ body, html {
     font-size: 14px;
   }
   
-  .track-label {
-    padding: 4px 8px;
-    font-size: 14px;
-    border-radius: 4px;
-    max-width: 160px;
-    min-width: 60px;
-  }
+
   
   .bottom-toolbar button, .toolbar-btn {
     font-size: clamp(0.8em, 2vw, 1.1em);
@@ -932,12 +2145,12 @@ body, html {
     font-size: 14px;
   }
   
-  .leaflet-popup-content {
+  .mapboxgl-popup-content {
     margin: 4px 8px !important;
     font-size: 12px;
   }
   
-  .leaflet-popup-content-wrapper {
+  .mapboxgl-popup-content-wrapper {
     padding: 4px 8px;
     border-radius: 4px;
   }
@@ -976,13 +2189,7 @@ body, html {
     font-size: 12px;
   }
   
-  .track-label {
-    padding: 3px 6px;
-    font-size: 12px;
-    border-radius: 3px;
-    max-width: 140px;
-    min-width: 50px;
-  }
+
   
   .bottom-toolbar button, .toolbar-btn {
     font-size: clamp(0.7em, 1.5vw, 1em);
@@ -1054,7 +2261,7 @@ body, html {
   box-shadow: 0 10px 28px rgba(0,0,0,0.12), 0 6px 24px rgba(0,0,0,0.13), 0 1.5px 6px rgba(0,0,0,0.07);
 }
 #weatherWrapper.modern-popup .modern-popup-arrow {
-  bottom: -12px !important;
+  display: none !important; /* Hide weather popup arrow */
 }
 #weatherWrapper.modern-popup > div:first-child {
   width: 100%;
@@ -1568,6 +2775,23 @@ body, html {
 .weather-search-row button:hover {
   background: #e6f0ff;
 }
+
+/* Weather Location Confirmation */
+.weather-location-confirmation {
+  margin: 8px 0;
+  padding: 8px 12px;
+  background: #e8f4fd;
+  border: 1px solid #b3d8ff;
+  border-radius: 6px;
+  font-size: 0.9em;
+  color: #2c5aa0;
+  text-align: center;
+  display: none;
+}
+
+.weather-location-confirmation.show {
+  display: block;
+}
 .weather-forecast-container {
   margin-top: 8px;
   padding: 0 12px 12px 12px;
@@ -1778,28 +3002,73 @@ body, html {
   }
 }
 
-/* Ensure Leaflet attribution is always visible above the toolbar */
-.leaflet-control-attribution {
-  margin-bottom: 30px !important;
+/* Ensure Mapbox attribution is positioned like popups - Maximum specificity approach */
+.mapboxgl-control-attribution,
+.mapboxgl-ctrl-attrib,
+.mapboxgl-ctrl-attrib.mapboxgl-ctrl,
+.mapboxgl-ctrl.mapboxgl-ctrl-attrib,
+div.mapboxgl-ctrl-attrib,
+div.mapboxgl-control-attribution {
+  bottom: 22px !important; /* Lowered by 10px */
+  margin-bottom: 0 !important; /* Remove margin */
   z-index: 5000 !important; /* optional, to be sure it's above map tiles */
+  transform: none !important; /* Remove transform */
+  position: absolute !important; /* Force absolute positioning */
+  top: auto !important; /* Override any top positioning */
+  left: auto !important; /* Override any left positioning */
+  right: 0 !important; /* Keep right alignment */
+  white-space: nowrap !important; /* Force single line */
+  width: auto !important; /* Allow natural width */
+  max-width: none !important; /* Remove width constraints */
+  display: inline-block !important; /* Inline display */
+  line-height: 1.2 !important; /* Compact line height */
 }
+
+/* Move Mapbox scale control a bit above the attribution - Maximum specificity */
+.mapboxgl-ctrl-scale,
+.mapboxgl-ctrl-scale.mapboxgl-ctrl,
+.mapboxgl-ctrl.mapboxgl-ctrl-scale,
+div.mapboxgl-ctrl-scale {
+  bottom: 40px !important; /* Lowered by 10px */
+  margin-bottom: 0 !important; /* Remove margin */
+  z-index: 5000 !important;
+  position: absolute !important; /* Force absolute positioning */
+  top: auto !important; /* Override any top positioning */
+  left: auto !important; /* Override any left positioning */
+  right: 0 !important; /* Keep right alignment */
+}
+
 @media (max-width: 600px) {
-  .leaflet-control-attribution {
-    margin-bottom: 90px !important;
+  .mapboxgl-control-attribution,
+  .mapboxgl-ctrl-attrib,
+  .mapboxgl-ctrl-attrib.mapboxgl-ctrl,
+  .mapboxgl-ctrl.mapboxgl-ctrl-attrib {
+    bottom: 30px !important; /* Lowered by 10px on mobile */
+    margin-bottom: 0 !important; /* Remove margin */
     right: 8px !important;
     left: auto !important;
     font-size: 11px;
     z-index: 5000;
+    transform: none !important; /* Remove transform */
+    position: absolute !important; /* Force absolute positioning */
+    white-space: nowrap !important; /* Force single line */
+    width: auto !important; /* Allow natural width */
+    max-width: none !important; /* Remove width constraints */
+    display: inline-block !important; /* Inline display */
+    line-height: 1.2 !important; /* Compact line height */
+  }
+  
+  .mapboxgl-ctrl-scale,
+  .mapboxgl-ctrl-scale.mapboxgl-ctrl,
+  .mapboxgl-ctrl.mapboxgl-ctrl-scale {
+    bottom: 50px !important; /* Lowered by 10px on mobile */
+    margin-bottom: 0 !important; /* Remove margin */
+    z-index: 5000 !important;
+    position: absolute !important; /* Force absolute positioning */
   }
 }
 .modern-popup .modern-popup-arrow {
-  position: absolute;
-  left: 50%;
-  transform: translateX(-50%);
-  bottom: -12px;
-  pointer-events: none;
-  z-index: 9999;
-  display: block;
+  display: none !important; /* Hide all popup arrows */
 }
 .modern-popup .popup-grid + .modern-popup-arrow {
   margin-top: 0 !important;
@@ -1811,15 +3080,7 @@ body, html {
 }
 
 .modern-popup-arrow {
-  position: absolute;
-  left: 50%;
-  transform: translateX(-50%);
-  bottom: -12px;
-  top: unset !important;
-  pointer-events: none;
-  z-index: 2;
-  display: block;
-  filter: drop-shadow(0 2px 4px rgba(0,0,0,0.10)); /* subtle shadow for separation */
+  display: none !important; /* Hide all popup arrows */
 }
 
 .modern-popup .popup-grid {
@@ -1843,4 +3104,254 @@ body, html {
   }
 
   
+}
+
+/* SSS Module Styles */
+#sssModal.modern-popup {
+  min-width: 880px !important;
+  width: 880px !important;
+  max-width: 98vw !important;
+  min-height: 520px !important;
+  height: 520px !important;
+  /* Center horizontally, keep bottom fixed */
+  left: 50% !important;
+  transform: translateX(-50%) !important;
+  right: unset !important;
+  flex-direction: column !important;
+  padding-bottom: 0 !important;
+  overflow-y: auto !important;
+  overflow-x: hidden !important;
+  box-shadow: 0 10px 28px rgba(0,0,0,0.12), 0 6px 24px rgba(0,0,0,0.13), 0 1.5px 6px rgba(0,0,0,0.07);
+}
+
+#sssModal.modern-popup .modern-popup-arrow {
+  display: none !important; /* Hide SSS modal arrow */
+}
+
+#sssModal.modern-popup > div:first-child {
+  width: 100%;
+  box-sizing: border-box;
+  padding: 20px;
+  height: 100%;
+  display: flex;
+  flex-direction: column;
+}
+
+#sssInput {
+  width: 100%;
+  min-height: 80px;
+  max-height: 120px;
+  padding: 16px;
+  border: 1px solid #ddd;
+  border-radius: 8px;
+  font-family: inherit;
+  font-size: 14px;
+  resize: vertical;
+  box-sizing: border-box;
+  margin-bottom: 16px;
+  flex-shrink: 0;
+}
+
+#sssInput:focus {
+  outline: none;
+  border-color: #4CAF50;
+  box-shadow: 0 0 0 2px rgba(76, 175, 80, 0.2);
+}
+
+#sssSubmitBtn {
+  background: linear-gradient(135deg, #4CAF50, #45a049);
+  color: white;
+  border: none;
+  padding: 12px 24px;
+  border-radius: 6px;
+  cursor: pointer;
+  font-size: 14px;
+  font-weight: 500;
+  transition: all 0.2s ease;
+  width: 100%;
+  margin-bottom: 16px;
+  flex-shrink: 0;
+}
+
+#sssSubmitBtn:hover:not(:disabled) {
+  background: linear-gradient(135deg, #45a049, #3d8b40);
+  transform: translateY(-1px);
+  box-shadow: 0 4px 8px rgba(0, 0, 0, 0.2);
+}
+
+#sssSubmitBtn:disabled {
+  background: #ccc;
+  cursor: not-allowed;
+  transform: none;
+  box-shadow: none;
+}
+
+#sssLoading {
+  color: #666;
+  font-style: italic;
+  font-size: 14px;
+  text-align: center;
+  margin: 16px 0;
+  flex-shrink: 0;
+}
+
+#sssOutput {
+  background: #f9f9f9;
+  border: 1px solid #ddd;
+  border-radius: 8px;
+  padding: 16px;
+  text-align: left;
+  font-size: 14px;
+  line-height: 1.6;
+  flex-grow: 1;
+  overflow-y: auto;
+  word-wrap: break-word;
+  min-height: 0;
+  margin-bottom: 16px;
+  white-space: pre-wrap;
+}
+
+#sssOutput p {
+  margin: 0 0 12px 0;
+}
+
+#sssOutput p:last-child {
+  margin-bottom: 0;
+}
+
+#sssOutput strong {
+  color: #333;
+}
+
+#sssOutput em {
+  color: #666;
+}
+
+#sssModal .close-modal {
+  flex-shrink: 0;
+  width: 100%;
+  margin-top: auto;
+}
+
+/* Mobile responsive styles for SSS */
+@media (max-width: 900px) {
+  #sssModal.modern-popup {
+    min-width: 320px !important;
+    max-width: 95vw !important;
+    width: auto !important;
+    min-height: 400px !important;
+    height: auto !important;
+    left: 0 !important;
+    right: 0 !important;
+    margin-left: 12px !important;
+    margin-right: 12px !important;
+    margin-bottom: 0 !important;
+    transform: none !important;
+    border-radius: 16px !important;
+  }
+  
+  #sssInput {
+    min-height: 80px;
+    max-height: 100px;
+    font-size: 16px; /* Prevent zoom on iOS */
+  }
+  
+  #sssOutput {
+    min-height: 120px;
+    font-size: 14px;
+  }
+  
+  #sssSubmitBtn {
+    padding: 12px;
+    font-size: 16px;
+  }
+}
+
+@media (max-width: 400px) {
+  #sssModal.modern-popup {
+    margin-left: 8px !important;
+    margin-right: 8px !important;
+  }
+  
+  #sssInput {
+    min-height: 80px;
+    max-height: 100px;
+  }
+  
+  #sssOutput {
+    min-height: 100px;
+    padding: 12px;
+  }
+}
+
+.login-modal.hidden {
+  display: none !important;
+}
+
+/* ULTRA-AGGRESSIVE MAPBOX CONTROL REPOSITIONING - HIGHEST PRIORITY */
+body .mapboxgl-ctrl-attrib,
+body .mapboxgl-control-attribution,
+body div.mapboxgl-ctrl-attrib,
+body div.mapboxgl-control-attribution {
+  bottom: 22px !important; /* Lowered by 10px */
+  margin-bottom: 0 !important;
+  z-index: 9999 !important;
+  position: absolute !important;
+  top: auto !important;
+  left: auto !important;
+  right: 0 !important;
+  transform: none !important;
+  white-space: nowrap !important; /* Force single line */
+  width: auto !important; /* Allow natural width */
+  max-width: none !important; /* Remove width constraints */
+  display: inline-block !important; /* Inline display */
+  line-height: 1.2 !important; /* Compact line height */
+}
+
+body .mapboxgl-ctrl-scale,
+body div.mapboxgl-ctrl-scale {
+  bottom: 40px !important; /* Lowered by 10px */
+  margin-bottom: 0 !important;
+  z-index: 9999 !important;
+  position: absolute !important;
+  top: auto !important;
+  left: auto !important;
+  right: 0 !important;
+  transform: none !important;
+}
+
+/* ULTRA-HIGH SPECIFICITY JOURNAL MODAL WIDTH OVERRIDE */
+body #journalModal.modern-popup {
+  max-width: none !important;
+  width: auto !important;
+  min-width: 400px !important;
+}
+
+body #journalModal.modern-popup #journalForm input,
+body #journalModal.modern-popup #journalForm textarea,
+body #journalModal.modern-popup #journalForm button,
+body #journalModal.modern-popup .close-modal {
+  width: 100% !important;
+  max-width: none !important;
+  min-width: 0 !important;
+  box-sizing: border-box !important;
+}
+
+/* Journal modal inner wrapper override */
+#journalModal > div[style] {
+  width: 100% !important;
+  max-width: none !important;
+  padding: 0 !important;   /* remove forced side padding */
+  margin: 0 !important;
+  box-sizing: border-box;
+}
+
+/* Ensure form elements inside still stretch full width */
+#journalModal #journalForm input,
+#journalModal #journalForm textarea,
+#journalModal #journalForm button,
+#journalModal .close-modal {
+  width: 100% !important;
+  max-width: none !important;
+  min-width: 0 !important;
 }
