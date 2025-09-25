@@ -177,8 +177,10 @@ document.addEventListener("DOMContentLoaded", () => {
       this.button.innerHTML = '🛩️';
       this.button.title = 'Toggle 2D/3D View (Premium)';
       
-      // Style button based on user plan
-      this.updateButtonStyle();
+      // Style button based on user plan (with delay to ensure user plan is loaded)
+      setTimeout(() => {
+        this.updateButtonStyle();
+      }, 100);
       
       this.button.addEventListener('click', () => this.toggleView());
       this.container.appendChild(this.button);
@@ -188,12 +190,42 @@ document.addEventListener("DOMContentLoaded", () => {
 
     toggleView() {
       // Check if user is premium before allowing 2D/3D toggle
+      console.log('[Debug] 2D/3D toggle clicked - currentUserPlan:', window.currentUserPlan);
+      console.log('[Debug] loggedInUser:', window.loggedInUser?.email);
+      console.log('[Debug] typeof currentUserPlan:', typeof window.currentUserPlan);
+      
+      // If user plan is not loaded yet, try to fetch it
+      if (typeof window.currentUserPlan === 'undefined' || window.currentUserPlan === null) {
+        console.log('[Debug] User plan not loaded, attempting to fetch...');
+        if (typeof window.fetchUserPlan === 'function') {
+          window.fetchUserPlan();
+        }
+        // Wait a bit and check again
+        setTimeout(() => {
+          console.log('[Debug] After fetch attempt - currentUserPlan:', window.currentUserPlan);
+          this.updateButtonStyle(); // Update button style after plan is fetched
+          if (window.currentUserPlan === 'premium') {
+            this.performToggle();
+          } else {
+            console.log('[Security] 2D/3D toggle blocked for free user (after fetch)');
+            this.showUpgradeMessage();
+          }
+        }, 500);
+        return;
+      }
+      
       if (window.currentUserPlan !== 'premium') {
         console.log('[Security] 2D/3D toggle blocked for free user');
         this.showUpgradeMessage();
         return;
       }
       
+      console.log('[Debug] 2D/3D toggle allowed for premium user');
+      this.performToggle();
+    }
+
+    performToggle() {
+      console.log('[Debug] Performing 2D/3D toggle');
       this.is3D = !this.is3D;
       
       if (this.is3D) {
@@ -331,14 +363,18 @@ document.addEventListener("DOMContentLoaded", () => {
 
     updateButtonStyle() {
       // Update button styling based on user plan
+      console.log('[Debug] updateButtonStyle called - currentUserPlan:', window.currentUserPlan);
+      
       if (window.currentUserPlan !== 'premium') {
         // Free user - show as disabled/premium
+        console.log('[Debug] Setting button style for FREE user');
         this.button.style.opacity = '0.6';
         this.button.style.filter = 'grayscale(0.3)';
         this.button.style.cursor = 'pointer'; // Still clickable to show upgrade message
         this.button.title = 'Toggle 2D/3D View (Premium Feature)';
       } else {
         // Premium user - show as enabled
+        console.log('[Debug] Setting button style for PREMIUM user');
         this.button.style.opacity = '1';
         this.button.style.filter = 'none';
         this.button.style.cursor = 'pointer';
@@ -358,6 +394,16 @@ document.addEventListener("DOMContentLoaded", () => {
   
   // Make the control globally accessible for plan updates
   window.viewModeControl = viewModeControl;
+  
+  // Add global function to manually refresh 2D/3D button styling (for testing)
+  window.refresh2D3DButton = function() {
+    if (window.viewModeControl) {
+      console.log('[Debug] Manually refreshing 2D/3D button styling');
+      window.viewModeControl.updateButtonStyle();
+    } else {
+      console.log('[Debug] viewModeControl not found');
+    }
+  };
 
   // Custom Home Button Control
   class HomeControl {

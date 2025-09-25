@@ -23,10 +23,10 @@ function initializeLayerManager() {
 
   // --- Base layer styles ---
   const baseLayers = {
-    terrain: 'mapbox://styles/mapbox/outdoors-v12',
-    satellite: 'mapbox://styles/mapbox/satellite-streets-v12',
-    contours: 'mapbox://styles/mapbox/outdoors-v12', // Using outdoors for contours
-    hybrid: 'mapbox://styles/mapbox/satellite-v9' // Satellite base for hybrid
+    terrain: 'mapbox://styles/mapbox/outdoors-v12', // Outdoor terrain with natural colors
+    satellite: 'mapbox://styles/mapbox/satellite-streets-v12', // Satellite with streets and labels
+    contours: 'mapbox://styles/mapbox/light-v11', // Clean light style for contour lines
+    hybrid: 'mapbox://styles/mapbox/satellite-streets-v12' // Satellite with streets and labels for hybrid
   };
 
   // Store base layers for external access
@@ -101,12 +101,77 @@ window.switchBaseLayer = function(name) {
       map.setPitch(currentPitch);
       map.setBearing(currentBearing);
       
-      // Re-add terrain source if switching to contours
-      if (layerName === 'contours' && !map.getSource('mapbox-terrain')) {
-        map.addSource('mapbox-terrain', {
-          type: 'raster-dem',
-          url: 'mapbox://mapbox.terrain-rgb'
-        });
+      // Add contour functionality when switching to contours layer
+      if (layerName === 'contours') {
+        // Add terrain source
+        if (!map.getSource('mapbox-terrain')) {
+          map.addSource('mapbox-terrain', {
+            type: 'raster-dem',
+            url: 'mapbox://mapbox.terrain-rgb'
+          });
+        }
+        
+        // Add vector source for contours
+        if (!map.getSource('terrain-data')) {
+          map.addSource('terrain-data', {
+            type: 'vector',
+            url: 'mapbox://mapbox.mapbox-terrain-v2'
+          });
+        }
+        
+        // Add minor contour lines (every 20m, thin grey)
+        if (!map.getLayer('contours-minor')) {
+          map.addLayer({
+            id: 'contours-minor',
+            type: 'line',
+            source: 'terrain-data',
+            'source-layer': 'contour',
+            filter: ['!=', ['%', ['get', 'ele'], 100], 0],
+            paint: {
+              'line-color': '#888888',
+              'line-width': 1
+            }
+          });
+        }
+        
+        // Add major contour lines (every 100m, thicker, dark)
+        if (!map.getLayer('contours-major')) {
+          map.addLayer({
+            id: 'contours-major',
+            type: 'line',
+            source: 'terrain-data',
+            'source-layer': 'contour',
+            filter: ['==', ['%', ['get', 'ele'], 100], 0],
+            paint: {
+              'line-color': '#333333',
+              'line-width': 1.5
+            }
+          });
+        }
+        
+        // Add elevation labels
+        if (!map.getLayer('contour-labels-100m')) {
+          map.addLayer({
+            id: 'contour-labels-100m',
+            type: 'symbol',
+            source: 'terrain-data',
+            'source-layer': 'contour',
+            filter: ['==', ['%', ['get', 'ele'], 100], 0],
+            minzoom: 10,
+            layout: {
+              'symbol-placement': 'line',
+              'symbol-spacing': 400,
+              'text-field': ['concat', ['get', 'ele'], ' m'],
+              'text-size': 11,
+              'text-font': ['Open Sans Bold', 'Arial Unicode MS Bold']
+            },
+            paint: {
+              'text-color': '#333333',
+              'text-halo-color': '#ffffff',
+              'text-halo-width': 1
+            }
+          });
+        }
       }
       
       // Handle hybrid layer - add DEM and contour sources
@@ -209,6 +274,16 @@ window.switchBaseLayer = function(name) {
             }
           });
         }
+      }
+      
+      // Remove contour layers when switching to non-contour layers
+      if (layerName !== 'contours' && layerName !== 'hybrid') {
+        const contourLayers = ['contours-minor', 'contours-major', 'contour-labels-100m', 'contour-labels-50m'];
+        contourLayers.forEach(layerId => {
+          if (map.getLayer(layerId)) {
+            map.removeLayer(layerId);
+          }
+        });
       }
       
       console.log(`Successfully switched to ${name} layer`);

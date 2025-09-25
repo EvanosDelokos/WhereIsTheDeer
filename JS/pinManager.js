@@ -9,13 +9,12 @@ console.log("🔍 pinManager.js loaded successfully");
 export function buildPinElement(style = {}) {
   const {
     variant = 'orange', // orange, red, green, yellow, blue, purple, brown
-    size = 1,           // 1 = baseline; use scale for premium/compact etc.
+    size = 0.3,         // 0.3 = 70% smaller than baseline
   } = style;
 
   const el = document.createElement('div');
   el.className = `witd-pin witd-pin--${variant}`;
   el.style.transform = `scale(${size})`;
-  el.style.transformOrigin = 'bottom center';
 
   // Simple SVG structure with CSS classes for easy color changes
   el.innerHTML = `
@@ -41,11 +40,19 @@ export function createPinMarker(pinData, handlers = {}) {
   const { lng, lat, style } = pinData;
   const element = buildPinElement(style);
 
-  if (handlers.onClick) element.addEventListener('click', (e) => handlers.onClick(e, pinData));
-  if (handlers.onContext) element.addEventListener('contextmenu', (e) => handlers.onContext(e, pinData));
+  if (handlers.onClick) element.addEventListener('click', (e) => {
+    console.log('[pin] Pin click detected, stopping propagation to prevent species layer conflict');
+    e.stopPropagation(); // Prevent event from bubbling to map/species layer
+    handlers.onClick(e, pinData);
+  });
+  if (handlers.onContext) element.addEventListener('contextmenu', (e) => {
+    e.stopPropagation(); // Prevent event from bubbling to map/species layer
+    handlers.onContext(e, pinData);
+  });
 
   // IMPORTANT: do NOT use Marker({ color: ... }) which draws a default red pin
   const marker = new mapboxgl.Marker({ element, anchor: 'bottom' }).setLngLat([lng, lat]);
+  console.log('🚨 [createPinMarker] Created marker at coordinates:', { lng, lat });
   return marker;
 }
 
@@ -252,7 +259,7 @@ function createPinOnMap(pin) {
       name: pin.name,
       lng: pin.lng,
       lat: pin.lat,
-      style: pin.style || { variant: 'orange', size: 1.2 }
+      style: pin.style || { variant: 'orange', size: 0.3 }
     };
     
     // Create Mapbox marker using unified builder
@@ -443,12 +450,20 @@ document.addEventListener("DOMContentLoaded", () => {
      map.on("click", (e) => {
      if (!window.WITD.pinMode) return;
      
+     console.log('[pin] Pin placement click detected, stopping propagation');
+     
+     // Stop event propagation to prevent species layer from handling this click
+     e.originalEvent?.stopPropagation?.();
+     
      // Prevent multiple simultaneous pin creation popups
      if (window.currentPinPopup) {
        console.log("Pin creation already in progress, ignoring click");
        return;
      }
 
+     // Set a flag to indicate we're processing pin placement
+     window.WITD.processingPinPlacement = true;
+     
      // IMMEDIATELY turn off pin mode to prevent multiple clicks
      window.WITD.pinMode = false;
      addPinBtn.classList.remove("active");
@@ -462,6 +477,7 @@ document.addEventListener("DOMContentLoaded", () => {
      });
 
      const { lng, lat } = e.lngLat;
+     console.log('🚨 [map click] Pin placement coordinates:', { lng, lat });
 
      // Create styled container
      const popupContent = document.createElement("div");
@@ -519,10 +535,10 @@ document.addEventListener("DOMContentLoaded", () => {
        name: "",
        lng,
        lat,
-       style: { 
-         variant: window.selectedPinStyle || 'orange', 
-         size: 1.2 
-       }
+      style: { 
+        variant: window.selectedPinStyle || 'orange', 
+        size: 0.3 
+      }
      };
 
      // Create Mapbox marker using unified builder
@@ -598,6 +614,9 @@ document.addEventListener("DOMContentLoaded", () => {
      
        await savePins(customPins);
        
+       // Reset pin placement processing flag
+       window.WITD.processingPinPlacement = false;
+       
        // Turn off pin mode after successfully placing a pin
        window.WITD.pinMode = false;
        const addPinBtn = document.getElementById("addPinBtn");
@@ -615,6 +634,9 @@ document.addEventListener("DOMContentLoaded", () => {
        if (index > -1) {
          customPins.splice(index, 1);
        }
+       
+       // Reset pin placement processing flag
+       window.WITD.processingPinPlacement = false;
        
        // Turn off pin mode when cancelling a pin
        window.WITD.pinMode = false;
@@ -945,7 +967,7 @@ document.addEventListener("DOMContentLoaded", () => {
         name: newName,
         lng: pin.lng,
         lat: pin.lat,
-        style: pin.style || { variant: 'orange', size: 1.2 }
+        style: pin.style || { variant: 'orange', size: 0.3 }
       };
       
       const newPopup = createPinPopup(pinData);
@@ -983,6 +1005,11 @@ function addPinAtCenter() {
   window.WITD.pinMode = true;
   const addPinBtn = document.getElementById('addPinBtn');
   if (addPinBtn) addPinBtn.classList.add('active');
+  
+  // Close any existing species popups when starting to place pins
+  if (typeof window.closeSpeciesPopups === 'function') {
+    window.closeSpeciesPopups();
+  }
   
   // Create styled container
   const popupContent = document.createElement("div");
@@ -1026,7 +1053,7 @@ function addPinAtCenter() {
     name: "Center Pin",
     lng,
     lat,
-    style: { variant: 'orange', size: 1.2 }
+    style: { variant: 'orange', size: 0.3 }
   };
 
   // Create Mapbox marker using unified builder
@@ -1093,6 +1120,11 @@ function enablePinPlacement() {
   const addPinBtn = document.getElementById('addPinBtn');
   if (addPinBtn) {
     addPinBtn.classList.add('active');
+    
+    // Close any existing species popups when starting to place pins
+    if (typeof window.closeSpeciesPopups === 'function') {
+      window.closeSpeciesPopups();
+    }
   }
   console.log("Pin placement enabled");
 }
@@ -1101,6 +1133,7 @@ function enablePinPlacement() {
  window.addPinAtCenter = addPinAtCenter;
  window.clearAllPins = clearAllPins;
  window.enablePinPlacement = enablePinPlacement;
+ window.bindPopupActions = bindPopupActions;
  
  // Global function to force close all pin creation popups
  window.closeAllPinPopups = () => {

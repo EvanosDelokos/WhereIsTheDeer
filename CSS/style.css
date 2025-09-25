@@ -325,16 +325,15 @@
 
 /* === UNIFIED PIN STYLES === */
 .witd-pin { 
-  position: relative; 
-  width: 36px; 
-  height: 48px; 
+  width: 18px; 
+  height: 24px; 
   cursor: pointer;
 }
 
 .witd-pin-svg { 
   display: block; 
-  width: 36px; 
-  height: 48px; 
+  width: 18px; 
+  height: 24px; 
 }
 
 /* Match the live on-drop colors */
@@ -706,7 +705,7 @@
 
 .marker-text-box .label-inner {
   position: absolute;
-  bottom: calc(100% + 100px); /* place label 8px above the pin */
+  top: calc(100% + 8px); /* place label 8px below the pin */
   left: 50%;
   transform: translateX(-50%); /* only center horizontally */
   background: white;
@@ -1024,6 +1023,20 @@ body, html {
   max-width: 200px;
 }
 
+.track-label-pin {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  filter: drop-shadow(0 2px 6px rgba(0, 0, 0, 0.3));
+  transition: all 0.2s ease;
+}
+
+.track-label-pin:hover {
+  transform: scale(1.1);
+  filter: drop-shadow(0 3px 8px rgba(0, 0, 0, 0.4));
+}
+
 .track-label-popup {
   background: white;
   border-radius: 12px;
@@ -1078,6 +1091,28 @@ body, html {
   border-color: #007bff;
   box-shadow: 0 0 0 2px rgba(0, 123, 255, 0.25);
   cursor: text;
+}
+
+.track-minimize-btn {
+  background: #28a745;
+  color: white;
+  border: none;
+  border-radius: 6px;
+  padding: 4px;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: all 0.2s ease;
+  min-width: 24px;
+  height: 24px;
+  font-size: 12px;
+}
+
+.track-minimize-btn:hover {
+  background: #218838;
+  transform: translateY(-1px);
+  box-shadow: 0 2px 8px rgba(40, 167, 69, 0.3);
 }
 
 .track-rename-btn {

@@ -384,7 +384,10 @@ function showSignedOutNotification() {
   btn.style.marginTop = '10px';
   btn.style.cursor = 'pointer';
   btn.style.boxShadow = '0 2px 8px rgba(0,0,0,0.08)';
-  btn.addEventListener('click', () => overlay.remove());
+  btn.addEventListener('click', () => {
+    overlay.remove();
+    window.location.reload();
+  });
   modal.appendChild(btn);
 
   overlay.appendChild(modal);

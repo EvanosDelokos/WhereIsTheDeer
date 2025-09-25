@@ -71,6 +71,15 @@
     return distance;
   }
 
+  // Helper function to calculate total distance of a track
+  function calculateTrackDistance(coordinates) {
+    let totalDistance = 0;
+    for (let i = 0; i < coordinates.length - 1; i++) {
+      totalDistance += calculateDistance(coordinates[i], coordinates[i + 1]);
+    }
+    return totalDistance;
+  }
+
   function calculateTotalDistance(coordinates) {
     if (coordinates.length < 2) return 0;
     
@@ -352,6 +361,15 @@
     
     map = mapInstance;
     
+    // Add click listener to map to minimize labels when clicking anywhere
+    map.on('click', (e) => {
+      // Check if click is on a track label or its children
+      const isTrackLabelClick = e.originalEvent.target.closest('.track-label-container');
+      if (!isTrackLabelClick) {
+        minimizeAllTrackLabels();
+      }
+    });
+    
     ensureSourceAndLayer();
 
     // Load previously drawn tracks from Supabase after a short delay
@@ -617,6 +635,11 @@
     isActive = true;
     console.log('[draw] Drawing mode enabled, isActive:', isActive);
     map.getCanvas().style.cursor = 'crosshair';
+    
+    // Close any existing species popups when starting to draw
+    if (typeof window.closeSpeciesPopups === 'function') {
+      window.closeSpeciesPopups();
+    }
     
     // Disable map interactions when drawing mode is active
     try {
@@ -1265,9 +1288,87 @@
     const coordinates = feature.geometry.coordinates;
     if (coordinates.length === 0) return;
     
-    // Calculate middle point of the track
-    const middleIndex = Math.floor(coordinates.length / 2);
-    const middleCoord = coordinates[middleIndex];
+    // Calculate the geometric center of the track (not just middle index)
+    // Calculate the actual center point along the track path
+    const totalDistance = calculateTrackDistance(coordinates);
+    const centerDistance = totalDistance / 2;
+    
+    let accumulatedDistance = 0;
+    let middleCoord = coordinates[0]; // fallback to first point
+    
+    for (let i = 0; i < coordinates.length - 1; i++) {
+      const currentPoint = coordinates[i];
+      const nextPoint = coordinates[i + 1];
+      
+      // Calculate distance between current and next point
+      const segmentDistance = calculateDistance(currentPoint, nextPoint);
+      
+      if (accumulatedDistance + segmentDistance >= centerDistance) {
+        // The center point is somewhere along this segment
+        const ratio = (centerDistance - accumulatedDistance) / segmentDistance;
+        
+        // Interpolate between current and next point
+        const lng = currentPoint[0] + (nextPoint[0] - currentPoint[0]) * ratio;
+        const lat = currentPoint[1] + (nextPoint[1] - currentPoint[1]) * ratio;
+        
+        middleCoord = [lng, lat];
+        break;
+      }
+      
+      accumulatedDistance += segmentDistance;
+    }
+    
+    // Get the track color
+    const trackColor = feature.properties.color || '#ff6b35';
+    
+    // Simple hue rotation calculation for common colors
+    const getHueRotation = (color) => {
+      const colorMap = {
+        '#ff0000': 0,    // Red
+        '#ff6b35': 15,   // Orange
+        '#ff8000': 30,   // Orange (your color!)
+        '#ffff00': 60,   // Yellow
+        '#00ff00': 120,  // Green
+        '#00ffff': 180,  // Cyan
+        '#0000ff': 240,  // Blue
+        '#ff00ff': 300,  // Magenta
+        '#ff0080': 320,  // Pink
+        '#800080': 270,  // Purple
+      };
+      
+      // Try exact match first
+      if (colorMap[color.toLowerCase()]) {
+        return colorMap[color.toLowerCase()];
+      }
+      
+      // For other colors, calculate hue from RGB
+      const hex = color.replace('#', '');
+      const r = parseInt(hex.substr(0, 2), 16) / 255;
+      const g = parseInt(hex.substr(2, 2), 16) / 255;
+      const b = parseInt(hex.substr(4, 2), 16) / 255;
+      
+      const max = Math.max(r, g, b);
+      const min = Math.min(r, g, b);
+      const diff = max - min;
+      
+      let h = 0;
+      if (diff !== 0) {
+        if (max === r) {
+          h = ((g - b) / diff) % 6;
+        } else if (max === g) {
+          h = (b - r) / diff + 2;
+        } else {
+          h = (r - g) / diff + 4;
+        }
+      }
+      h = h * 60;
+      if (h < 0) h += 360;
+      
+      return h;
+    };
+    
+    const hueRotation = getHueRotation(trackColor);
+    console.log(`[draw] Track color: ${trackColor}, Hue rotation: ${hueRotation}deg`);
     
     // Create styled track label element
     const trackLabelEl = document.createElement('div');
@@ -1299,10 +1400,27 @@
     }
     
     trackLabelEl.innerHTML = `
+        <div class="track-label-pin" style="display: none;">
+          <svg width="40" height="40" viewBox="0 0 1024 1024" xmlns="http://www.w3.org/2000/svg">
+            <!-- Red center part - this will be dynamically colored -->
+            <path d="M709.485714 277.942857C709.485714 160.914286 614.4 65.828571 497.371429 65.828571S292.571429 160.914286 292.571429 277.942857c0 73.142857 204.8 358.4 204.8 358.4s212.114286-277.942857 212.114285-358.4z" fill="${trackColor}"/>
+            <!-- Black outline -->
+            <path d="M497.371429 709.485714l-21.942858-29.257143c-36.571429-51.2-219.428571-307.2-219.428571-387.657142C256 160.914286 365.714286 51.2 497.371429 51.2s241.371429 109.714286 241.371428 241.371429c0 87.771429-182.857143 336.457143-226.742857 387.657142l-14.628571 29.257143z m0-607.085714C394.971429 102.4 307.2 182.857143 307.2 292.571429c0 43.885714 102.4 204.8 190.171429 321.828571C585.142857 497.371429 687.542857 336.457143 687.542857 292.571429c0-109.714286-87.771429-190.171429-190.171428-190.171429z" fill="#000000"/>
+            <!-- Black track line part 1 -->
+            <path d="M928.914286 819.2H102.4C58.514286 819.2 14.628571 782.628571 14.628571 731.428571s36.571429-87.771429 87.771429-87.771428h138.971429c14.628571 0 29.257143 14.628571 29.257142 29.257143s-7.314286 29.257143-21.942857 29.257143h-146.285714c-14.628571 0-29.257143 14.628571-29.257143 29.257142s14.628571 29.257143 29.257143 29.257143h819.2c14.628571 0 29.257143 14.628571 29.257143 29.257143s-7.314286 29.257143-21.942857 29.257143z" fill="#000000"/>
+            <!-- Black track line part 2 -->
+            <path d="M928.914286 936.228571H226.742857c-14.628571 0-29.257143-14.628571-29.257143-29.257142s14.628571-29.257143 29.257143-29.257143h694.857143c14.628571 0 29.257143-14.628571 29.257143-29.257143s-14.628571-29.257143-29.257143-29.257143H102.4c-14.628571 0-29.257143-14.628571-29.257143-29.257143s14.628571-29.257143 29.257143-29.257143h819.2c43.885714 0 87.771429 36.571429 87.771429 87.771429s-36.571429 87.771429-80.457143 87.771428z" fill="#000000"/>
+            <!-- White circle in center -->
+            <path d="M497.371429 263.314286m-80.457143 0a80.457143 80.457143 0 1 0 160.914285 0 80.457143 80.457143 0 1 0-160.914285 0Z" fill="#FDFBFB"/>
+            <!-- Black circle outline -->
+            <path d="M497.371429 365.714286C438.857143 365.714286 394.971429 321.828571 394.971429 263.314286S438.857143 160.914286 497.371429 160.914286s102.4 43.885714 102.4 102.4S555.885714 365.714286 497.371429 365.714286z m0-153.6c-29.257143 0-51.2 21.942857-51.2 51.2s21.942857 51.2 51.2 51.2 51.2-21.942857 51.2-51.2-21.942857-51.2-51.2-51.2z" fill="#000000"/>
+          </svg>
+        </div>
       <div class="track-label-popup">
         <div class="track-label-header">
           <span class="track-label-title">${feature.properties.name || `Drawn Track ${feature.properties.id}`}</span>
           <div class="track-label-actions">
+            <button class="track-minimize-btn" title="Minimize Track Label">📌</button>
             <button class="track-rename-btn" title="Rename Track">
               <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
                 <path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"></path>
@@ -1325,13 +1443,81 @@
       </div>
     `;
     
-    // Create marker for the track label
-    const trackLabelMarker = new mapboxgl.Marker({
-      element: trackLabelEl,
-      anchor: 'center'
-    })
-    .setLngLat(middleCoord)
-    .addTo(map);
+    // Create a custom positioned element instead of using Mapbox marker
+    const trackLabelMarker = {
+      _element: trackLabelEl,
+      _centerCoord: middleCoord,
+      _originalPosition: middleCoord,
+      getElement: () => trackLabelEl,
+      getLngLat: () => ({ lng: middleCoord[0], lat: middleCoord[1] }),
+      setLngLat: () => {}, // No-op since we're controlling position manually
+      remove: () => {
+        if (trackLabelEl && trackLabelEl.parentNode) {
+          trackLabelEl.parentNode.removeChild(trackLabelEl);
+        }
+      }
+    };
+    
+    // Position the element using CSS transforms
+    const updateMarkerPosition = () => {
+      const pixelCoords = map.project(middleCoord);
+      trackLabelEl.style.position = 'absolute';
+      trackLabelEl.style.left = pixelCoords.x + 'px';
+      trackLabelEl.style.top = pixelCoords.y + 'px';
+      trackLabelEl.style.transform = 'translate(-50%, -50%)'; // Center the element
+      trackLabelEl.style.zIndex = '1000';
+      trackLabelEl.style.pointerEvents = 'auto';
+    };
+    
+    // Add the element to the map container
+    map.getContainer().appendChild(trackLabelEl);
+    
+    // Prevent browser zoom but allow map zoom
+    trackLabelEl.addEventListener('wheel', (e) => {
+      // Prevent the browser from zooming the page
+      e.preventDefault();
+      
+      // Get the current zoom level
+      const currentZoom = map.getZoom();
+      
+      // Calculate zoom delta based on scroll direction
+      const zoomDelta = e.deltaY > 0 ? -0.1 : 0.1;
+      const newZoom = Math.max(0, Math.min(22, currentZoom + zoomDelta));
+      
+      // Get the map container bounds
+      const mapContainer = map.getContainer();
+      const rect = mapContainer.getBoundingClientRect();
+      
+      // Convert cursor position to map coordinates
+      const cursorX = e.clientX - rect.left;
+      const cursorY = e.clientY - rect.top;
+      const cursorLngLat = map.unproject([cursorX, cursorY]);
+      
+      // Zoom around the cursor position
+      map.zoomTo(newZoom, {
+        center: cursorLngLat,
+        duration: 150
+      });
+    });
+    
+    // Initial positioning
+    updateMarkerPosition();
+    
+    // Update position on map move/zoom
+    const onMapMove = () => {
+      updateMarkerPosition();
+    };
+    
+    map.on('move', onMapMove);
+    map.on('zoom', onMapMove);
+    
+    // Store the cleanup function
+    trackLabelMarker._cleanup = () => {
+      map.off('move', onMapMove);
+      map.off('zoom', onMapMove);
+    };
+    
+    console.log(`[draw] Track pin positioned at geometric center:`, middleCoord);
     
     // Store reference for deletion using track ID
     trackLabelMarker._trackId = feature.properties.id;
@@ -1343,15 +1529,28 @@
       const isCurrentlyEditing = editingTrackId === feature.properties.id;
       const isUnnamedTrack = !feature.properties.userNamed;
       
+      console.log(`[draw] Visibility update called for track: ${feature.properties.name}, zoom: ${zoom}`);
+      
+      // Always show the marker, but control visibility of content
       if (isCurrentlyEditing || isUnnamedTrack) {
         // Always show when editing or when it's an unnamed track
         trackLabelEl.style.display = 'block';
+        console.log(`[draw] Showing full label (editing/unnamed) for track: ${feature.properties.name}`);
       } else if (zoom < 8) {
-        // Hide when zoomed out (clustering)
-        trackLabelEl.style.display = 'none';
+        // Hide when zoomed out (clustering) - but keep marker position
+        trackLabelEl.style.display = 'block';
+        // Hide the popup content but show the pin
+        const trackPopup = trackLabelEl.querySelector('.track-label-popup');
+        const trackPin = trackLabelEl.querySelector('.track-label-pin');
+        if (trackPopup && trackPin) {
+          trackPopup.style.display = 'none';
+          trackPin.style.display = 'block';
+        }
+        console.log(`[draw] Showing pin only (zoomed out) for track: ${feature.properties.name}`);
       } else {
         // Show when zoomed in
         trackLabelEl.style.display = 'block';
+        console.log(`[draw] Showing full label (zoomed in) for track: ${feature.properties.name}`);
       }
     };
     
@@ -1380,6 +1579,35 @@
       startRenaming(trackLabelEl, feature, trackLabelMarker);
     });
     
+    // Add minimize/maximize functionality
+    const minimizeBtn = trackLabelEl.querySelector('.track-minimize-btn');
+    const trackPin = trackLabelEl.querySelector('.track-label-pin');
+    const trackPopup = trackLabelEl.querySelector('.track-label-popup');
+    
+    // Function to minimize this specific label
+    const minimizeLabel = () => {
+      trackPopup.style.display = 'none';
+      trackPin.style.display = 'block';
+    };
+    
+    // Function to expand this specific label
+    const expandLabel = () => {
+      trackPopup.style.display = 'block';
+      trackPin.style.display = 'none';
+    };
+    
+    // Minimize button click
+    minimizeBtn.addEventListener('click', (e) => {
+      e.stopPropagation();
+      minimizeLabel();
+    });
+    
+    // Pin click to expand
+    trackPin.addEventListener('click', (e) => {
+      e.stopPropagation();
+      expandLabel();
+    });
+    
     // Add name editing functionality
     const titleElement = trackLabelEl.querySelector('.track-label-title');
     setupTrackNameEditing(titleElement, feature, trackLabelMarker);
@@ -1396,6 +1624,35 @@
     
     console.log(`[draw] Added track label "${feature.properties.name}" at:`, middleCoord);
   }
+  
+  // Global function to minimize all track labels
+  function minimizeAllTrackLabels() {
+    drawnTrackLabels.forEach(labelMarker => {
+      const trackLabelEl = labelMarker.getElement();
+      const trackPopup = trackLabelEl.querySelector('.track-label-popup');
+      const trackPin = trackLabelEl.querySelector('.track-label-pin');
+      
+      if (trackPopup && trackPin) {
+        trackPopup.style.display = 'none';
+        trackPin.style.display = 'block';
+      }
+    });
+  }
+  
+  // Make minimize function globally available
+  if (typeof window.minimizeTrackLabels === 'undefined') {
+    window.minimizeTrackLabels = minimizeAllTrackLabels;
+  }
+  
+  // Add global function to test position locking
+  window.testTrackPinPositions = function() {
+    console.log('[draw] Testing track pin positions:');
+    drawnTrackLabels.forEach((label, index) => {
+      const currentPos = label.getLngLat();
+      const targetPos = label._centerCoord;
+      console.log(`Track ${index}: Current: [${currentPos.lng}, ${currentPos.lat}], Target: [${targetPos[0]}, ${targetPos[1]}]`);
+    });
+  };
   
   function setupTrackNameEditing(titleElement, feature, trackLabelMarker) {
     // This function is now just for initial setup - actual editing is handled by startRenaming
@@ -1599,6 +1856,9 @@
           // Remove any zoom event listeners
           if (map && label._updateVisibility) {
             map.off('zoom', label._updateVisibility);
+          }
+          if (label._cleanup) {
+            label._cleanup();
           }
           
           // Remove the marker from the map
@@ -2221,6 +2481,14 @@
       // Clear all track labels
       drawnTrackLabels.forEach(label => {
         if (label && label.remove) {
+          // Remove any zoom event listeners
+          if (map && label._updateVisibility) {
+            map.off('zoom', label._updateVisibility);
+          }
+          if (label._cleanup) {
+            label._cleanup();
+          }
+          
           label.remove();
         }
       });

@@ -5,8 +5,9 @@
   <title>WhereIsTheDeer Map</title>
   <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
 
-  <!-- Favicon if you have it -->
-  <link rel="icon" href="Images/favicon.ico" type="image/x-icon">
+  <!-- Favicon -->
+  <link rel="icon" href="Images/WhereIsTheDeerLogo.png" type="image/png">
+  <link rel="shortcut icon" href="Images/WhereIsTheDeerLogo.png" type="image/png">
 
   <!-- Mapbox GL JS -->
   <script src='https://api.mapbox.com/mapbox-gl-js/v3.14.0/mapbox-gl.js'></script>
@@ -19,6 +20,9 @@
     let loggedInUser = null;
     let currentUserPlan = 'free';
     let planLoaded = false; // Flag to prevent multiple plan fetches
+    
+    // Initialize global window variables
+    window.currentUserPlan = currentUserPlan;
 
     const supabase = window.supabase.createClient(
       'https://pdskokilsaljhagvwazn.supabase.co',
@@ -1063,9 +1067,11 @@ function updateLoginModalContent() {
 // After successful login, set window.loggedInUser and update modal
 window.setLoggedInUser = function(user, plan) {
   window.loggedInUser = user;
-  window.currentUserPlan = plan || 'free';
+  currentUserPlan = plan || 'free';
+  window.currentUserPlan = currentUserPlan;
   updateLoginModalContent();
 };
+
 
 // Logout functionality
 const logoutBtn = document.getElementById('logoutBtn');
@@ -1078,13 +1084,14 @@ if (logoutBtn) {
       } else {
         console.log('Logged out successfully');
         window.loggedInUser = null;
-        window.currentUserPlan = 'free';
+        currentUserPlan = 'free';
+        window.currentUserPlan = currentUserPlan;
         updateLoginModalContent();
         // Clear protected modals to allow re-protection
         clearProtectedModals();
-        // Close the login modal
-        const loginModal = document.getElementById('loginModal');
-        if (loginModal) loginModal.style.display = 'none';
+        // Refresh the page to clear all user data from map
+        console.log('🔄 Refreshing page to clear user data...');
+        window.location.reload();
       }
     }
   });
@@ -1100,12 +1107,13 @@ document.addEventListener('DOMContentLoaded', () => {
   googleLoginBtn.addEventListener('click', async () => {
     console.log("🔹 Login button clicked");
 
-    console.log("🔹 Starting OAuth flow with redirectTo:", window.location.origin + '/map.html');
+    const redirectUrl = window.location.origin + window.location.pathname;
+    console.log("🔹 Starting OAuth flow with redirectTo:", redirectUrl);
     
     const { data, error } = await supabase.auth.signInWithOAuth({
       provider: 'google',
       options: {
-        redirectTo: window.location.origin + '/map.html'
+        redirectTo: redirectUrl
       }
     });
 
@@ -1247,46 +1255,6 @@ function showUpgradeMessage() {
   });
 }
 
-// Show logout confirmation popup
-function showLogoutConfirmation() {
-  // Create the logout confirmation popup
-  const popup = document.createElement('div');
-  popup.style.cssText = `
-    position: fixed;
-    top: 50%;
-    left: 50%;
-    transform: translate(-50%, -50%);
-    background: white;
-    border-radius: 12px;
-    padding: 30px;
-    text-align: center;
-    box-shadow: 0 10px 30px rgba(0,0,0,0.3);
-    z-index: 10000;
-    max-width: 400px;
-    width: 90%;
-    border: 2px solid #4CAF50;
-  `;
-
-  popup.innerHTML = `
-    <div style="font-size: 48px; margin-bottom: 20px;">✅</div>
-    <h2 style="margin: 0 0 15px 0; color: #333; font-size: 24px;">Signed Out</h2>
-    <p style="margin: 0 0 25px 0; color: #666; font-size: 16px; line-height: 1.5;">
-      You have been successfully signed out. Premium features are now locked.
-    </p>
-    <button onclick="this.parentElement.remove()" style="
-      background: #4CAF50;
-      color: white;
-      border: none;
-      padding: 12px 30px;
-      border-radius: 8px;
-      font-size: 16px;
-      cursor: pointer;
-      font-weight: 600;
-    ">Got it</button>
-  `;
-
-  document.body.appendChild(popup);
-}
 
 // 🔐 Step 4: Apply unified gating to all premium feature buttons
 function applyUnifiedGating(buttonId, modalId) {
@@ -1461,6 +1429,7 @@ async function fetchUserPlan() {
     
     if (data) {
       currentUserPlan = data.plan || 'free';
+      window.currentUserPlan = currentUserPlan; // Make it globally accessible
       console.log("✅ User plan fetched:", data.plan);
       applyPremiumStyling(); // Apply premium styling to UI
       
@@ -1495,6 +1464,7 @@ async function fetchUserPlan() {
         console.warn("⚠️ Failed to create profile:", insertError.message);
         // Set to free as fallback
         currentUserPlan = 'free';
+        window.currentUserPlan = currentUserPlan; // Make it globally accessible
         applyPremiumStyling();
         console.log("[Plan] Free user (fallback) - applying modal protection (species now free)");
         applyModalProtection('gpxModal');
@@ -1503,6 +1473,7 @@ async function fetchUserPlan() {
       } else {
         console.log("✅ Profile created with free plan");
         currentUserPlan = 'free';
+        window.currentUserPlan = currentUserPlan; // Make it globally accessible
         applyPremiumStyling();
         console.log("[Plan] Free user (new profile) - applying modal protection (species now free)");
         applyModalProtection('gpxModal');
@@ -1514,6 +1485,7 @@ async function fetchUserPlan() {
     console.error("❌ Error in fetchUserPlan:", error);
     // Set to free as fallback
     currentUserPlan = 'free';
+    window.currentUserPlan = currentUserPlan; // Make it globally accessible
     applyPremiumStyling();
     console.log("[Plan] Free user (error fallback) - applying modal protection (species now free)");
     applyModalProtection('gpxModal');
@@ -1848,45 +1820,10 @@ function restoreOriginalButtonFunctionality() {
     const pinsSubmenu = document.getElementById('pinsSubmenu');
     if (pinsSubmenu) pinsSubmenu.style.display = 'none';
     // Show styled confirmation dialog
-    showStyledConfirm("Clear all pins and tracks?", () => {
+    showStyledConfirm("Clear all Pin Tool pins?", () => {
       // User confirmed - call the clear all pins function
       if (window.clearAllPins) {
-        // Call the actual clear logic without the confirm dialog
-        const customPins = window.customPins || [];
-        const map = window.WITD?.map;
-        
-        if (!map) {
-          console.warn("🗺️ Map not ready");
-          return;
-        }
-        
-        customPins.forEach(pin => {
-          if (pin.marker && pin.marker.element) {
-            pin.marker.element.remove();
-          }
-          if (pin.labelMarker && pin.labelMarker.element) {
-            pin.labelMarker.element.remove();
-          }
-        });
-        customPins.length = 0;
-        if (window.savePins) window.savePins(customPins);
-        
-        // Clear GPX tracks
-        if (window.clearAllGpxTracks) {
-          console.log('[Clear] Clearing all GPX tracks...');
-          window.clearAllGpxTracks();
-        }
-        
-        // Try to save to secure backend
-        try {
-          if (window.WITD?.apiManager) {
-            console.log('[Pins] Attempting to save cleared pins to secure backend...');
-            window.WITD.apiManager.savePins([]);
-            console.log('[Pins] Successfully saved cleared pins to backend');
-          }
-        } catch (error) {
-          console.log('[Pins] Backend save failed, using local only:', error.message);
-        }
+        window.clearAllPins();
       }
     });
   });
@@ -2349,6 +2286,7 @@ supabase.auth.getUser().then(({ data: { user } }) => {
   } else {
     // No user logged in, ensure free user styling is applied
     currentUserPlan = 'free';
+    window.currentUserPlan = currentUserPlan; // Make it globally accessible
     applyPremiumStyling();
   }
 });
@@ -2378,16 +2316,18 @@ supabase.auth.onAuthStateChange((event, session) => {
   } else if (event === 'SIGNED_OUT') {
     loggedInUser = null;
     currentUserPlan = 'free';
+    window.currentUserPlan = currentUserPlan; // Make it globally accessible
     console.log("👋 User signed out");
     applyPremiumStyling(); // Apply free user styling
     
     // Reset plan loading flag for next login
     resetPlanLoaded();
     
-    // Update modal content if it's open
+    // Close the login modal if it's open
     if (loginModal.style.display === 'block') {
-      updateLoginModalContent();
+      loginModal.style.display = 'none';
     }
+    
   }
 });
 
@@ -2479,6 +2419,7 @@ document.addEventListener('DOMContentLoaded', () => {
 // Function to manually set premium status for testing
 function setPremiumStatus(isPremium) {
   currentUserPlan = isPremium ? 'premium' : 'free';
+  window.currentUserPlan = currentUserPlan;
   console.log(`[Testing] Manually set plan to: ${currentUserPlan}`);
   applyPremiumStyling();
 }
@@ -3016,7 +2957,7 @@ async function loginWithGoogle() {
     await window.supabaseClient.auth.signInWithOAuth({
       provider: 'google',
       options: {
-        redirectTo: window.location.origin + '/map.html',
+        redirectTo: window.location.origin + window.location.pathname,
         prompt: 'select_account',
         scopes: 'https://www.googleapis.com/auth/userinfo.email https://www.googleapis.com/auth/userinfo.profile'
       }
@@ -3088,7 +3029,7 @@ document.addEventListener('DOMContentLoaded', function() {
       window.supabaseClient.auth.signInWithOAuth({
         provider: 'google',
         options: {
-          redirectTo: window.location.origin + '/map.html',
+          redirectTo: window.location.origin + window.location.pathname,
           prompt: 'select_account',
           scopes: 'https://www.googleapis.com/auth/userinfo.email https://www.googleapis.com/auth/userinfo.profile'
         }

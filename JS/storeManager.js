@@ -351,6 +351,14 @@ export async function savePins(customPins) {
 
 export async function loadPins(map, customPins, attachPopupActions) {
   console.log('🚨 [loadPins] FUNCTION CALLED with map:', map, 'customPins:', customPins);
+  
+  // Check if user is logged in before loading data
+  const { data: { user } } = await supabase.auth.getUser();
+  if (!user) {
+    console.log('[Pins] No user logged in, skipping pin loading');
+    return;
+  }
+  
   // 🔧 Safe JSON.parse with error handling
   let savedPins = [];
   try {
@@ -477,7 +485,7 @@ export async function loadPins(map, customPins, attachPopupActions) {
         name: data.name,
         lng: data.lng,
         lat: data.lat,
-        style: data.style || { variant: 'orange', size: 1.2 }
+        style: data.style || { variant: 'orange', size: 0.3 }
       };
       
       // Create Mapbox marker using unified builder
@@ -511,9 +519,17 @@ export async function loadPins(map, customPins, attachPopupActions) {
       };
       customPins.push(pin);
       
-      // Bind popup actions (with built-in delay and retry logic)
+      // Bind popup actions using the main binding function from pinManager
       console.log('[loadPins] About to bind popup actions for loaded pin:', data.name);
-      bindPopupActions(marker, pin);
+      // Use a longer delay to ensure popup is rendered
+      setTimeout(() => {
+        // Call the bindPopupActions function from pinManager.js
+        if (typeof window.bindPopupActions === 'function') {
+          window.bindPopupActions(marker, pin);
+        } else {
+          console.warn('[loadPins] bindPopupActions not available, skipping binding');
+        }
+      }, 500);
         
       console.log(`[Pins] Added pin: ${data.name} at [${data.lat}, ${data.lng}]`);
     } catch (error) {
@@ -887,7 +903,7 @@ function reopenRename(marker, pin) {
       name: newName,
       lng: pin.lng,
       lat: pin.lat,
-      style: pin.style || { variant: 'orange', size: 1.2 }
+      style: pin.style || { variant: 'orange', size: 0.3 }
     };
     
     const newPopup = createPinPopup(pinData);
@@ -917,7 +933,14 @@ export function saveTracks(drawnTracks) {
   localStorage.setItem('witd_tracks', JSON.stringify(saveData));
 }
 
-export function loadTracks(map, drawnTracks, drawTrackLabel) {
+export async function loadTracks(map, drawnTracks, drawTrackLabel) {
+  // Check if user is logged in before loading data
+  const { data: { user } } = await supabase.auth.getUser();
+  if (!user) {
+    console.log('[Tracks] No user logged in, skipping track loading');
+    return;
+  }
+  
   const savedTracks = JSON.parse(localStorage.getItem('witd_tracks') || '[]');
   savedTracks.forEach((data, index) => {
     if (data.coords && data.coords.length >= 2) {
@@ -989,7 +1012,14 @@ export function saveGpxFiles(gpxFiles) {
   localStorage.setItem('witd_gpx_files', JSON.stringify(gpxFiles));
 }
 
-export function loadGpxFiles(map, gpxFiles, addGpxToMap) {
+export async function loadGpxFiles(map, gpxFiles, addGpxToMap) {
+  // Check if user is logged in before loading data
+  const { data: { user } } = await supabase.auth.getUser();
+  if (!user) {
+    console.log('[GPX] No user logged in, skipping GPX loading');
+    return;
+  }
+  
   const saved = JSON.parse(localStorage.getItem('witd_gpx_files') || '[]');
   saved.forEach(file => {
     addGpxToMap(file.name, file.content);

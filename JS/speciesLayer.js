@@ -1,5 +1,22 @@
 console.log("Module loaded: speciesLayer");
 
+// Function to close any existing species popups
+function closeSpeciesPopups() {
+  const map = window.WITD?.map;
+  if (map) {
+    // Close all popups on the map
+    const popups = document.querySelectorAll('.mapboxgl-popup');
+    popups.forEach(popup => {
+      if (popup.closest('.mapboxgl-popup-content')?.textContent?.includes('Species:')) {
+        popup.remove();
+      }
+    });
+  }
+}
+
+// Make the function globally available
+window.closeSpeciesPopups = closeSpeciesPopups;
+
 document.addEventListener("DOMContentLoaded", () => {
   const checkMapReady = setInterval(() => {
     if (window.WITD && window.WITD.map) {
@@ -122,8 +139,16 @@ window.switchSpeciesLayer = function(name) {
       }
     });
 
-    // Add popup functionality
+    // Add popup functionality (only when not drawing or placing pins)
     map.on('click', 'species-fill', (e) => {
+      console.log('[species] Species layer click detected, pinMode:', window.WITD?.pinMode, 'processingPinPlacement:', window.WITD?.processingPinPlacement, 'drawing active:', window.WITD?.draw?.isActive?.(), 'target:', e.originalEvent?.target?.tagName);
+      
+      // Skip species popup if user is drawing or placing pins
+      if ((window.WITD?.draw?.isActive && window.WITD.draw.isActive()) || window.WITD?.pinMode || window.WITD?.processingPinPlacement) {
+        console.log('[species] Skipping popup - user is drawing or placing pin');
+        return;
+      }
+      
       if (e.features.length > 0) {
         const feature = e.features[0];
         const props = feature.properties;
@@ -135,12 +160,20 @@ window.switchSpeciesLayer = function(name) {
       }
     });
 
-    // Change cursor on hover
+    // Change cursor on hover (only when not drawing or placing pins)
     map.on('mouseenter', 'species-fill', () => {
+      // Don't change cursor if user is drawing or placing pins
+      if ((window.WITD?.draw?.isActive && window.WITD.draw.isActive()) || window.WITD?.pinMode || window.WITD?.processingPinPlacement) {
+        return;
+      }
       map.getCanvas().style.cursor = 'pointer';
     });
 
     map.on('mouseleave', 'species-fill', () => {
+      // Don't change cursor if user is drawing or placing pins
+      if ((window.WITD?.draw?.isActive && window.WITD.draw.isActive()) || window.WITD?.pinMode || window.WITD?.processingPinPlacement) {
+        return;
+      }
       map.getCanvas().style.cursor = '';
     });
 

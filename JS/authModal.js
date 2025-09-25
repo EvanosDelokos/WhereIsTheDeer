@@ -54,7 +54,7 @@ class AuthModal {
           await window.supabaseClient.auth.signInWithOAuth({
             provider: 'google',
             options: {
-              redirectTo: window.location.origin + '/map.html',
+              redirectTo: window.location.origin + '/map',
               scopes: 'https://www.googleapis.com/auth/userinfo.email https://www.googleapis.com/auth/userinfo.profile'
             }
           });
@@ -72,7 +72,7 @@ class AuthModal {
           await window.supabaseClient.auth.signInWithOAuth({
             provider: 'google',
             options: {
-              redirectTo: window.location.origin + '/map.html',
+              redirectTo: window.location.origin + '/map',
               scopes: 'https://www.googleapis.com/auth/userinfo.email https://www.googleapis.com/auth/userinfo.profile'
             }
           });
@@ -201,7 +201,7 @@ class AuthModal {
         email: email,
         password: password,
         options: {
-          emailRedirectTo: window.location.origin + '/map.html'
+          emailRedirectTo: window.location.origin + '/map'
         }
       });
 
@@ -242,7 +242,7 @@ class AuthModal {
       console.log('📧 Sending password reset email...');
       
       const { data, error } = await window.supabaseClient.auth.resetPasswordForEmail(email, {
-        redirectTo: window.location.origin + '/map.html'
+        redirectTo: window.location.origin + '/map'
       });
 
       if (error) {
