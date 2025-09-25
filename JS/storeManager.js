@@ -529,7 +529,7 @@ export async function loadPins(map, customPins, attachPopupActions) {
         } else {
           console.warn('[loadPins] bindPopupActions not available, skipping binding');
         }
-      }, 500);
+      }, 1000); // Increased from 500ms to 1000ms
         
       console.log(`[Pins] Added pin: ${data.name} at [${data.lat}, ${data.lng}]`);
     } catch (error) {
