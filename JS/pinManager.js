@@ -263,19 +263,20 @@ function createPinOnMap(pin) {
     };
     
     // Create Mapbox marker using unified builder
-    const marker = createPinMarker(pinData, { onClick: () => marker.togglePopup() });
+    const marker = createPinMarker(pinData, { 
+      onClick: () => {
+        marker.togglePopup();
+        // Bind popup actions when popup is opened
+        setTimeout(() => {
+          bindPopupActions(marker, pinObj);
+        }, 50);
+      }
+    });
     marker.addTo(map);
     
     // Create popup using unified builder
     const popup = createPinPopup(pinData);
     marker.setPopup(popup);
-    
-    // Force the popup to be rendered by opening it and keeping it open briefly
-    marker.togglePopup();
-    // Keep popup open for a moment to ensure it's rendered
-    setTimeout(() => {
-      marker.togglePopup();
-    }, 100);
     
     // Create label marker
     const labelMarker = new mapboxgl.Marker({
@@ -296,13 +297,6 @@ function createPinOnMap(pin) {
     };
     
     window.customPins.push(pinObj);
-    
-    // Bind popup actions after popup is set and rendered
-    console.log('[createPinOnMap] About to bind popup actions for pin:', pin.name);
-    // Use a longer delay to ensure popup is rendered
-    setTimeout(() => {
-      bindPopupActions(marker, pinObj);
-    }, 500);
     
     console.log(`[createPinOnMap] Successfully created pin: ${pin.name} at [${pin.lat}, ${pin.lng}]`);
   } catch (error) {
@@ -393,15 +387,27 @@ async function loadPinsFromSupabaseAndUpdateLocal() {
 // Make manual load function globally accessible
 window.loadPinsFromSupabaseAndUpdateLocal = loadPinsFromSupabaseAndUpdateLocal;
 
+// Make bindPopupActions globally accessible
+window.bindPopupActions = bindPopupActions;
+
+// Function to clean pin data for serialization (remove circular references)
+function cleanPinDataForSerialization(pins) {
+  return pins.map(pin => ({
+    id: pin.marker?.id || pin.id,
+    name: pin.name,
+    lat: pin.lat,
+    lng: pin.lng,
+    style: pin.style || { variant: 'orange', size: 0.3 }
+  }));
+}
+
 // === POPUP ACTION BINDING FUNCTIONS ===
 function bindPopupActions(marker, pin) {
   console.log('🚨 [bindPopupActions] FUNCTION CALLED for pin:', pin.name);
-  console.log('🚨 [bindPopupActions] Marker:', marker);
-  console.log('🚨 [bindPopupActions] Pin object:', pin);
   
   // Try to get popup element with retries
   let attempts = 0;
-  const maxAttempts = 30; // Increased from 20
+  const maxAttempts = 5; // Reduced further since we're calling this when popup opens
   
   const tryBind = () => {
     attempts++;
@@ -411,7 +417,10 @@ function bindPopupActions(marker, pin) {
     if (!popup) {
       console.log('[bindPopupActions] No popup object found');
       if (attempts < maxAttempts) {
-        setTimeout(tryBind, 150); // Increased delay
+        setTimeout(tryBind, 100);
+        return;
+      } else {
+        console.error('[bindPopupActions] Failed to get popup after', maxAttempts, 'attempts');
         return;
       }
     }
@@ -426,17 +435,10 @@ function bindPopupActions(marker, pin) {
     }
     
     if (attempts < maxAttempts) {
-      console.log('[bindPopupActions] Popup element not ready, retrying in 150ms...');
-      setTimeout(tryBind, 150); // Increased delay
+      console.log('[bindPopupActions] Popup element not ready, retrying in 100ms...');
+      setTimeout(tryBind, 100);
     } else {
       console.error('[bindPopupActions] Failed to get popup element after', maxAttempts, 'attempts');
-      // Try alternative approach - force popup to render
-      console.log('[bindPopupActions] Trying alternative approach - forcing popup render');
-      marker.togglePopup();
-      setTimeout(() => {
-        marker.togglePopup();
-        setTimeout(tryBind, 200);
-      }, 100);
     }
   };
   
@@ -1103,7 +1105,9 @@ async function persistPins(pins = []) {
       localStorage.removeItem('witd_pins_last_update');
       console.log("🗑️ Cleared pins from localStorage");
     } else {
-      localStorage.setItem('witd_pins', JSON.stringify(pins));
+      // Clean pin data to remove circular references before serialization
+      const cleanPins = cleanPinDataForSerialization(pins);
+      localStorage.setItem('witd_pins', JSON.stringify(cleanPins));
       localStorage.setItem('witd_pins_last_update', Date.now().toString());
       console.log(`💾 Saved ${pins.length} pins to localStorage`);
     }
@@ -1113,7 +1117,9 @@ async function persistPins(pins = []) {
 
   if (window.savePins) {
     try {
-      await window.savePins(pins);
+      // Use cleaned pins for Supabase sync as well
+      const cleanPins = pins.length > 0 ? cleanPinDataForSerialization(pins) : pins;
+      await window.savePins(cleanPins);
       console.log("☁️ Synced pins to Supabase");
     } catch (err) {
       console.error("❌ Error syncing pins to Supabase:", err);

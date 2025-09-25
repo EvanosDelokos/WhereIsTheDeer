@@ -489,16 +489,22 @@ export async function loadPins(map, customPins, attachPopupActions) {
       };
       
       // Create Mapbox marker using unified builder
-      const marker = createPinMarker(pinData, { onClick: () => marker.togglePopup() });
+      const marker = createPinMarker(pinData, { 
+        onClick: () => {
+          marker.togglePopup();
+          // Bind popup actions when popup is opened
+          setTimeout(() => {
+            if (typeof window.bindPopupActions === 'function') {
+              window.bindPopupActions(marker, pin);
+            }
+          }, 50);
+        }
+      });
       marker.addTo(map);
       
       // Create popup using unified builder
       const popup = createPinPopup(pinData);
       marker.setPopup(popup);
-      
-      // Force the popup to be rendered by opening and closing it
-      marker.togglePopup();
-      marker.togglePopup();
       
       // Create label marker
       const labelMarker = new mapboxgl.Marker({
@@ -518,18 +524,6 @@ export async function loadPins(map, customPins, attachPopupActions) {
         style: pinData.style
       };
       customPins.push(pin);
-      
-      // Bind popup actions using the main binding function from pinManager
-      console.log('[loadPins] About to bind popup actions for loaded pin:', data.name);
-      // Use a longer delay to ensure popup is rendered
-      setTimeout(() => {
-        // Call the bindPopupActions function from pinManager.js
-        if (typeof window.bindPopupActions === 'function') {
-          window.bindPopupActions(marker, pin);
-        } else {
-          console.warn('[loadPins] bindPopupActions not available, skipping binding');
-        }
-      }, 1000); // Increased from 500ms to 1000ms
         
       console.log(`[Pins] Added pin: ${data.name} at [${data.lat}, ${data.lng}]`);
     } catch (error) {
