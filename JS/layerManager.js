@@ -101,6 +101,9 @@ window.switchBaseLayer = function(name) {
       map.setPitch(currentPitch);
       map.setBearing(currentBearing);
       
+      // Restore user tracks after style switch
+      restoreUserTracksAfterStyleSwitch();
+      
       // Add contour functionality when switching to contours layer
       if (layerName === 'contours') {
         // Add terrain source
@@ -292,3 +295,28 @@ window.switchBaseLayer = function(name) {
     console.warn(`Base layer "${name}" not found. Available layers:`, Object.keys(layers));
   }
 };
+
+// Function to restore user tracks after style switch
+function restoreUserTracksAfterStyleSwitch() {
+  console.log('[LayerManager] Restoring user tracks after style switch...');
+  
+  // Restore draw tracks if draw module is available
+  if (window.WITD && window.WITD.draw && typeof window.WITD.draw.restoreAfterStyleSwitch === 'function') {
+    console.log('[LayerManager] Restoring draw tracks...');
+    window.WITD.draw.restoreAfterStyleSwitch();
+  }
+  
+  // Wait a moment before restoring GPX tracks to prevent conflicts
+  setTimeout(() => {
+    // Restore GPX tracks if GPX manager is available
+    if (typeof window.restoreGPXTracksAfterStyleSwitch === 'function') {
+      console.log('[LayerManager] Restoring GPX tracks...');
+      window.restoreGPXTracksAfterStyleSwitch();
+    }
+  }, 500);
+  
+  // Note: Saved tracks are handled by the draw module's restore function
+  // since they are part of the drawn tracks feature collection
+  
+  console.log('[LayerManager] User tracks restoration complete');
+}

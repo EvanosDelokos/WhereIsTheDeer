@@ -1270,6 +1270,78 @@ body, html {
   cursor: pointer;
 }
 
+#gps-button {
+  border: none;
+  background: #fff;
+  border-radius: 50%;
+  width: 32px;
+  height: 32px;
+  margin-left: 6px;
+  font-size: 16px;
+  cursor: pointer;
+  box-shadow: 0 1px 4px rgba(0,0,0,0.3);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: all 0.2s ease;
+}
+
+#gps-button:hover {
+  background: #f0f0f0;
+  transform: scale(1.05);
+}
+
+#gps-button:active {
+  transform: scale(0.95);
+}
+
+/* Search Marker Popup Styling */
+.search-marker-popup {
+  background: white;
+  border-radius: 8px;
+  padding: 12px 16px;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
+  border: 1px solid #e0e0e0;
+  min-width: 200px;
+  max-width: 300px;
+}
+
+.search-marker-content {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 12px;
+}
+
+.search-marker-text {
+  flex: 1;
+  word-break: break-word;
+  overflow-wrap: anywhere;
+  font-size: 14px;
+  color: #333;
+  line-height: 1.4;
+}
+
+.search-marker-delete {
+  border: none;
+  background: #f0f0f0;
+  border-radius: 4px;
+  cursor: pointer;
+  padding: 4px 8px;
+  flex-shrink: 0;
+  font-size: 16px;
+  transition: all 0.2s ease;
+}
+
+.search-marker-delete:hover {
+  background: #dc3545;
+  transform: scale(1.1);
+}
+
+.search-marker-delete:active {
+  transform: scale(0.95);
+}
+
 .mapboxgl-popup-content {
   margin: 8px 12px !important;
   font-size: 16px;
@@ -2105,8 +2177,29 @@ button[data-layer].active {
     width: 220px;
   }
   
+  #gps-button {
+    width: 28px;
+    height: 28px;
+    font-size: 14px;
+  }
+  
   .help-icon {
     font-size: 16px;
+  }
+  
+  .search-marker-popup {
+    padding: 10px 12px;
+    min-width: 180px;
+    max-width: 250px;
+  }
+  
+  .search-marker-text {
+    font-size: 13px;
+  }
+  
+  .search-marker-delete {
+    font-size: 14px;
+    padding: 3px 6px;
   }
   
   .mapboxgl-popup-content {
@@ -2176,8 +2269,30 @@ button[data-layer].active {
     width: 180px;
   }
   
+  #gps-button {
+    width: 24px;
+    height: 24px;
+    font-size: 12px;
+    margin-left: 4px;
+  }
+  
   .help-icon {
     font-size: 14px;
+  }
+  
+  .search-marker-popup {
+    padding: 8px 10px;
+    min-width: 160px;
+    max-width: 220px;
+  }
+  
+  .search-marker-text {
+    font-size: 12px;
+  }
+  
+  .search-marker-delete {
+    font-size: 12px;
+    padding: 2px 5px;
   }
   
   .mapboxgl-popup-content {

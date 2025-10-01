@@ -95,6 +95,51 @@ document.addEventListener("DOMContentLoaded", () => {
   // Add fullscreen control
   map.addControl(new mapboxgl.FullscreenControl(), 'top-right');
 
+  // Add geolocate control (hidden, controlled by GPS button)
+  const geolocateControl = new mapboxgl.GeolocateControl({
+    positionOptions: {
+      enableHighAccuracy: true
+    },
+    trackUserLocation: false, // Don't continuously track - only locate once
+    showUserHeading: true,
+    showAccuracyCircle: true,
+    fitBoundsOptions: {
+      maxZoom: 15 // Zoom to level 15 when location is found
+    }
+  });
+  map.addControl(geolocateControl, 'top-right');
+  
+  // Hide the default geolocate button (we use custom GPS button)
+  const geolocateBtn = document.querySelector('.mapboxgl-ctrl-geolocate');
+  if (geolocateBtn) {
+    geolocateBtn.style.display = 'none';
+  }
+  
+  // Log when location is found
+  geolocateControl.on('geolocate', (position) => {
+    console.log('[GPS] Location found:', position.coords.latitude, position.coords.longitude);
+  });
+  
+  // Handle GPS errors
+  geolocateControl.on('error', (error) => {
+    console.error('[GPS] Geolocation error:', error);
+    alert('Unable to access your location. Please enable location services in your browser.');
+  });
+  
+  // Hook up custom GPS button
+  setTimeout(() => {
+    const gpsButton = document.getElementById('gps-button');
+    if (gpsButton) {
+      gpsButton.addEventListener('click', () => {
+        console.log('[GPS] GPS button clicked');
+        geolocateControl.trigger();
+      });
+      console.log('[GPS] GPS button listener attached');
+    } else {
+      console.warn('[GPS] GPS button not found');
+    }
+  }, 100);
+
   // Reposition Mapbox controls after map loads
   map.on('load', () => {
     // Function to reposition controls

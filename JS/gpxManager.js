@@ -175,35 +175,27 @@ function initGpxManager(map) {
   waitForStyleAndInit();
 
   // Listen for style changes (like switching between 2D/3D modes)
-  map.on('styledata', () => {
-    console.log("[GPX] Map style changed, checking if we need to reinitialize...");
-    
-    // Check if our source and layer still exist
-    const source = map.getSource(gpxSourceId);
-    const layer = map.getLayer(gpxLayerId);
-    
-    if (!source || !layer) {
-      console.log("[GPX] Source or layer missing after style change, reinitializing...");
-      // Wait a bit for the style to fully load, then recreate
-      setTimeout(() => {
-        if (map.isStyleLoaded()) {
-          createGpxSourceAndLayer();
-          // Restore any existing GPX data
-          if (gpxFiles.length > 0) {
-            console.log("[GPX] Restoring", gpxFiles.length, "existing GPX tracks after style change");
-            restoreGpxTracksAfterStyleChange();
-          }
-        }
-      }, 500);
-    }
-  });
+  let styleChangeInProgress = false;
+  // Disabled automatic restoration - now handled by layerManager.js
+  // map.on('styledata', () => {
+  //   console.log("[GPX] Map style changed, checking if we need to reinitialize...");
+  //   // ... (rest of the code commented out)
+  // });
 
   function createGpxSourceAndLayer() {
     try {
       // Check if source/layer already exist
       if (map.getSource(gpxSourceId)) {
-        console.log("[GPX] GPX source already exists");
-        return;
+        console.log("[GPX] GPX source already exists, removing old source and layer first");
+        // Remove existing layers first
+        if (map.getLayer('gpx-track-labels')) {
+          map.removeLayer('gpx-track-labels');
+        }
+        if (map.getLayer(gpxLayerId)) {
+          map.removeLayer(gpxLayerId);
+        }
+        // Remove existing source
+        map.removeSource(gpxSourceId);
       }
 
       console.log("[GPX] Creating new GPX source and layer");
@@ -448,7 +440,7 @@ function initGpxManager(map) {
     }
   }
 
-  function addGpxToMap(gpxData, fileName) {
+  function addGpxToMap(gpxData, fileName, shouldFitBounds = true) {
     try {
       console.log(`[GPX] Adding GPX to map: ${fileName}`);
       
@@ -508,8 +500,8 @@ function initGpxManager(map) {
 
       // Start/end pins are now handled by addStartEndPinsToMap
 
-      // Fit map to show all tracks
-      if (allTrackFeatures.length > 0) {
+      // Fit map to show all tracks (only when loading new tracks, not during restoration)
+      if (shouldFitBounds && allTrackFeatures.length > 0) {
         const bounds = calculateBounds(allTrackFeatures);
         if (bounds) {
           console.log(`[GPX] Fitting map to bounds:`, bounds);
@@ -520,6 +512,8 @@ function initGpxManager(map) {
             console.warn("[GPX] Could not fit map to bounds:", error);
           }
         }
+      } else if (!shouldFitBounds) {
+        console.log("[GPX] Skipping map fit bounds during restoration");
       }
 
       // Save to storage
@@ -667,10 +661,18 @@ function initGpxManager(map) {
       return;
     }
     
+    // Clear existing source data first to prevent duplicates
+    source.setData({
+      type: 'FeatureCollection',
+      features: []
+    });
+    
     // Collect all features from all GPX files
     const allFeatures = [];
     gpxFiles.forEach(file => {
-      if (file.data && file.data.features) {
+      if (file.data && file.data.tracks && file.data.tracks.features) {
+        allFeatures.push(...file.data.tracks.features);
+      } else if (file.data && file.data.features) {
         allFeatures.push(...file.data.features);
       }
     });
@@ -683,20 +685,21 @@ function initGpxManager(map) {
         });
         console.log(`[GPX] Successfully restored ${allFeatures.length} track features after style change`);
         
+        // Clear existing HTML track labels to prevent duplicates
+        const existingLabels = document.querySelectorAll('.track-label-container');
+        existingLabels.forEach(label => label.remove());
+        
         // Restore start/end pins for all tracks
         gpxFiles.forEach(file => {
-          if (file.data && file.data.features) {
+          if (file.data && (file.data.features || file.data.tracks?.features)) {
+            const features = file.data.features || file.data.tracks.features;
             // Use the new start/end pin system
-            addStartEndPinsToMap(map, file.data.features, file.name);
+            addStartEndPinsToMap(map, features, file.name);
           }
         });
         
-        // Fit map to show all restored tracks
-        const bounds = calculateBounds(allFeatures);
-        if (bounds) {
-          map.fitBounds(bounds, { padding: 50 });
-          console.log("[GPX] Map fitted to show restored tracks");
-        }
+        // Don't fit map to tracks during restoration - user might be viewing another area
+        console.log("[GPX] Track features restored without changing map view");
       } catch (error) {
         console.error("[GPX] Error restoring tracks after style change:", error);
       }
@@ -861,6 +864,16 @@ function initGpxManager(map) {
     try {
       console.log(`[GPX Pins] Adding clustered start/end pins for ${fileName}`);
       
+      // Check if pins for this track already exist to prevent duplicates
+      const existingPins = gpxPinsData.features.filter(feature => 
+        feature.properties.fileName === fileName
+      );
+      
+      if (existingPins.length > 0) {
+        console.log(`[GPX Pins] Pins for ${fileName} already exist, skipping...`);
+        return;
+      }
+      
       // Collect all pins for this track
       const pins = [];
       trackFeatures.forEach((track, trackIndex) => {
@@ -909,6 +922,13 @@ function initGpxManager(map) {
         addPinsToClusteredSource(map, pins);
       }
 
+      // Check if track label already exists to prevent duplicates
+      const existingLabel = document.querySelector(`.track-label-container[data-file-name="${fileName}"]`);
+      if (existingLabel) {
+        console.log(`[GPX] Track label for ${fileName} already exists, skipping...`);
+        return;
+      }
+
       // Add track name label at the middle of the track
       if (trackFeatures.length > 0) {
         const track = trackFeatures[0]; // Get the first (and only) track
@@ -920,6 +940,7 @@ function initGpxManager(map) {
           // Create styled track label element
           const trackLabelEl = document.createElement('div');
           trackLabelEl.className = 'track-label-container';
+          trackLabelEl.setAttribute('data-file-name', fileName);
           trackLabelEl.innerHTML = `
             <div class="track-label-popup">
               <div class="track-label-header">
@@ -992,6 +1013,65 @@ function initGpxManager(map) {
     console.log("- Start/end pin layers exist:", !!map.getLayer('start-pin-'));
     console.log("- Current gpxFiles count:", gpxFiles.length);
     console.log("- Map object:", map);
+  };
+
+  // Function to restore GPX tracks after style switch
+  window.restoreGPXTracksAfterStyleSwitch = function() {
+    console.log('[GPX] Restoring GPX tracks after style switch...');
+    
+    const currentMap = window.WITD?.map;
+    if (!currentMap) {
+      console.warn('[GPX] Map not available for restoration');
+      return;
+    }
+    
+    // Update the map reference
+    map = currentMap;
+    
+    if (gpxFiles.length === 0) {
+      console.log('[GPX] No GPX files to restore, but ensuring source and layer exist for future uploads');
+      // Still create the source and layer even if no files to restore
+    }
+    
+    // Clear existing HTML track labels to prevent duplicates
+    const existingLabels = document.querySelectorAll('.track-label-container');
+    existingLabels.forEach(label => label.remove());
+    
+    // Clear existing pins data to prevent duplicates
+    gpxPinsData.features = [];
+    
+    // Wait for map style to be loaded before creating source and layer
+    const waitForStyleAndRestore = () => {
+      if (map.isStyleLoaded()) {
+        console.log('[GPX] Map style loaded, creating source and layer...');
+        try {
+          // Re-create the source and layer
+          createGpxSourceAndLayer();
+          
+          // Wait longer for source/layer to be created and map to be fully ready
+          setTimeout(() => {
+            try {
+              if (gpxFiles.length > 0) {
+                // Use the restore function instead of re-adding each file
+                restoreGpxTracksAfterStyleChange();
+                console.log(`[GPX] Restored ${gpxFiles.length} GPX files`);
+              } else {
+                console.log('[GPX] No GPX files to restore, but source and layer are ready for future uploads');
+              }
+            } catch (error) {
+              console.error('[GPX] Error during track restoration:', error);
+            }
+          }, 300); // Increased delay
+        } catch (error) {
+          console.error('[GPX] Error creating source and layer:', error);
+        }
+      } else {
+        console.log('[GPX] Map style not loaded yet, waiting...');
+        setTimeout(waitForStyleAndRestore, 100);
+      }
+    };
+    
+    waitForStyleAndRestore();
   };
 
   // GPX Zoom-based Visibility - Now handled by Mapbox clustering

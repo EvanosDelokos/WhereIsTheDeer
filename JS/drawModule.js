@@ -344,7 +344,7 @@
   }
 
   // --- init: call once after map exists ---
-  function init(mapInstance) {
+  function init(mapInstance, skipAutoLoad = false) {
     console.log('[draw] Initializing with map instance:', mapInstance);
     
     // Prevent multiple initializations
@@ -373,10 +373,12 @@
     ensureSourceAndLayer();
 
     // Load previously drawn tracks from Supabase after a short delay
-    // to ensure the map is fully ready
-    setTimeout(() => {
-      loadDrawnTracksFromSupabase();
-    }, 1000);
+    // to ensure the map is fully ready (unless skipAutoLoad is true)
+    if (!skipAutoLoad) {
+      setTimeout(() => {
+        loadDrawnTracksFromSupabase();
+      }, 1000);
+    }
 
     // Load drawing color from localStorage and Supabase
     setTimeout(() => {
@@ -460,6 +462,9 @@
 
   // Add a flag to prevent multiple simultaneous initialization attempts
   let isInitializing = false;
+  
+  // Track restoration state to prevent multiple simultaneous restoration attempts
+  let isRestoring = false;
   
   function ensureSourceAndLayer() {
     if (!map) {
@@ -1282,7 +1287,7 @@
   }
 
   // --- Track Label Management ---
-  function addDrawnTrackLabel(feature, isNewTrack = false) {
+  function addDrawnTrackLabel(feature, isNewTrack = false, startMinimized = false) {
     if (!map) return;
     
     const coordinates = feature.geometry.coordinates;
@@ -1529,15 +1534,15 @@
       const isCurrentlyEditing = editingTrackId === feature.properties.id;
       const isUnnamedTrack = !feature.properties.userNamed;
       
-      console.log(`[draw] Visibility update called for track: ${feature.properties.name}, zoom: ${zoom}`);
+      console.log(`[draw] Visibility update called for track: ${feature.properties.name}, zoom: ${zoom}, editing: ${isCurrentlyEditing}, unnamed: ${isUnnamedTrack}, startMinimized: ${startMinimized}`);
       
       // Always show the marker, but control visibility of content
-      if (isCurrentlyEditing || isUnnamedTrack) {
-        // Always show when editing or when it's an unnamed track
+      if (isCurrentlyEditing) {
+        // Always show when editing
         trackLabelEl.style.display = 'block';
-        console.log(`[draw] Showing full label (editing/unnamed) for track: ${feature.properties.name}`);
-      } else if (zoom < 8) {
-        // Hide when zoomed out (clustering) - but keep marker position
+        console.log(`[draw] Showing full label (editing) for track: ${feature.properties.name}`);
+      } else if (zoom < 8 || startMinimized) {
+        // Hide when zoomed out (clustering) or when starting minimized - but keep marker position
         trackLabelEl.style.display = 'block';
         // Hide the popup content but show the pin
         const trackPopup = trackLabelEl.querySelector('.track-label-popup');
@@ -1546,19 +1551,34 @@
           trackPopup.style.display = 'none';
           trackPin.style.display = 'block';
         }
-        console.log(`[draw] Showing pin only (zoomed out) for track: ${feature.properties.name}`);
+        console.log(`[draw] Showing pin only (zoomed out or startMinimized) for track: ${feature.properties.name}`);
       } else {
         // Show when zoomed in
         trackLabelEl.style.display = 'block';
         console.log(`[draw] Showing full label (zoomed in) for track: ${feature.properties.name}`);
+      }
+      
+      // Debug: Check if the element is actually visible
+      const computedStyle = window.getComputedStyle(trackLabelEl);
+      console.log(`[draw] Track ${feature.properties.name} computed display: ${computedStyle.display}, visibility: ${computedStyle.visibility}`);
+      
+      // If the element is hidden, force it to be visible (temporary fix)
+      if (computedStyle.display === 'none') {
+        console.log(`[draw] WARNING: Track ${feature.properties.name} was hidden, forcing visibility`);
+        trackLabelEl.style.display = 'block !important';
+        trackLabelEl.style.visibility = 'visible';
       }
     };
     
     // Initial visibility check
     updateLabelVisibility();
     
-    // Update visibility on zoom
-    map.on('zoom', updateLabelVisibility);
+    // Temporarily disable zoom-based visibility to debug the issue
+    // map.on('zoom', updateLabelVisibility);
+    
+    // Force visibility for debugging
+    trackLabelEl.style.display = 'block';
+    trackLabelEl.style.visibility = 'visible';
     
     // Store the update function for later use
     trackLabelMarker._updateVisibility = updateLabelVisibility;
@@ -2083,9 +2103,9 @@
               console.error('[draw] Error updating map source:', error);
             }
             
-            // Add labels for all loaded tracks
+            // Add labels for all loaded tracks (but start minimized)
             features.forEach((feature) => {
-              addDrawnTrackLabel(feature);
+              addDrawnTrackLabel(feature, false, true); // Third parameter: startMinimized
             });
           } else {
             console.warn('[draw] Map source still not ready after ensureSourceAndLayer, will retry when map is loaded');
@@ -2103,9 +2123,9 @@
                   map.getSource(SRC_ID).setData(featureCollection);
                   console.log('[draw] Loaded drawn tracks to map (retry)');
                   
-                  // Add labels for all loaded tracks
+                  // Add labels for all loaded tracks (but start minimized)
                   features.forEach((feature) => {
-                    addDrawnTrackLabel(feature);
+                    addDrawnTrackLabel(feature, false, true); // Third parameter: startMinimized
                   });
                 }
               });
@@ -2623,7 +2643,106 @@
       featureCount: featureCollection.features.length,
       currentColor: currentDrawColor,
       currentStyle: currentDrawStyle
-    })
+    }),
+    restoreAfterStyleSwitch: () => {
+      console.log('[draw] Restoring draw tracks after style switch...');
+      
+      // Prevent multiple simultaneous restoration attempts
+      if (isRestoring) {
+        console.log('[draw] Restoration already in progress, skipping...');
+        return;
+      }
+      
+      isRestoring = true;
+      
+      const currentMap = window.WITD?.map;
+      if (currentMap) {
+        // Store the current feature collection before cleanup (if any)
+        const savedFeatures = featureCollection.features.length > 0 ? [...featureCollection.features] : [];
+        console.log(`[draw] Preserving ${savedFeatures.length} features before restoration`);
+        
+        // Update the map reference
+        map = currentMap;
+        
+        // Restore the feature collection BEFORE creating the source
+        if (savedFeatures.length > 0) {
+          console.log(`[draw] Restoring ${savedFeatures.length} features to collection before source creation...`);
+          featureCollection.features = savedFeatures;
+        }
+        
+        // Force cleanup of existing source and layer before re-initialization
+        if (map.getSource(SRC_ID)) {
+          console.log('[draw] Removing existing source before restoration...');
+          map.removeSource(SRC_ID);
+        }
+        if (map.getLayer(LINE_LAYER_ID)) {
+          console.log('[draw] Removing existing layer before restoration...');
+          map.removeLayer(LINE_LAYER_ID);
+        }
+        
+        // Force re-initialization by temporarily clearing the map reference
+        const previousMap = map;
+        map = null;
+        
+        // Re-initialize the source and layer
+        init(previousMap, true); // Skip auto-load to prevent interference
+        
+        // Restore the map reference
+        map = previousMap;
+        
+        // Wait for the map style to be loaded, then create source and layer
+        const waitForStyleAndCreate = () => {
+          if (map.isStyleLoaded()) {
+            console.log('[draw] Map style loaded, creating source and layer...');
+            ensureSourceAndLayer();
+            
+            // Wait longer for the source and layer to be created and map to be fully ready
+            setTimeout(() => {
+              console.log('[draw] Checking source and layer after restoration...');
+              const source = map.getSource(SRC_ID);
+              const layer = map.getLayer(LINE_LAYER_ID);
+              console.log('[draw] Source exists:', !!source);
+              console.log('[draw] Layer exists:', !!layer);
+              
+              if (savedFeatures.length > 0) {
+                console.log(`[draw] Features should already be in source (${featureCollection.features.length} features)`);
+                
+                // Wait a bit more before restoring labels to ensure map is fully ready
+                setTimeout(() => {
+                  // Restore track labels for all features
+                  console.log('[draw] Restoring track labels...');
+                  savedFeatures.forEach(feature => {
+                    addDrawnTrackLabel(feature, false, true); // Third parameter: startMinimized
+                  });
+                  console.log(`[draw] Restored ${savedFeatures.length} track labels`);
+                  
+                  // Force a map update to ensure the features are rendered
+                  map.triggerRepaint();
+                  console.log('[draw] Triggered map repaint');
+                }, 200);
+              } else {
+                // If no local features, try to reload from Supabase
+                console.log('[draw] No local features, reloading from Supabase...');
+                setTimeout(() => {
+                  loadDrawnTracksFromSupabase();
+                }, 500);
+              }
+            }, 200); // Increased delay
+          } else {
+            console.log('[draw] Map style not loaded yet, waiting...');
+            setTimeout(waitForStyleAndCreate, 100);
+          }
+        };
+        
+        waitForStyleAndCreate();
+        
+        // Reset restoration flag
+        isRestoring = false;
+      } else {
+        console.log('[draw] Map not available for restoration');
+        isRestoring = false;
+      }
+    }
   };
 
   // Keep compatibility with your toolbar wiring:

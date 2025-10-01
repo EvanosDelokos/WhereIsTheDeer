@@ -1,0 +1,1094 @@
+Error in parsing value for ‘height’.  Declaration dropped. style.css:329:11
+Unknown pseudo-class or pseudo-element ‘-webkit-full-screen’.  Ruleset ignored due to bad selector. mapbox-gl.css:1:209
+Expected media feature name but found ‘-ms-high-contrast’. mapbox-gl.css:1:2477
+Expected media feature name but found ‘-ms-high-contrast’. mapbox-gl.css:1:2944
+Expected media feature name but found ‘-ms-high-contrast’. mapbox-gl.css:1:4436
+Expected media feature name but found ‘-ms-high-contrast’. mapbox-gl.css:1:5192
+Expected media feature name but found ‘-ms-high-contrast’. mapbox-gl.css:1:6949
+Expected media feature name but found ‘-ms-high-contrast’. mapbox-gl.css:1:7991
+Expected media feature name but found ‘-ms-high-contrast’. mapbox-gl.css:1:9348
+Expected media feature name but found ‘-ms-high-contrast’. mapbox-gl.css:1:9690
+Expected media feature name but found ‘-ms-high-contrast’. mapbox-gl.css:1:13657
+Expected media feature name but found ‘-ms-high-contrast’. mapbox-gl.css:1:17168
+Expected media feature name but found ‘-ms-high-contrast’. mapbox-gl.css:1:21747
+Expected media feature name but found ‘-ms-high-contrast’. mapbox-gl.css:1:24992
+Expected media feature name but found ‘-ms-high-contrast’. mapbox-gl.css:1:30309
+Expected media feature name but found ‘-ms-high-contrast’. mapbox-gl.css:1:30683
+Module loaded: mapEngine mapEngine.js:1:9
+Module loaded: layerManager (Mapbox GL JS) layerManager.js:1:9
+Module loaded: speciesLayer speciesLayer.js:1:9
+Module loaded: gpxManager (Mapbox GL JS) gpxManager.js:1:9
+[GPX] GPX Manager loaded, waiting for map to be ready... gpxManager.js:125:9
+[GPX] Checking for map... false false gpxManager.js:129:11
+[GPX] Map not ready yet, retrying in 100ms... gpxManager.js:134:13
+Module loaded: measurementModule measurementModule.js:4:9
+Module loaded: uiManager uiManager.js:1:9
+Module loaded: disclaimerModule disclaimerModule.js:1:9
+Module loaded: settings settings.js:1:9
+Module loaded: authModal authModal.js:1:9
+🚀 authModal.js script loaded successfully authModal.js:2:9
+🔄 Auth state change: SIGNED_IN 
+Object { access_token: "eyJhbGciOiJIUzI1NiIsImtpZCI6IlNxNVJFYUVVNjhSNGw5NjUiLCJ0eXAiOiJKV1QifQ.eyJpc3MiOiJodHRwczovL3Bkc2tva2lsc2FsamhhZ3Z3YXpuLnN1cGFiYXNlLmNvL2F1dGgvdjEiLCJzdWIiOiJlNGJkOWIzZS1kZDBkLTQxM2EtYjJmYi1iZWM1YjUzOGZiYzUiLCJhdWQiOiJhdXRoZW50aWNhdGVkIiwiZXhwIjoxNzU5Mjg3NjU2LCJpYXQiOjE3NTkyODQwNTYsImVtYWlsIjoiZXZhbmtva2ExMkBnbWFpbC5jb20iLCJwaG9uZSI6IiIsImFwcF9tZXRhZGF0YSI6eyJwcm92aWRlciI6Imdvb2dsZSIsInByb3ZpZGVycyI6WyJnb29nbGUiXX0sInVzZXJfbWV0YWRhdGEiOnsiYXZhdGFyX3VybCI6Imh0dHBzOi8vbGgzLmdvb2dsZXVzZXJjb250ZW50LmNvbS9hL0FDZzhvY0k3OWRadjNjU0dGVkVtMkNTRkFlUkJPdEZnREZkc1hFckI4aXMzSXFZNjFSVm4zdz1zOTYtYyIsImVtYWlsIjoiZXZhbmtva2ExMkBnbWFpbC5jb20iLCJlbWFpbF92ZXJpZmllZCI6dHJ1ZSwiZnVsbF9uYW1lIjoiRXZhbiBLb2thIiwiaXNzIjoiaHR0cHM6Ly9hY2NvdW50cy5nb29nbGUuY29tIiwibmFtZSI6IkV2YW4gS29rYSIsInBob25lX3ZlcmlmaWVkIjpmYWxzZSwicGljdHVyZSI6Imh0dHBzOi8vbGgzLmdvb2dsZXVzZXJjb250ZW50LmNvbS9hL0FDZzhvY0k3OWRadjNjU0dGVkVtMkNTRkFlUkJPdEZnREZkc1hFckI4aXMzSXFZNjFSVm4zdz1zOTYtYyIsInByb3ZpZGVyX2lkIjoiMTEzMjgxOTAzNzcxMzg1NTI1OTQwIiwic3ViIjoiMTEzMjgxOTAzNzcxMzg1NTI1OTQwIn0sInJvbGUiOiJhdXRoZW50aWNhdGVkIiwiYWFsIjoiYWFsMSIsImFtciI6W3sibWV0aG9kIjoib2F1dGgiLCJ0aW1lc3RhbXAiOjE3NTg3ODA4OTJ9XSwic2Vzc2lvbl9pZCI6IjFiOThmMzlmLWYwNDktNDMwYi1iMmRmLTM0ZWI2OWE2ODQ5OCIsImlzX2Fub255bW91cyI6ZmFsc2V9.JoKoweG5uZp7Cwz2Sw94sEtekiMVp_77trJQrgm4xzY", token_type: "bearer", expires_in: 3600, expires_at: 1759287656, refresh_token: "ttjncuhglgq3", user: {…} }
+map:2299:11
+📡 fetchUserPlan() running... map:1410:11
+✅ User signed in: evankoka12@gmail.com map:2303:13
+🔹 getSession() called map:65:15
+✅ Session restored in <head>: evankoka12@gmail.com map:69:17
+📡 fetchUserPlan() skipped - plan already loaded map:1405:13
+📊 Current plan state: 
+Object { currentUserPlan: "free", planLoaded: true }
+map:1406:13
+[SearchUI] ===== MODULE STARTING (Mapbox Version) ===== searchUI.js:1:9
+[SearchUI] Module loaded - Mapbox-based search initialization... searchUI.js:2:9
+[SearchUI] DOM already loaded, initializing search... searchUI.js:347:11
+[SearchUI] Initializing search bar... searchUI.js:12:11
+[SearchUI] Map not available yet searchUI.js:17:13
+[SearchUI] ===== MODULE COMPLETE ===== searchUI.js:351:9
+🔐 API Manager loaded with premium feature protection apiManager.js:277:9
+Module loaded: storeManager (Mapbox GL JS) storeManager.js:1:9
+🔍 storeManager.js loaded successfully storeManager.js:2:9
+🔍 Debug function available: window.debugSupabasePins() storeManager.js:1056:9
+🔍 Simple debug function available: window.debugSupabaseSimple() storeManager.js:1118:9
+Module loaded: pinManager (Mapbox GL JS + DivIcon Label + Centered + Reload) pinManager.js:1:9
+🔍 pinManager.js loaded successfully pinManager.js:2:9
+[draw] Map not ready yet, waiting for it... drawModule.js:2852:13
+[draw] Still waiting for map... drawModule.js:2860:17
+Module loaded: weatherModule weatherModule.js:1:9
+Module loaded: main.js main.js:1:9
+Multiple GoTrueClient instances detected in the same browser context. It is not an error, but this should be avoided as it may produce undefined behavior when used concurrently under the same storage key. supabase.min.js:7:16661
+Module loaded: main.js - GPX forwarding removed main.js:69:9
+WEBGL_debug_renderer_info is deprecated in Firefox and will be removed. Please use RENDERER. mapbox-gl.js:43:582697
+Error in parsing value for ‘user-select’.  Declaration dropped. map:1:1
+Layer Manager ready: Mapbox styles configured. layerManager.js:36:11
+🔧 AuthModal constructor called authModal.js:7:13
+🔍 Elements found: 
+Object { loginModal: true, registerModal: true, loginCloseBtn: true, registerCloseBtn: true }
+authModal.js:23:13
+🔧 Adding event listener to loginCloseBtn authModal.js:97:15
+🔧 Adding event listener to registerCloseBtn authModal.js:107:15
+✅ Auth modal initialized authModal.js:351:11
+🔍 loginPopupClosefound: false map:1037:11
+❌ loginPopupClose not found map:1047:13
+⚠️ googleLoginBtn not found map:1104:13
+🛑 Missing gpxUploadProxy or gpxUpload input. map:2699:13
+🚨 [pinManager] About to load saved pins pinManager.js:723:11
+🚨 [loadPins] FUNCTION CALLED with map: 
+Object { _moving: false, _zooming: false, transform: {…}, _bearingSnap: 7, _respectPrefersReducedMotion: true, _renderFrameCallback: BoundFunctionObject, _repaint: false, _interactive: true, _minTileCacheSize: null, _maxTileCacheSize: null, … }
+ customPins: 
+Array [ {…}, {…} ]
+storeManager.js:353:11
+DOM loaded, initializing SSS module... main.js:73:11
+🔄 Initializing user state for: evankoka12@gmail.com map:2365:13
+📡 fetchUserPlan() skipped - plan already loaded map:1405:13
+📊 Current plan state: 
+Object { currentUserPlan: "free", planLoaded: true }
+map:1406:13
+[Init] Setting up unified gating for toolbar modals map:2386:11
+[Init] Modal protection will be applied after user plan is fetched map:2393:11
+[Init] Gating and popup logic initialized map:2395:11
+WebGL warning: texSubImage: Alpha-premult and y-flip are deprecated for non-DOM-Element uploads. 2
+"featureNamespace place-A of featureset place-labels's selector is not associated to the same source, skip this selector mapbox-gl.js:31:13666
+[GPX] Checking for map... true true gpxManager.js:129:11
+[GPX] Map found, initializing GPX manager gpxManager.js:131:13
+[GPX] initGpxManager called with map: true gpxManager.js:143:11
+[GPX] Setting up GPX manager for map: 
+Object { _moving: false, _zooming: false, transform: {…}, _bearingSnap: 7, _respectPrefersReducedMotion: true, _renderFrameCallback: BoundFunctionObject, _repaint: false, _interactive: true, _minTileCacheSize: null, _maxTileCacheSize: null, … }
+gpxManager.js:154:11
+[GPX] Checking map style status... gpxManager.js:158:13
+[GPX] Map style loaded: false gpxManager.js:159:13
+[GPX] Map loaded: false gpxManager.js:160:13
+[GPX] Map style not ready yet, waiting for 'styledata' event... gpxManager.js:166:15
+[GPX] Zoom visibility now handled by Mapbox clustering system gpxManager.js:1078:11
+[GPX] GPX Manager initialized successfully gpxManager.js:1080:11
+[measurement] Initializing with map instance: 
+Object { _moving: false, _zooming: false, transform: {…}, _bearingSnap: 7, _respectPrefersReducedMotion: true, _renderFrameCallback: BoundFunctionObject, _repaint: false, _interactive: true, _minTileCacheSize: null, _maxTileCacheSize: null, … }
+measurementModule.js:25:13
+[SearchUI] Initializing search bar... searchUI.js:12:11
+[SearchUI] DOM elements found, setting up listeners... searchUI.js:31:11
+[SearchUI] Search listeners setup complete ✅ searchUI.js:33:11
+[draw] Map now available, initializing drawModule.js:2856:17
+[draw] Initializing with map instance: 
+Object { _moving: false, _zooming: false, transform: {…}, _bearingSnap: 7, _respectPrefersReducedMotion: true, _renderFrameCallback: BoundFunctionObject, _repaint: false, _interactive: true, _minTileCacheSize: null, _maxTileCacheSize: null, … }
+drawModule.js:348:13
+[draw] Map style not loaded yet, waiting... drawModule.js:477:15
+[draw] Adding event listeners to map drawModule.js:399:13
+[draw] Event listeners added successfully drawModule.js:402:13
+[draw] Initialization complete drawModule.js:414:13
+Drawing module auto-initialized drawModule.js:2858:17
+[GPX] 'styledata' event fired, creating source and layer gpxManager.js:168:17
+[GPX] Creating new GPX source and layer gpxManager.js:201:15
+[GPX] Mapbox source and layer created successfully gpxManager.js:246:15
+[GPX Icons] Adding GPX waypoint icons to map gpxManager.js:263:15
+[GPX] Created dedicated GPX manager input element gpxManager.js:299:13
+[GPX] Event listener attached to our input element gpxManager.js:307:13
+[draw] Map style now loaded, retrying source/layer creation... drawModule.js:479:17
+[draw] Map style not loaded yet, waiting... drawModule.js:477:15
+[draw] Map style now loaded, retrying source/layer creation... drawModule.js:479:17
+[draw] Map style not loaded yet, waiting... drawModule.js:477:15
+[draw] Map style now loaded, retrying source/layer creation... drawModule.js:479:17
+[draw] Map style not loaded yet, waiting... drawModule.js:477:15
+[GPS] GPS button listener attached mapEngine.js:137:15
+[Debug] updateButtonStyle called - currentUserPlan: free mapEngine.js:411:15
+[Debug] Setting button style for FREE user mapEngine.js:415:17
+[Styling] Applying premium styling for plan: free map:1528:11
+[Debug] updateButtonStyle called - currentUserPlan: free mapEngine.js:411:15
+[Debug] Setting button style for FREE user mapEngine.js:415:17
+[Styling] Free user - applying protection to premium features map:1587:13
+[Debug] Replaced button with new instance to clear old listeners 10 map:1657:13
+[draw] Map style now loaded, retrying source/layer creation... drawModule.js:479:17
+[draw] Map style not loaded yet, waiting... drawModule.js:477:15
+[GPX Icons] Added icon: StartPin gpxManager.js:278:19
+[draw] Map style now loaded, retrying source/layer creation... drawModule.js:479:17
+[draw] Map style not loaded yet, waiting... drawModule.js:477:15
+[GPX Icons] Added icon: RedMarkerPin gpxManager.js:278:19
+[draw] Map style now loaded, retrying source/layer creation... drawModule.js:479:17
+[draw] Map style not loaded yet, waiting... drawModule.js:477:15
+WebGL warning: texSubImage: Alpha-premult and y-flip are deprecated for non-DOM-Element uploads.
+[draw] Loaded color from localStorage: #00ffff drawModule.js:2297:17
+[draw] Updated style select UI to: solid drawModule.js:2427:15
+[draw] Updated thickness slider UI to: 3 drawModule.js:2455:15
+WebGL warning: texSubImage: Alpha-premult and y-flip are deprecated for non-DOM-Element uploads. 2
+📡 fetchUserPlan() skipped - plan already loaded map:1405:13
+📊 Current plan state: 
+Object { currentUserPlan: "free", planLoaded: true }
+map:1406:13
+Logged in: evankoka12@gmail.com map:2286:13
+🔄 Auth state change: INITIAL_SESSION 
+Object { access_token: "eyJhbGciOiJIUzI1NiIsImtpZCI6IlNxNVJFYUVVNjhSNGw5NjUiLCJ0eXAiOiJKV1QifQ.eyJpc3MiOiJodHRwczovL3Bkc2tva2lsc2FsamhhZ3Z3YXpuLnN1cGFiYXNlLmNvL2F1dGgvdjEiLCJzdWIiOiJlNGJkOWIzZS1kZDBkLTQxM2EtYjJmYi1iZWM1YjUzOGZiYzUiLCJhdWQiOiJhdXRoZW50aWNhdGVkIiwiZXhwIjoxNzU5Mjg3NjU2LCJpYXQiOjE3NTkyODQwNTYsImVtYWlsIjoiZXZhbmtva2ExMkBnbWFpbC5jb20iLCJwaG9uZSI6IiIsImFwcF9tZXRhZGF0YSI6eyJwcm92aWRlciI6Imdvb2dsZSIsInByb3ZpZGVycyI6WyJnb29nbGUiXX0sInVzZXJfbWV0YWRhdGEiOnsiYXZhdGFyX3VybCI6Imh0dHBzOi8vbGgzLmdvb2dsZXVzZXJjb250ZW50LmNvbS9hL0FDZzhvY0k3OWRadjNjU0dGVkVtMkNTRkFlUkJPdEZnREZkc1hFckI4aXMzSXFZNjFSVm4zdz1zOTYtYyIsImVtYWlsIjoiZXZhbmtva2ExMkBnbWFpbC5jb20iLCJlbWFpbF92ZXJpZmllZCI6dHJ1ZSwiZnVsbF9uYW1lIjoiRXZhbiBLb2thIiwiaXNzIjoiaHR0cHM6Ly9hY2NvdW50cy5nb29nbGUuY29tIiwibmFtZSI6IkV2YW4gS29rYSIsInBob25lX3ZlcmlmaWVkIjpmYWxzZSwicGljdHVyZSI6Imh0dHBzOi8vbGgzLmdvb2dsZXVzZXJjb250ZW50LmNvbS9hL0FDZzhvY0k3OWRadjNjU0dGVkVtMkNTRkFlUkJPdEZnREZkc1hFckI4aXMzSXFZNjFSVm4zdz1zOTYtYyIsInByb3ZpZGVyX2lkIjoiMTEzMjgxOTAzNzcxMzg1NTI1OTQwIiwic3ViIjoiMTEzMjgxOTAzNzcxMzg1NTI1OTQwIn0sInJvbGUiOiJhdXRoZW50aWNhdGVkIiwiYWFsIjoiYWFsMSIsImFtciI6W3sibWV0aG9kIjoib2F1dGgiLCJ0aW1lc3RhbXAiOjE3NTg3ODA4OTJ9XSwic2Vzc2lvbl9pZCI6IjFiOThmMzlmLWYwNDktNDMwYi1iMmRmLTM0ZWI2OWE2ODQ5OCIsImlzX2Fub255bW91cyI6ZmFsc2V9.JoKoweG5uZp7Cwz2Sw94sEtekiMVp_77trJQrgm4xzY", token_type: "bearer", expires_in: 3600, expires_at: 1759287656, refresh_token: "ttjncuhglgq3", user: {…} }
+map:2299:11
+WebGL warning: texSubImage: Alpha-premult and y-flip are deprecated for non-DOM-Element uploads. 6
+Disclaimer agreed — overlay hidden. disclaimerModule.js:10:15
+[draw] Starting to load drawn tracks from Supabase... (attempt 1 ) drawModule.js:1968:15
+WebGL warning: texSubImage: Alpha-premult and y-flip are deprecated for non-DOM-Element uploads. 6
+Attribution control repositioned mapEngine.js:153:17
+Scale control repositioned mapEngine.js:162:17
+Map style fully loaded, initializing modules... mapEngine.js:531:13
+[draw] Initializing with map instance: 
+Object { _moving: false, _zooming: false, transform: {…}, _bearingSnap: 7, _respectPrefersReducedMotion: true, _renderFrameCallback: BoundFunctionObject, _repaint: false, _interactive: true, _minTileCacheSize: null, _maxTileCacheSize: null, … }
+drawModule.js:348:13
+[draw] Already initialized with this map instance, skipping... drawModule.js:352:15
+Drawing module initialized mapEngine.js:536:15
+Mapbox GL JS map initialized and ready. mapEngine.js:541:13
+WebGL warning: texSubImage: Alpha-premult and y-flip are deprecated for non-DOM-Element uploads. 3
+🔍 Fetching plan for user: e4bd9b3e-dd0d-413a-b2fb-bec5b538fbc5 map:1421:13
+🔔 Auth Event: SIGNED_IN main.js:20:11
+✅ Session updated. Re-enabling SSS if needed. main.js:22:13
+✅ User is logged in: evankoka12@gmail.com main.js:40:13
+🔄 Auth state change: SIGNED_IN 
+Object { access_token: "eyJhbGciOiJIUzI1NiIsImtpZCI6IlNxNVJFYUVVNjhSNGw5NjUiLCJ0eXAiOiJKV1QifQ.eyJpc3MiOiJodHRwczovL3Bkc2tva2lsc2FsamhhZ3Z3YXpuLnN1cGFiYXNlLmNvL2F1dGgvdjEiLCJzdWIiOiJlNGJkOWIzZS1kZDBkLTQxM2EtYjJmYi1iZWM1YjUzOGZiYzUiLCJhdWQiOiJhdXRoZW50aWNhdGVkIiwiZXhwIjoxNzU5Mjg3NjU2LCJpYXQiOjE3NTkyODQwNTYsImVtYWlsIjoiZXZhbmtva2ExMkBnbWFpbC5jb20iLCJwaG9uZSI6IiIsImFwcF9tZXRhZGF0YSI6eyJwcm92aWRlciI6Imdvb2dsZSIsInByb3ZpZGVycyI6WyJnb29nbGUiXX0sInVzZXJfbWV0YWRhdGEiOnsiYXZhdGFyX3VybCI6Imh0dHBzOi8vbGgzLmdvb2dsZXVzZXJjb250ZW50LmNvbS9hL0FDZzhvY0k3OWRadjNjU0dGVkVtMkNTRkFlUkJPdEZnREZkc1hFckI4aXMzSXFZNjFSVm4zdz1zOTYtYyIsImVtYWlsIjoiZXZhbmtva2ExMkBnbWFpbC5jb20iLCJlbWFpbF92ZXJpZmllZCI6dHJ1ZSwiZnVsbF9uYW1lIjoiRXZhbiBLb2thIiwiaXNzIjoiaHR0cHM6Ly9hY2NvdW50cy5nb29nbGUuY29tIiwibmFtZSI6IkV2YW4gS29rYSIsInBob25lX3ZlcmlmaWVkIjpmYWxzZSwicGljdHVyZSI6Imh0dHBzOi8vbGgzLmdvb2dsZXVzZXJjb250ZW50LmNvbS9hL0FDZzhvY0k3OWRadjNjU0dGVkVtMkNTRkFlUkJPdEZnREZkc1hFckI4aXMzSXFZNjFSVm4zdz1zOTYtYyIsInByb3ZpZGVyX2lkIjoiMTEzMjgxOTAzNzcxMzg1NTI1OTQwIiwic3ViIjoiMTEzMjgxOTAzNzcxMzg1NTI1OTQwIn0sInJvbGUiOiJhdXRoZW50aWNhdGVkIiwiYWFsIjoiYWFsMSIsImFtciI6W3sibWV0aG9kIjoib2F1dGgiLCJ0aW1lc3RhbXAiOjE3NTg3ODA4OTJ9XSwic2Vzc2lvbl9pZCI6IjFiOThmMzlmLWYwNDktNDMwYi1iMmRmLTM0ZWI2OWE2ODQ5OCIsImlzX2Fub255bW91cyI6ZmFsc2V9.JoKoweG5uZp7Cwz2Sw94sEtekiMVp_77trJQrgm4xzY", token_type: "bearer", expires_in: 3600, expires_at: 1759287656, refresh_token: "ttjncuhglgq3", user: {…} }
+map:2299:11
+📡 fetchUserPlan() skipped - plan already loaded map:1405:13
+📊 Current plan state: 
+Object { currentUserPlan: "free", planLoaded: true }
+map:1406:13
+✅ User signed in: evankoka12@gmail.com map:2303:13
+[draw] Loaded color from localStorage: #00ffff drawModule.js:2297:17
+[draw] Updated style select UI to: solid drawModule.js:2427:15
+🔔 Auth Event: INITIAL_SESSION main.js:20:11
+✅ User is logged in: evankoka12@gmail.com main.js:40:13
+✅ Supabase client ready. Session: evankoka12@gmail.com main.js:58:11
+📊 Database response: 
+Object { data: {…}, error: null }
+map:1429:13
+✅ User plan fetched: premium map:1434:15
+[Styling] Applying premium styling for plan: premium map:1528:11
+[Debug] updateButtonStyle called - currentUserPlan: premium mapEngine.js:411:15
+[Debug] Setting button style for PREMIUM user mapEngine.js:422:17
+[Styling] Premium user - enabling all features map:1538:13
+[Plan] Current user plan: premium map:1438:15
+[Plan] Premium user - restoring button functionality map:1440:13
+🔧 restoreOriginalButtonFunctionality() called map:1722:11
+[Restore] Restoring original button functionality for premium user map:1723:11
+✅ Button functionality restored map:2171:11
+[Pins] Loaded from Supabase: 2 pins storeManager.js:435:21
+🚨 [loadPins] Processing 2 saved pins storeManager.js:475:11
+🚨 [loadPins] Processing pin 0 : 
+Object { lat: -36.44757503981053, lng: 146.7230486391058, name: "Simbos spot", style: {…} }
+storeManager.js:477:13
+🚨 [createPinMarker] FUNCTION CALLED with pinData: 
+Object { id: "custom-pin-0", name: "Simbos spot", lng: 146.7230486391058, lat: -36.44757503981053, style: {…} }
+pinManager.js:39:11
+🚨 [createPinMarker] Created marker at coordinates: 
+Object { lng: 146.7230486391058, lat: -36.44757503981053 }
+pinManager.js:55:11
+🚨 [createPinPopup] FUNCTION CALLED with pinData: 
+Object { id: "custom-pin-0", name: "Simbos spot", lng: 146.7230486391058, lat: -36.44757503981053, style: {…} }
+pinManager.js:61:11
+[buildPinPopupHTML] Creating popup HTML for pin: Simbos spot pinManager.js:71:11
+[buildPinPopupHTML] Generated HTML: 
+    <div class="saved-pin-popup">
+      <div class="saved-pin-header">
+        <span class="saved-pin-icon">📍</span>
+        <span class="saved-pin-name">Simbos spot</span>
+      </div>
+      <div class="saved-pin-coords">
+        Lat: -36.44758<br>
+        Lon: 146.72305
+      </div>
+      <div class="saved-pin-actions">
+        <button class="saved-pin-btn rename-btn">✏️ Rename</button>
+        <button class="saved-pin-btn delete-btn">🗑️ Delete</button>
+        <button class="saved-pin-btn journal-btn">📓 Send to Journal</button>
+      </div>
+    </div>
+  pinManager.js:89:11
+🚨 [createPinPopup] Created popup: 
+Object { options: {…}, _altitude: 0, _update: BoundFunctionObject, _onClose: BoundFunctionObject, remove: BoundFunctionObject, _onMouseEvent: BoundFunctionObject, _classList: Set [], _content: div.mapboxgl-popup-content, _marker: {…}, _lngLat: {…}, … }
+pinManager.js:64:11
+[Pins] Added pin: Simbos spot at [-36.44757503981053, 146.7230486391058] storeManager.js:528:15
+🚨 [loadPins] Processing pin 1 : 
+Object { lat: -37.74095541499891, lng: 144.45036634880057, name: "test 4", style: {…} }
+storeManager.js:477:13
+🚨 [createPinMarker] FUNCTION CALLED with pinData: 
+Object { id: "custom-pin-1", name: "test 4", lng: 144.45036634880057, lat: -37.74095541499891, style: {…} }
+pinManager.js:39:11
+🚨 [createPinMarker] Created marker at coordinates: 
+Object { lng: 144.45036634880057, lat: -37.74095541499891 }
+pinManager.js:55:11
+🚨 [createPinPopup] FUNCTION CALLED with pinData: 
+Object { id: "custom-pin-1", name: "test 4", lng: 144.45036634880057, lat: -37.74095541499891, style: {…} }
+pinManager.js:61:11
+[buildPinPopupHTML] Creating popup HTML for pin: test 4 pinManager.js:71:11
+[buildPinPopupHTML] Generated HTML: 
+    <div class="saved-pin-popup">
+      <div class="saved-pin-header">
+        <span class="saved-pin-icon">📍</span>
+        <span class="saved-pin-name">test 4</span>
+      </div>
+      <div class="saved-pin-coords">
+        Lat: -37.74096<br>
+        Lon: 144.45037
+      </div>
+      <div class="saved-pin-actions">
+        <button class="saved-pin-btn rename-btn">✏️ Rename</button>
+        <button class="saved-pin-btn delete-btn">🗑️ Delete</button>
+        <button class="saved-pin-btn journal-btn">📓 Send to Journal</button>
+      </div>
+    </div>
+  pinManager.js:89:11
+🚨 [createPinPopup] Created popup: 
+Object { options: {…}, _altitude: 0, _update: BoundFunctionObject, _onClose: BoundFunctionObject, remove: BoundFunctionObject, _onMouseEvent: BoundFunctionObject, _classList: Set [], _content: div.mapboxgl-popup-content, _marker: {…}, _lngLat: {…}, … }
+pinManager.js:64:11
+[Pins] Added pin: test 4 at [-37.74095541499891, 144.45036634880057] storeManager.js:528:15
+🚨 [pinManager] Finished loading saved pins pinManager.js:725:13
+Module loaded: mapEngine mapEngine.js:1:9
+Attribution control repositioned mapEngine.js:153:17
+Scale control repositioned mapEngine.js:162:17
+Module loaded: layerManager (Mapbox GL JS) layerManager.js:1:9
+Zones loaded: 22898 features speciesLayer.js:40:15
+Species layers grouped & ready. speciesLayer.js:76:15
+Species counts: Deer: 20503, Hog Deer: 176, Duck: 2164 speciesLayer.js:77:15
+[draw] User authenticated: e4bd9b3e-dd0d-413a-b2fb-bec5b538fbc5 drawModule.js:1989:15
+Attribution control repositioned mapEngine.js:153:17
+Scale control repositioned mapEngine.js:162:17
+[draw] Raw tracks from Supabase: 
+Array(6) [ {…}, {…}, {…}, {…}, {…}, {…} ]
+drawModule.js:2003:15
+[draw] Loading 6 drawn tracks from Supabase drawModule.js:2006:17
+[draw] Distance calculation - Original coords: 61 Filtered coords: 61 drawModule.js:94:13
+[draw] Segment 1: 0.020 km drawModule.js:108:15
+[draw] Segment 2: 0.011 km drawModule.js:108:15
+[draw] Segment 3: 0.011 km drawModule.js:108:15
+[draw] Segment 4: 0.011 km drawModule.js:108:15
+[draw] Segment 5: 0.011 km drawModule.js:108:15
+[draw] Segment 6: 0.011 km drawModule.js:108:15
+[draw] Segment 7: 0.010 km drawModule.js:108:15
+[draw] Segment 8: 0.011 km drawModule.js:108:15
+[draw] Segment 9: 0.014 km drawModule.js:108:15
+[draw] Segment 10: 0.008 km drawModule.js:108:15
+[draw] Segment 11: 0.010 km drawModule.js:108:15
+[draw] Segment 12: 0.010 km drawModule.js:108:15
+[draw] Segment 13: 0.011 km drawModule.js:108:15
+[draw] Segment 14: 0.009 km drawModule.js:108:15
+[draw] Segment 15: 0.009 km drawModule.js:108:15
+[draw] Segment 16: 0.009 km drawModule.js:108:15
+[draw] Segment 17: 0.009 km drawModule.js:108:15
+[draw] Segment 18: 0.008 km drawModule.js:108:15
+[draw] Segment 19: 0.010 km drawModule.js:108:15
+[draw] Segment 20: 0.011 km drawModule.js:108:15
+[draw] Segment 21: 0.011 km drawModule.js:108:15
+[draw] Segment 22: 0.014 km drawModule.js:108:15
+[draw] Segment 23: 0.015 km drawModule.js:108:15
+[draw] Segment 24: 0.011 km drawModule.js:108:15
+[draw] Segment 25: 0.011 km drawModule.js:108:15
+[draw] Segment 26: 0.010 km drawModule.js:108:15
+[draw] Segment 27: 0.009 km drawModule.js:108:15
+[draw] Segment 28: 0.009 km drawModule.js:108:15
+[draw] Segment 29: 0.009 km drawModule.js:108:15
+[draw] Segment 30: 0.010 km drawModule.js:108:15
+[draw] Segment 31: 0.009 km drawModule.js:108:15
+[draw] Segment 32: 0.009 km drawModule.js:108:15
+[draw] Segment 33: 0.010 km drawModule.js:108:15
+[draw] Segment 34: 0.009 km drawModule.js:108:15
+[draw] Segment 35: 0.012 km drawModule.js:108:15
+[draw] Segment 36: 0.011 km drawModule.js:108:15
+[draw] Segment 37: 0.009 km drawModule.js:108:15
+[draw] Segment 38: 0.008 km drawModule.js:108:15
+[draw] Segment 39: 0.008 km drawModule.js:108:15
+[draw] Segment 40: 0.011 km drawModule.js:108:15
+[draw] Segment 41: 0.011 km drawModule.js:108:15
+[draw] Segment 42: 0.010 km drawModule.js:108:15
+[draw] Segment 43: 0.015 km drawModule.js:108:15
+[draw] Segment 44: 0.015 km drawModule.js:108:15
+[draw] Segment 45: 0.012 km drawModule.js:108:15
+[draw] Segment 46: 0.013 km drawModule.js:108:15
+[draw] Segment 47: 0.009 km drawModule.js:108:15
+[draw] Segment 48: 0.009 km drawModule.js:108:15
+[draw] Segment 49: 0.009 km drawModule.js:108:15
+[draw] Segment 50: 0.010 km drawModule.js:108:15
+[draw] Segment 51: 0.008 km drawModule.js:108:15
+[draw] Segment 52: 0.007 km drawModule.js:108:15
+[draw] Segment 53: 0.009 km drawModule.js:108:15
+[draw] Segment 54: 0.008 km drawModule.js:108:15
+[draw] Segment 55: 0.008 km drawModule.js:108:15
+[draw] Segment 56: 0.008 km drawModule.js:108:15
+[draw] Segment 57: 0.009 km drawModule.js:108:15
+[draw] Segment 58: 0.012 km drawModule.js:108:15
+[draw] Segment 59: 0.008 km drawModule.js:108:15
+[draw] Segment 60: 0.009 km drawModule.js:108:15
+[draw] Total calculated distance: 0.619 km drawModule.js:117:13
+[draw] Got elevation from map.queryTerrainElevation: 698.2879992311994m at [-36.44736777643711, 146.72178517146767] drawModule.js:238:21
+[draw] Distance calculation - Original coords: 30 Filtered coords: 30 drawModule.js:94:13
+[draw] Segment 1: 4.991 km drawModule.js:108:15
+[draw] Segment 2: 2.057 km drawModule.js:108:15
+[draw] Segment 3: 7.577 km drawModule.js:108:15
+[draw] Segment 4: 6.309 km drawModule.js:108:15
+[draw] Segment 5: 9.339 km drawModule.js:108:15
+[draw] Segment 6: 6.812 km drawModule.js:108:15
+[draw] Segment 7: 2.473 km drawModule.js:108:15
+[draw] Segment 8: 0.970 km drawModule.js:108:15
+[draw] Segment 9: 0.686 km drawModule.js:108:15
+[draw] Segment 10: 1.533 km drawModule.js:108:15
+[draw] Segment 11: 0.485 km drawModule.js:108:15
+[draw] Segment 12: 0.485 km drawModule.js:108:15
+[draw] Segment 13: 0.485 km drawModule.js:108:15
+[draw] Segment 14: 0.485 km drawModule.js:108:15
+[draw] Segment 15: 0.485 km drawModule.js:108:15
+[draw] Segment 16: 0.686 km drawModule.js:108:15
+[draw] Segment 17: 0.686 km drawModule.js:108:15
+[draw] Segment 18: 0.686 km drawModule.js:108:15
+[draw] Segment 19: 1.372 km drawModule.js:108:15
+[draw] Segment 20: 2.169 km drawModule.js:108:15
+[draw] Segment 21: 1.750 km drawModule.js:108:15
+[draw] Segment 22: 1.752 km drawModule.js:108:15
+[draw] Segment 23: 1.086 km drawModule.js:108:15
+[draw] Segment 24: 0.485 km drawModule.js:108:15
+[draw] Segment 25: 0.687 km drawModule.js:108:15
+[draw] Segment 26: 0.486 km drawModule.js:108:15
+[draw] Segment 27: 0.688 km drawModule.js:108:15
+[draw] Segment 28: 0.486 km drawModule.js:108:15
+[draw] Segment 29: 0.688 km drawModule.js:108:15
+[draw] Total calculated distance: 58.878 km drawModule.js:117:13
+[draw] Got elevation from map.queryTerrainElevation: 506.2078201874964m at [-37.47249643721086, 145.24939168759084] drawModule.js:238:21
+[draw] Distance calculation - Original coords: 14 Filtered coords: 14 drawModule.js:94:13
+[draw] Segment 1: 0.008 km drawModule.js:108:15
+[draw] Segment 2: 0.011 km drawModule.js:108:15
+[draw] Segment 3: 0.013 km drawModule.js:108:15
+[draw] Segment 4: 0.031 km drawModule.js:108:15
+[draw] Segment 5: 0.082 km drawModule.js:108:15
+[draw] Segment 6: 0.040 km drawModule.js:108:15
+[draw] Segment 7: 0.025 km drawModule.js:108:15
+[draw] Segment 8: 0.024 km drawModule.js:108:15
+[draw] Segment 9: 0.047 km drawModule.js:108:15
+[draw] Segment 10: 0.068 km drawModule.js:108:15
+[draw] Segment 11: 0.065 km drawModule.js:108:15
+[draw] Segment 12: 0.030 km drawModule.js:108:15
+[draw] Segment 13: 0.022 km drawModule.js:108:15
+[draw] Total calculated distance: 0.465 km drawModule.js:117:13
+[draw] Got elevation from map.queryTerrainElevation: 679.3843150101509m at [-36.45023706207141, 146.72307009303466] drawModule.js:238:21
+[draw] Distance calculation - Original coords: 256 Filtered coords: 256 drawModule.js:94:13
+[draw] Segment 1: 0.109 km drawModule.js:108:15
+[draw] Segment 2: 0.042 km drawModule.js:108:15
+[draw] Segment 3: 0.062 km drawModule.js:108:15
+[draw] Segment 4: 0.060 km drawModule.js:108:15
+[draw] Segment 5: 0.033 km drawModule.js:108:15
+[draw] Segment 6: 0.031 km drawModule.js:108:15
+[draw] Segment 7: 0.032 km drawModule.js:108:15
+[draw] Segment 8: 0.027 km drawModule.js:108:15
+[draw] Segment 9: 0.037 km drawModule.js:108:15
+[draw] Segment 10: 0.037 km drawModule.js:108:15
+[draw] Segment 11: 0.027 km drawModule.js:108:15
+[draw] Segment 12: 0.025 km drawModule.js:108:15
+[draw] Segment 13: 0.022 km drawModule.js:108:15
+[draw] Segment 14: 0.019 km drawModule.js:108:15
+[draw] Segment 15: 0.019 km drawModule.js:108:15
+[draw] Segment 16: 0.021 km drawModule.js:108:15
+[draw] Segment 17: 0.022 km drawModule.js:108:15
+[draw] Segment 18: 0.022 km drawModule.js:108:15
+[draw] Segment 19: 0.024 km drawModule.js:108:15
+[draw] Segment 20: 0.023 km drawModule.js:108:15
+[draw] Segment 21: 0.017 km drawModule.js:108:15
+[draw] Segment 22: 0.015 km drawModule.js:108:15
+[draw] Segment 23: 0.021 km drawModule.js:108:15
+[draw] Segment 24: 0.022 km drawModule.js:108:15
+[draw] Segment 25: 0.021 km drawModule.js:108:15
+[draw] Segment 26: 0.018 km drawModule.js:108:15
+[draw] Segment 27: 0.016 km drawModule.js:108:15
+[draw] Segment 28: 0.011 km drawModule.js:108:15
+[draw] Segment 29: 0.011 km drawModule.js:108:15
+[draw] Segment 30: 0.009 km drawModule.js:108:15
+[draw] Segment 31: 0.013 km drawModule.js:108:15
+[draw] Segment 32: 0.014 km drawModule.js:108:15
+[draw] Segment 33: 0.011 km drawModule.js:108:15
+[draw] Segment 34: 0.013 km drawModule.js:108:15
+[draw] Segment 35: 0.017 km drawModule.js:108:15
+[draw] Segment 36: 0.013 km drawModule.js:108:15
+[draw] Segment 37: 0.017 km drawModule.js:108:15
+[draw] Segment 38: 0.019 km drawModule.js:108:15
+[draw] Segment 39: 0.018 km drawModule.js:108:15
+[draw] Segment 40: 0.035 km drawModule.js:108:15
+[draw] Segment 41: 0.020 km drawModule.js:108:15
+[draw] Segment 42: 0.021 km drawModule.js:108:15
+[draw] Segment 43: 0.023 km drawModule.js:108:15
+[draw] Segment 44: 0.020 km drawModule.js:108:15
+[draw] Segment 45: 0.018 km drawModule.js:108:15
+[draw] Segment 46: 0.016 km drawModule.js:108:15
+[draw] Segment 47: 0.017 km drawModule.js:108:15
+[draw] Segment 48: 0.014 km drawModule.js:108:15
+[draw] Segment 49: 0.014 km drawModule.js:108:15
+[draw] Segment 50: 0.014 km drawModule.js:108:15
+[draw] Segment 51: 0.012 km drawModule.js:108:15
+[draw] Segment 52: 0.011 km drawModule.js:108:15
+[draw] Segment 53: 0.010 km drawModule.js:108:15
+[draw] Segment 54: 0.014 km drawModule.js:108:15
+[draw] Segment 55: 0.015 km drawModule.js:108:15
+[draw] Segment 56: 0.014 km drawModule.js:108:15
+[draw] Segment 57: 0.018 km drawModule.js:108:15
+[draw] Segment 58: 0.012 km drawModule.js:108:15
+[draw] Segment 59: 0.014 km drawModule.js:108:15
+[draw] Segment 60: 0.010 km drawModule.js:108:15
+[draw] Segment 61: 0.018 km drawModule.js:108:15
+[draw] Segment 62: 0.027 km drawModule.js:108:15
+[draw] Segment 63: 0.011 km drawModule.js:108:15
+[draw] Segment 64: 0.011 km drawModule.js:108:15
+[draw] Segment 65: 0.012 km drawModule.js:108:15
+[draw] Segment 66: 0.014 km drawModule.js:108:15
+[draw] Segment 67: 0.015 km drawModule.js:108:15
+[draw] Segment 68: 0.013 km drawModule.js:108:15
+[draw] Segment 69: 0.013 km drawModule.js:108:15
+[draw] Segment 70: 0.010 km drawModule.js:108:15
+[draw] Segment 71: 0.011 km drawModule.js:108:15
+[draw] Segment 72: 0.012 km drawModule.js:108:15
+[draw] Segment 73: 0.020 km drawModule.js:108:15
+[draw] Segment 74: 0.017 km drawModule.js:108:15
+[draw] Segment 75: 0.015 km drawModule.js:108:15
+[draw] Segment 76: 0.013 km drawModule.js:108:15
+[draw] Segment 77: 0.008 km drawModule.js:108:15
+[draw] Segment 78: 0.025 km drawModule.js:108:15
+[draw] Segment 79: 0.016 km drawModule.js:108:15
+[draw] Segment 80: 0.018 km drawModule.js:108:15
+[draw] Segment 81: 0.018 km drawModule.js:108:15
+[draw] Segment 82: 0.024 km drawModule.js:108:15
+[draw] Segment 83: 0.023 km drawModule.js:108:15
+[draw] Segment 84: 0.019 km drawModule.js:108:15
+[draw] Segment 85: 0.016 km drawModule.js:108:15
+[draw] Segment 86: 0.010 km drawModule.js:108:15
+[draw] Segment 87: 0.018 km drawModule.js:108:15
+[draw] Segment 88: 0.016 km drawModule.js:108:15
+[draw] Segment 89: 0.019 km drawModule.js:108:15
+[draw] Segment 90: 0.018 km drawModule.js:108:15
+[draw] Segment 91: 0.020 km drawModule.js:108:15
+[draw] Segment 92: 0.018 km drawModule.js:108:15
+[draw] Segment 93: 0.015 km drawModule.js:108:15
+[draw] Segment 94: 0.013 km drawModule.js:108:15
+[draw] Segment 95: 0.028 km drawModule.js:108:15
+[draw] Segment 96: 0.018 km drawModule.js:108:15
+[draw] Segment 97: 0.030 km drawModule.js:108:15
+[draw] Segment 98: 0.035 km drawModule.js:108:15
+[draw] Segment 99: 0.016 km drawModule.js:108:15
+[draw] Segment 100: 0.011 km drawModule.js:108:15
+[draw] Segment 101: 0.018 km drawModule.js:108:15
+[draw] Segment 102: 0.016 km drawModule.js:108:15
+[draw] Segment 103: 0.015 km drawModule.js:108:15
+[draw] Segment 104: 0.013 km drawModule.js:108:15
+[draw] Segment 105: 0.014 km drawModule.js:108:15
+[draw] Segment 106: 0.016 km drawModule.js:108:15
+[draw] Segment 107: 0.013 km drawModule.js:108:15
+[draw] Segment 108: 0.014 km drawModule.js:108:15
+[draw] Segment 109: 0.008 km drawModule.js:108:15
+[draw] Segment 110: 0.013 km drawModule.js:108:15
+[draw] Segment 111: 0.016 km drawModule.js:108:15
+[draw] Segment 112: 0.015 km drawModule.js:108:15
+[draw] Segment 113: 0.012 km drawModule.js:108:15
+[draw] Segment 114: 0.009 km drawModule.js:108:15
+[draw] Segment 115: 0.009 km drawModule.js:108:15
+[draw] Segment 116: 0.017 km drawModule.js:108:15
+[draw] Segment 117: 0.010 km drawModule.js:108:15
+[draw] Segment 118: 0.011 km drawModule.js:108:15
+[draw] Segment 119: 0.019 km drawModule.js:108:15
+[draw] Segment 120: 0.011 km drawModule.js:108:15
+[draw] Segment 121: 0.019 km drawModule.js:108:15
+[draw] Segment 122: 0.011 km drawModule.js:108:15
+[draw] Segment 123: 0.012 km drawModule.js:108:15
+[draw] Segment 124: 0.013 km drawModule.js:108:15
+[draw] Segment 125: 0.012 km drawModule.js:108:15
+[draw] Segment 126: 0.014 km drawModule.js:108:15
+[draw] Segment 127: 0.015 km drawModule.js:108:15
+[draw] Segment 128: 0.013 km drawModule.js:108:15
+[draw] Segment 129: 0.014 km drawModule.js:108:15
+[draw] Segment 130: 0.018 km drawModule.js:108:15
+[draw] Segment 131: 0.013 km drawModule.js:108:15
+[draw] Segment 132: 0.018 km drawModule.js:108:15
+[draw] Segment 133: 0.014 km drawModule.js:108:15
+[draw] Segment 134: 0.012 km drawModule.js:108:15
+[draw] Segment 135: 0.013 km drawModule.js:108:15
+[draw] Segment 136: 0.023 km drawModule.js:108:15
+[draw] Segment 137: 0.008 km drawModule.js:108:15
+[draw] Segment 138: 0.014 km drawModule.js:108:15
+[draw] Segment 139: 0.010 km drawModule.js:108:15
+[draw] Segment 140: 0.010 km drawModule.js:108:15
+[draw] Segment 141: 0.009 km drawModule.js:108:15
+[draw] Segment 142: 0.008 km drawModule.js:108:15
+[draw] Segment 143: 0.014 km drawModule.js:108:15
+[draw] Segment 144: 0.010 km drawModule.js:108:15
+[draw] Segment 145: 0.012 km drawModule.js:108:15
+[draw] Segment 146: 0.010 km drawModule.js:108:15
+[draw] Segment 147: 0.013 km drawModule.js:108:15
+[draw] Segment 148: 0.013 km drawModule.js:108:15
+[draw] Segment 149: 0.013 km drawModule.js:108:15
+[draw] Segment 150: 0.012 km drawModule.js:108:15
+[draw] Segment 151: 0.015 km drawModule.js:108:15
+[draw] Segment 152: 0.013 km drawModule.js:108:15
+[draw] Segment 153: 0.014 km drawModule.js:108:15
+[draw] Segment 154: 0.017 km drawModule.js:108:15
+[draw] Segment 155: 0.013 km drawModule.js:108:15
+[draw] Segment 156: 0.015 km drawModule.js:108:15
+[draw] Segment 157: 0.014 km drawModule.js:108:15
+[draw] Segment 158: 0.012 km drawModule.js:108:15
+[draw] Segment 159: 0.018 km drawModule.js:108:15
+[draw] Segment 160: 0.018 km drawModule.js:108:15
+[draw] Segment 161: 0.014 km drawModule.js:108:15
+[draw] Segment 162: 0.013 km drawModule.js:108:15
+[draw] Segment 163: 0.009 km drawModule.js:108:15
+[draw] Segment 164: 0.013 km drawModule.js:108:15
+[draw] Segment 165: 0.009 km drawModule.js:108:15
+[draw] Segment 166: 0.009 km drawModule.js:108:15
+[draw] Segment 167: 0.010 km drawModule.js:108:15
+[draw] Segment 168: 0.008 km drawModule.js:108:15
+[draw] Segment 169: 0.010 km drawModule.js:108:15
+[draw] Segment 170: 0.009 km drawModule.js:108:15
+[draw] Segment 171: 0.010 km drawModule.js:108:15
+[draw] Segment 172: 0.013 km drawModule.js:108:15
+[draw] Segment 173: 0.018 km drawModule.js:108:15
+[draw] Segment 174: 0.018 km drawModule.js:108:15
+[draw] Segment 175: 0.017 km drawModule.js:108:15
+[draw] Segment 176: 0.013 km drawModule.js:108:15
+[draw] Segment 177: 0.015 km drawModule.js:108:15
+[draw] Segment 178: 0.014 km drawModule.js:108:15
+[draw] Segment 179: 0.017 km drawModule.js:108:15
+[draw] Segment 180: 0.017 km drawModule.js:108:15
+[draw] Segment 181: 0.015 km drawModule.js:108:15
+[draw] Segment 182: 0.014 km drawModule.js:108:15
+[draw] Segment 183: 0.013 km drawModule.js:108:15
+[draw] Segment 184: 0.014 km drawModule.js:108:15
+[draw] Segment 185: 0.010 km drawModule.js:108:15
+[draw] Segment 186: 0.011 km drawModule.js:108:15
+[draw] Segment 187: 0.010 km drawModule.js:108:15
+[draw] Segment 188: 0.012 km drawModule.js:108:15
+[draw] Segment 189: 0.015 km drawModule.js:108:15
+[draw] Segment 190: 0.019 km drawModule.js:108:15
+[draw] Segment 191: 0.014 km drawModule.js:108:15
+[draw] Segment 192: 0.009 km drawModule.js:108:15
+[draw] Segment 193: 0.018 km drawModule.js:108:15
+[draw] Segment 194: 0.015 km drawModule.js:108:15
+[draw] Segment 195: 0.018 km drawModule.js:108:15
+[draw] Segment 196: 0.013 km drawModule.js:108:15
+[draw] Segment 197: 0.014 km drawModule.js:108:15
+[draw] Segment 198: 0.010 km drawModule.js:108:15
+[draw] Segment 199: 0.010 km drawModule.js:108:15
+[draw] Segment 200: 0.010 km drawModule.js:108:15
+[draw] Segment 201: 0.008 km drawModule.js:108:15
+[draw] Segment 202: 0.010 km drawModule.js:108:15
+[draw] Segment 203: 0.009 km drawModule.js:108:15
+[draw] Segment 204: 0.010 km drawModule.js:108:15
+[draw] Segment 205: 0.010 km drawModule.js:108:15
+[draw] Segment 206: 0.014 km drawModule.js:108:15
+[draw] Segment 207: 0.017 km drawModule.js:108:15
+[draw] Segment 208: 0.014 km drawModule.js:108:15
+[draw] Segment 209: 0.016 km drawModule.js:108:15
+[draw] Segment 210: 0.013 km drawModule.js:108:15
+[draw] Segment 211: 0.019 km drawModule.js:108:15
+[draw] Segment 212: 0.011 km drawModule.js:108:15
+[draw] Segment 213: 0.011 km drawModule.js:108:15
+[draw] Segment 214: 0.009 km drawModule.js:108:15
+[draw] Segment 215: 0.007 km drawModule.js:108:15
+[draw] Segment 216: 0.009 km drawModule.js:108:15
+[draw] Segment 217: 0.007 km drawModule.js:108:15
+[draw] Segment 218: 0.012 km drawModule.js:108:15
+[draw] Segment 219: 0.010 km drawModule.js:108:15
+[draw] Segment 220: 0.010 km drawModule.js:108:15
+[draw] Segment 221: 0.009 km drawModule.js:108:15
+[draw] Segment 222: 0.010 km drawModule.js:108:15
+[draw] Segment 223: 0.009 km drawModule.js:108:15
+[draw] Segment 224: 0.008 km drawModule.js:108:15
+[draw] Segment 225: 0.011 km drawModule.js:108:15
+[draw] Segment 226: 0.009 km drawModule.js:108:15
+[draw] Segment 227: 0.009 km drawModule.js:108:15
+[draw] Segment 228: 0.007 km drawModule.js:108:15
+[draw] Segment 229: 0.014 km drawModule.js:108:15
+[draw] Segment 230: 0.009 km drawModule.js:108:15
+[draw] Segment 231: 0.018 km drawModule.js:108:15
+[draw] Segment 232: 0.010 km drawModule.js:108:15
+[draw] Segment 233: 0.016 km drawModule.js:108:15
+[draw] Segment 234: 0.018 km drawModule.js:108:15
+[draw] Segment 235: 0.011 km drawModule.js:108:15
+[draw] Segment 236: 0.011 km drawModule.js:108:15
+[draw] Segment 237: 0.011 km drawModule.js:108:15
+[draw] Segment 238: 0.020 km drawModule.js:108:15
+[draw] Segment 239: 0.014 km drawModule.js:108:15
+[draw] Segment 240: 0.019 km drawModule.js:108:15
+[draw] Segment 241: 0.013 km drawModule.js:108:15
+[draw] Segment 242: 0.011 km drawModule.js:108:15
+[draw] Segment 243: 0.017 km drawModule.js:108:15
+[draw] Segment 244: 0.014 km drawModule.js:108:15
+[draw] Segment 245: 0.011 km drawModule.js:108:15
+[draw] Segment 246: 0.013 km drawModule.js:108:15
+[draw] Segment 247: 0.013 km drawModule.js:108:15
+[draw] Segment 248: 0.019 km drawModule.js:108:15
+[draw] Segment 249: 0.011 km drawModule.js:108:15
+[draw] Segment 250: 0.012 km drawModule.js:108:15
+[draw] Segment 251: 0.012 km drawModule.js:108:15
+[draw] Segment 252: 0.012 km drawModule.js:108:15
+[draw] Segment 253: 0.012 km drawModule.js:108:15
+[draw] Segment 254: 0.015 km drawModule.js:108:15
+[draw] Segment 255: 0.010 km drawModule.js:108:15
+[draw] Total calculated distance: 3.994 km drawModule.js:117:13
+[draw] Got elevation from map.queryTerrainElevation: 555.7422775558298m at [-36.6529479388722, 147.1712870218949] drawModule.js:238:21
+[draw] Distance calculation - Original coords: 145 Filtered coords: 145 drawModule.js:94:13
+[draw] Segment 1: 0.085 km drawModule.js:108:15
+[draw] Segment 2: 0.039 km drawModule.js:108:15
+[draw] Segment 3: 0.023 km drawModule.js:108:15
+[draw] Segment 4: 0.045 km drawModule.js:108:15
+[draw] Segment 5: 0.028 km drawModule.js:108:15
+[draw] Segment 6: 0.027 km drawModule.js:108:15
+[draw] Segment 7: 0.025 km drawModule.js:108:15
+[draw] Segment 8: 0.022 km drawModule.js:108:15
+[draw] Segment 9: 0.016 km drawModule.js:108:15
+[draw] Segment 10: 0.016 km drawModule.js:108:15
+[draw] Segment 11: 0.018 km drawModule.js:108:15
+[draw] Segment 12: 0.021 km drawModule.js:108:15
+[draw] Segment 13: 0.022 km drawModule.js:108:15
+[draw] Segment 14: 0.019 km drawModule.js:108:15
+[draw] Segment 15: 0.018 km drawModule.js:108:15
+[draw] Segment 16: 0.014 km drawModule.js:108:15
+[draw] Segment 17: 0.014 km drawModule.js:108:15
+[draw] Segment 18: 0.018 km drawModule.js:108:15
+[draw] Segment 19: 0.017 km drawModule.js:108:15
+[draw] Segment 20: 0.015 km drawModule.js:108:15
+[draw] Segment 21: 0.015 km drawModule.js:108:15
+[draw] Segment 22: 0.012 km drawModule.js:108:15
+[draw] Segment 23: 0.009 km drawModule.js:108:15
+[draw] Segment 24: 0.009 km drawModule.js:108:15
+[draw] Segment 25: 0.015 km drawModule.js:108:15
+[draw] Segment 26: 0.012 km drawModule.js:108:15
+[draw] Segment 27: 0.010 km drawModule.js:108:15
+[draw] Segment 28: 0.023 km drawModule.js:108:15
+[draw] Segment 29: 0.020 km drawModule.js:108:15
+[draw] Segment 30: 0.020 km drawModule.js:108:15
+[draw] Segment 31: 0.020 km drawModule.js:108:15
+[draw] Segment 32: 0.015 km drawModule.js:108:15
+[draw] Segment 33: 0.012 km drawModule.js:108:15
+[draw] Segment 34: 0.013 km drawModule.js:108:15
+[draw] Segment 35: 0.013 km drawModule.js:108:15
+[draw] Segment 36: 0.012 km drawModule.js:108:15
+[draw] Segment 37: 0.011 km drawModule.js:108:15
+[draw] Segment 38: 0.012 km drawModule.js:108:15
+[draw] Segment 39: 0.012 km drawModule.js:108:15
+[draw] Segment 40: 0.011 km drawModule.js:108:15
+[draw] Segment 41: 0.011 km drawModule.js:108:15
+[draw] Segment 42: 0.010 km drawModule.js:108:15
+[draw] Segment 43: 0.009 km drawModule.js:108:15
+[draw] Segment 44: 0.010 km drawModule.js:108:15
+[draw] Segment 45: 0.008 km drawModule.js:108:15
+[draw] Segment 46: 0.009 km drawModule.js:108:15
+[draw] Segment 47: 0.010 km drawModule.js:108:15
+[draw] Segment 48: 0.025 km drawModule.js:108:15
+[draw] Segment 49: 0.012 km drawModule.js:108:15
+[draw] Segment 50: 0.012 km drawModule.js:108:15
+[draw] Segment 51: 0.010 km drawModule.js:108:15
+[draw] Segment 52: 0.013 km drawModule.js:108:15
+[draw] Segment 53: 0.011 km drawModule.js:108:15
+[draw] Segment 54: 0.019 km drawModule.js:108:15
+[draw] Segment 55: 0.010 km drawModule.js:108:15
+[draw] Segment 56: 0.012 km drawModule.js:108:15
+[draw] Segment 57: 0.012 km drawModule.js:108:15
+[draw] Segment 58: 0.012 km drawModule.js:108:15
+[draw] Segment 59: 0.011 km drawModule.js:108:15
+[draw] Segment 60: 0.011 km drawModule.js:108:15
+[draw] Segment 61: 0.024 km drawModule.js:108:15
+[draw] Segment 62: 0.016 km drawModule.js:108:15
+[draw] Segment 63: 0.013 km drawModule.js:108:15
+[draw] Segment 64: 0.013 km drawModule.js:108:15
+[draw] Segment 65: 0.017 km drawModule.js:108:15
+[draw] Segment 66: 0.016 km drawModule.js:108:15
+[draw] Segment 67: 0.014 km drawModule.js:108:15
+[draw] Segment 68: 0.012 km drawModule.js:108:15
+[draw] Segment 69: 0.013 km drawModule.js:108:15
+[draw] Segment 70: 0.014 km drawModule.js:108:15
+[draw] Segment 71: 0.014 km drawModule.js:108:15
+[draw] Segment 72: 0.013 km drawModule.js:108:15
+[draw] Segment 73: 0.014 km drawModule.js:108:15
+[draw] Segment 74: 0.013 km drawModule.js:108:15
+[draw] Segment 75: 0.014 km drawModule.js:108:15
+[draw] Segment 76: 0.015 km drawModule.js:108:15
+[draw] Segment 77: 0.013 km drawModule.js:108:15
+[draw] Segment 78: 0.014 km drawModule.js:108:15
+[draw] Segment 79: 0.020 km drawModule.js:108:15
+[draw] Segment 80: 0.016 km drawModule.js:108:15
+[draw] Segment 81: 0.012 km drawModule.js:108:15
+[draw] Segment 82: 0.010 km drawModule.js:108:15
+[draw] Segment 83: 0.009 km drawModule.js:108:15
+[draw] Segment 84: 0.009 km drawModule.js:108:15
+[draw] Segment 85: 0.010 km drawModule.js:108:15
+[draw] Segment 86: 0.010 km drawModule.js:108:15
+[draw] Segment 87: 0.014 km drawModule.js:108:15
+[draw] Segment 88: 0.011 km drawModule.js:108:15
+[draw] Segment 89: 0.014 km drawModule.js:108:15
+[draw] Segment 90: 0.010 km drawModule.js:108:15
+[draw] Segment 91: 0.011 km drawModule.js:108:15
+[draw] Segment 92: 0.013 km drawModule.js:108:15
+[draw] Segment 93: 0.012 km drawModule.js:108:15
+[draw] Segment 94: 0.014 km drawModule.js:108:15
+[draw] Segment 95: 0.019 km drawModule.js:108:15
+[draw] Segment 96: 0.016 km drawModule.js:108:15
+[draw] Segment 97: 0.012 km drawModule.js:108:15
+[draw] Segment 98: 0.010 km drawModule.js:108:15
+[draw] Segment 99: 0.009 km drawModule.js:108:15
+[draw] Segment 100: 0.011 km drawModule.js:108:15
+[draw] Segment 101: 0.008 km drawModule.js:108:15
+[draw] Segment 102: 0.010 km drawModule.js:108:15
+[draw] Segment 103: 0.011 km drawModule.js:108:15
+[draw] Segment 104: 0.013 km drawModule.js:108:15
+[draw] Segment 105: 0.013 km drawModule.js:108:15
+[draw] Segment 106: 0.012 km drawModule.js:108:15
+[draw] Segment 107: 0.010 km drawModule.js:108:15
+[draw] Segment 108: 0.011 km drawModule.js:108:15
+[draw] Segment 109: 0.015 km drawModule.js:108:15
+[draw] Segment 110: 0.012 km drawModule.js:108:15
+[draw] Segment 111: 0.012 km drawModule.js:108:15
+[draw] Segment 112: 0.009 km drawModule.js:108:15
+[draw] Segment 113: 0.013 km drawModule.js:108:15
+[draw] Segment 114: 0.009 km drawModule.js:108:15
+[draw] Segment 115: 0.014 km drawModule.js:108:15
+[draw] Segment 116: 0.015 km drawModule.js:108:15
+[draw] Segment 117: 0.008 km drawModule.js:108:15
+[draw] Segment 118: 0.009 km drawModule.js:108:15
+[draw] Segment 119: 0.018 km drawModule.js:108:15
+[draw] Segment 120: 0.011 km drawModule.js:108:15
+[draw] Segment 121: 0.010 km drawModule.js:108:15
+[draw] Segment 122: 0.010 km drawModule.js:108:15
+[draw] Segment 123: 0.011 km drawModule.js:108:15
+[draw] Segment 124: 0.008 km drawModule.js:108:15
+[draw] Segment 125: 0.010 km drawModule.js:108:15
+[draw] Segment 126: 0.010 km drawModule.js:108:15
+[draw] Segment 127: 0.014 km drawModule.js:108:15
+[draw] Segment 128: 0.008 km drawModule.js:108:15
+[draw] Segment 129: 0.008 km drawModule.js:108:15
+[draw] Segment 130: 0.011 km drawModule.js:108:15
+[draw] Segment 131: 0.016 km drawModule.js:108:15
+[draw] Segment 132: 0.010 km drawModule.js:108:15
+[draw] Segment 133: 0.009 km drawModule.js:108:15
+[draw] Segment 134: 0.010 km drawModule.js:108:15
+[draw] Segment 135: 0.013 km drawModule.js:108:15
+[draw] Segment 136: 0.009 km drawModule.js:108:15
+[draw] Segment 137: 0.013 km drawModule.js:108:15
+[draw] Segment 138: 0.008 km drawModule.js:108:15
+[draw] Segment 139: 0.009 km drawModule.js:108:15
+[draw] Segment 140: 0.007 km drawModule.js:108:15
+[draw] Segment 141: 0.010 km drawModule.js:108:15
+[draw] Segment 142: 0.008 km drawModule.js:108:15
+[draw] Segment 143: 0.008 km drawModule.js:108:15
+[draw] Segment 144: 0.008 km drawModule.js:108:15
+[draw] Total calculated distance: 2.020 km drawModule.js:117:13
+[draw] Got elevation from map.queryTerrainElevation: 369.0087665963772m at [-36.65026844564998, 147.13438526938592] drawModule.js:238:21
+[draw] Distance calculation - Original coords: 124 Filtered coords: 124 drawModule.js:94:13
+[draw] Segment 1: 0.117 km drawModule.js:108:15
+[draw] Segment 2: 0.043 km drawModule.js:108:15
+[draw] Segment 3: 0.081 km drawModule.js:108:15
+[draw] Segment 4: 0.035 km drawModule.js:108:15
+[draw] Segment 5: 0.030 km drawModule.js:108:15
+[draw] Segment 6: 0.025 km drawModule.js:108:15
+[draw] Segment 7: 0.033 km drawModule.js:108:15
+[draw] Segment 8: 0.038 km drawModule.js:108:15
+[draw] Segment 9: 0.042 km drawModule.js:108:15
+[draw] Segment 10: 0.038 km drawModule.js:108:15
+[draw] Segment 11: 0.036 km drawModule.js:108:15
+[draw] Segment 12: 0.035 km drawModule.js:108:15
+[draw] Segment 13: 0.038 km drawModule.js:108:15
+[draw] Segment 14: 0.043 km drawModule.js:108:15
+[draw] Segment 15: 0.035 km drawModule.js:108:15
+[draw] Segment 16: 0.039 km drawModule.js:108:15
+[draw] Segment 17: 0.036 km drawModule.js:108:15
+[draw] Segment 18: 0.035 km drawModule.js:108:15
+[draw] Segment 19: 0.032 km drawModule.js:108:15
+[draw] Segment 20: 0.039 km drawModule.js:108:15
+[draw] Segment 21: 0.072 km drawModule.js:108:15
+[draw] Segment 22: 0.038 km drawModule.js:108:15
+[draw] Segment 23: 0.038 km drawModule.js:108:15
+[draw] Segment 24: 0.033 km drawModule.js:108:15
+[draw] Segment 25: 0.026 km drawModule.js:108:15
+[draw] Segment 26: 0.024 km drawModule.js:108:15
+[draw] Segment 27: 0.025 km drawModule.js:108:15
+[draw] Segment 28: 0.036 km drawModule.js:108:15
+[draw] Segment 29: 0.032 km drawModule.js:108:15
+[draw] Segment 30: 0.024 km drawModule.js:108:15
+[draw] Segment 31: 0.018 km drawModule.js:108:15
+[draw] Segment 32: 0.028 km drawModule.js:108:15
+[draw] Segment 33: 0.016 km drawModule.js:108:15
+[draw] Segment 34: 0.022 km drawModule.js:108:15
+[draw] Segment 35: 0.031 km drawModule.js:108:15
+[draw] Segment 36: 0.016 km drawModule.js:108:15
+[draw] Segment 37: 0.020 km drawModule.js:108:15
+[draw] Segment 38: 0.021 km drawModule.js:108:15
+[draw] Segment 39: 0.019 km drawModule.js:108:15
+[draw] Segment 40: 0.010 km drawModule.js:108:15
+[draw] Segment 41: 0.010 km drawModule.js:108:15
+[draw] Segment 42: 0.013 km drawModule.js:108:15
+[draw] Segment 43: 0.011 km drawModule.js:108:15
+[draw] Segment 44: 0.020 km drawModule.js:108:15
+[draw] Segment 45: 0.023 km drawModule.js:108:15
+[draw] Segment 46: 0.031 km drawModule.js:108:15
+[draw] Segment 47: 0.024 km drawModule.js:108:15
+[draw] Segment 48: 0.027 km drawModule.js:108:15
+[draw] Segment 49: 0.019 km drawModule.js:108:15
+[draw] Segment 50: 0.013 km drawModule.js:108:15
+[draw] Segment 51: 0.017 km drawModule.js:108:15
+[draw] Segment 52: 0.021 km drawModule.js:108:15
+[draw] Segment 53: 0.024 km drawModule.js:108:15
+[draw] Segment 54: 0.022 km drawModule.js:108:15
+[draw] Segment 55: 0.033 km drawModule.js:108:15
+[draw] Segment 56: 0.018 km drawModule.js:108:15
+[draw] Segment 57: 0.017 km drawModule.js:108:15
+[draw] Segment 58: 0.021 km drawModule.js:108:15
+[draw] Segment 59: 0.027 km drawModule.js:108:15
+[draw] Segment 60: 0.018 km drawModule.js:108:15
+[draw] Segment 61: 0.018 km drawModule.js:108:15
+[draw] Segment 62: 0.012 km drawModule.js:108:15
+[draw] Segment 63: 0.027 km drawModule.js:108:15
+[draw] Segment 64: 0.028 km drawModule.js:108:15
+[draw] Segment 65: 0.025 km drawModule.js:108:15
+[draw] Segment 66: 0.017 km drawModule.js:108:15
+[draw] Segment 67: 0.016 km drawModule.js:108:15
+[draw] Segment 68: 0.025 km drawModule.js:108:15
+[draw] Segment 69: 0.062 km drawModule.js:108:15
+[draw] Segment 70: 0.052 km drawModule.js:108:15
+[draw] Segment 71: 0.021 km drawModule.js:108:15
+[draw] Segment 72: 0.025 km drawModule.js:108:15
+[draw] Segment 73: 0.023 km drawModule.js:108:15
+[draw] Segment 74: 0.020 km drawModule.js:108:15
+[draw] Segment 75: 0.017 km drawModule.js:108:15
+[draw] Segment 76: 0.014 km drawModule.js:108:15
+[draw] Segment 77: 0.011 km drawModule.js:108:15
+[draw] Segment 78: 0.018 km drawModule.js:108:15
+[draw] Segment 79: 0.022 km drawModule.js:108:15
+[draw] Segment 80: 0.058 km drawModule.js:108:15
+[draw] Segment 81: 0.024 km drawModule.js:108:15
+[draw] Segment 82: 0.020 km drawModule.js:108:15
+[draw] Segment 83: 0.020 km drawModule.js:108:15
+[draw] Segment 84: 0.018 km drawModule.js:108:15
+[draw] Segment 85: 0.025 km drawModule.js:108:15
+[draw] Segment 86: 0.035 km drawModule.js:108:15
+[draw] Segment 87: 0.038 km drawModule.js:108:15
+[draw] Segment 88: 0.047 km drawModule.js:108:15
+[draw] Segment 89: 0.040 km drawModule.js:108:15
+[draw] Segment 90: 0.029 km drawModule.js:108:15
+[draw] Segment 91: 0.016 km drawModule.js:108:15
+[draw] Segment 92: 0.008 km drawModule.js:108:15
+[draw] Segment 93: 0.018 km drawModule.js:108:15
+[draw] Segment 94: 0.040 km drawModule.js:108:15
+[draw] Segment 95: 0.027 km drawModule.js:108:15
+[draw] Segment 96: 0.027 km drawModule.js:108:15
+[draw] Segment 97: 0.033 km drawModule.js:108:15
+[draw] Segment 98: 0.037 km drawModule.js:108:15
+[draw] Segment 99: 0.040 km drawModule.js:108:15
+[draw] Segment 100: 0.026 km drawModule.js:108:15
+[draw] Segment 101: 0.019 km drawModule.js:108:15
+[draw] Segment 102: 0.010 km drawModule.js:108:15
+[draw] Segment 103: 0.011 km drawModule.js:108:15
+[draw] Segment 104: 0.021 km drawModule.js:108:15
+[draw] Segment 105: 0.028 km drawModule.js:108:15
+[draw] Segment 106: 0.055 km drawModule.js:108:15
+[draw] Segment 107: 0.058 km drawModule.js:108:15
+[draw] Segment 108: 0.056 km drawModule.js:108:15
+[draw] Segment 109: 0.074 km drawModule.js:108:15
+[draw] Segment 110: 0.022 km drawModule.js:108:15
+[draw] Segment 111: 0.011 km drawModule.js:108:15
+[draw] Segment 112: 0.018 km drawModule.js:108:15
+[draw] Segment 113: 0.060 km drawModule.js:108:15
+[draw] Segment 114: 0.055 km drawModule.js:108:15
+[draw] Segment 115: 0.049 km drawModule.js:108:15
+[draw] Segment 116: 0.036 km drawModule.js:108:15
+[draw] Segment 117: 0.029 km drawModule.js:108:15
+[draw] Segment 118: 0.019 km drawModule.js:108:15
+[draw] Segment 119: 0.019 km drawModule.js:108:15
+[draw] Segment 120: 0.022 km drawModule.js:108:15
+[draw] Segment 121: 0.024 km drawModule.js:108:15
+[draw] Segment 122: 0.021 km drawModule.js:108:15
+[draw] Segment 123: 0.011 km drawModule.js:108:15
+[draw] Total calculated distance: 3.612 km drawModule.js:117:13
+[draw] Got elevation from map.queryTerrainElevation: 508.6861704835313m at [-36.6563533731015, 147.16448100452294] drawModule.js:238:21
+[draw] Got elevation from map.queryTerrainElevation: 718.2915209663083m at [-36.4462154750707, 146.7151419009606] drawModule.js:238:21
+[draw] Got elevation from map.queryTerrainElevation: 237.349478306271m at [-37.27614780491126, 145.79838124215098] drawModule.js:238:21
+[draw] Got elevation from map.queryTerrainElevation: 664.4572118286171m at [-36.44983672214491, 146.72750262089772] drawModule.js:238:21
+[draw] Got elevation from map.queryTerrainElevation: 365.60325466642075m at [-36.65090005897408, 147.13417440878516] drawModule.js:238:21
+[draw] Got elevation from map.queryTerrainElevation: 422.3014417618955m at [-36.65927950699935, 147.15073517552963] drawModule.js:238:21
+[draw] Got elevation from map.queryTerrainElevation: 378.09623314284397m at [-36.64897085057461, 147.1350403342919] drawModule.js:238:21
+[draw] Converted features: 
+Array(6) [ {…}, {…}, {…}, {…}, {…}, {…} ]
+drawModule.js:2074:17
+[draw] Starting migration, currentDrawColor: #ff6b35 drawModule.js:2344:13
+[draw] Features before migration: 6 drawModule.js:2345:13
+[draw] Feature 0: 
+Object { id: 1, hasColor: true, color: "#00ff00" }
+drawModule.js:2349:15
+[draw] Feature 1: 
+Object { id: 2, hasColor: true, color: "#ff0080" }
+drawModule.js:2349:15
+[draw] Feature 2: 
+Object { id: 3, hasColor: true, color: "#ff0080" }
+drawModule.js:2349:15
+[draw] Feature 3: 
+Object { id: 4, hasColor: true, color: "#ff0080" }
+drawModule.js:2349:15
+[draw] Feature 4: 
+Object { id: 5, hasColor: true, color: "#ffff00" }
+drawModule.js:2349:15
+[draw] Feature 5: 
+Object { id: 6, hasColor: true, color: "#00ffff" }
+drawModule.js:2349:15
+[draw] Migration complete, migrated: false drawModule.js:2362:13
+[draw] Feature collection after migration: 
+Object { type: "FeatureCollection", features: (6) […] }
+drawModule.js:2080:17
+[draw] Map source exists: false drawModule.js:2081:17
+[draw] Map layer exists: false drawModule.js:2082:17
+[draw] Creating new source and layer drawModule.js:519:13
+[draw] Source created successfully drawModule.js:534:21
+[draw] Layer created successfully drawModule.js:559:21
+[draw] Source and layer setup complete drawModule.js:562:19
+[draw] Current source data: 
+Object { id: "freehand-draw", type: "geojson", minzoom: 0, maxzoom: 18, tileSize: 512, isTileClipped: true, reparseOverscaled: true, _loaded: true, actor: {…}, _eventedParent: {…}, … }
+drawModule.js:563:19
+[draw] Current layer: 
+Object { id: "freehand-draw-line", type: "line", source: "freehand-draw", layout: {…}, paint: {…} }
+drawModule.js:564:19
+[draw] Map style now loaded, retrying source/layer creation... drawModule.js:479:17
+[draw] Map style not loaded yet, waiting... drawModule.js:477:15
+[draw] Loaded color from Supabase: #00ffff drawModule.js:2271:17
+[draw] Loaded color from Supabase: #00ffff drawModule.js:2308:17
+[draw] Updated color picker UI to: #00ffff drawModule.js:2329:17
+[draw] Starting migration, currentDrawColor: #00ffff drawModule.js:2344:13
+[draw] Features before migration: 6 drawModule.js:2345:13
+[draw] Feature 0: 
+Object { id: 1, hasColor: true, color: "#00ff00" }
+drawModule.js:2349:15
+[draw] Feature 1: 
+Object { id: 2, hasColor: true, color: "#ff0080" }
+drawModule.js:2349:15
+[draw] Feature 2: 
+Object { id: 3, hasColor: true, color: "#ff0080" }
+drawModule.js:2349:15
+[draw] Feature 3: 
+Object { id: 4, hasColor: true, color: "#ff0080" }
+drawModule.js:2349:15
+[draw] Feature 4: 
+Object { id: 5, hasColor: true, color: "#ffff00" }
+drawModule.js:2349:15
+[draw] Feature 5: 
+Object { id: 6, hasColor: true, color: "#00ffff" }
+drawModule.js:2349:15
+[draw] Migration complete, migrated: false drawModule.js:2362:13
+[draw] Loaded color from Supabase: #00ffff drawModule.js:2271:17
+[draw] Loaded color from Supabase: #00ffff drawModule.js:2308:17
+[draw] Updated color picker UI to: #00ffff drawModule.js:2329:17
+[draw] Starting migration, currentDrawColor: #00ffff drawModule.js:2344:13
+[draw] Features before migration: 6 drawModule.js:2345:13
+[draw] Feature 0: 
+Object { id: 1, hasColor: true, color: "#00ff00" }
+drawModule.js:2349:15
+[draw] Feature 1: 
+Object { id: 2, hasColor: true, color: "#ff0080" }
+drawModule.js:2349:15
+[draw] Feature 2: 
+Object { id: 3, hasColor: true, color: "#ff0080" }
+drawModule.js:2349:15
+[draw] Feature 3: 
+Object { id: 4, hasColor: true, color: "#ff0080" }
+drawModule.js:2349:15
+[draw] Feature 4: 
+Object { id: 5, hasColor: true, color: "#ffff00" }
+drawModule.js:2349:15
+[draw] Feature 5: 
+Object { id: 6, hasColor: true, color: "#00ffff" }
+drawModule.js:2349:15
+[draw] Migration complete, migrated: false drawModule.js:2362:13
+[draw] Cleared all drawn track labels drawModule.js:1893:13
+[draw] Successfully loaded drawn tracks to map drawModule.js:2100:23
+[draw] Source data after update: 
+Object { type: "FeatureCollection", features: (6) […] }
+drawModule.js:2101:23
+[draw] Track color: #00ff00, Hue rotation: 120deg drawModule.js:1376:13
+[draw] Track pin positioned at geometric center: 
+Array [ 146.71850573082892, -36.446675608150834 ]
+drawModule.js:1525:13
+[draw] Visibility update called for track: Fire track walk., zoom: 7, editing: false, unnamed: false, startMinimized: true drawModule.js:1537:15
+[draw] Showing pin only (zoomed out or startMinimized) for track: Fire track walk. drawModule.js:1554:17
+[draw] Track Fire track walk. computed display: block, visibility: visible drawModule.js:1563:15
+[draw] Added track label "Fire track walk." at: 
+Array [ 146.71850573082892, -36.446675608150834 ]
+drawModule.js:1645:13
+[draw] Track color: #ff0080, Hue rotation: 320deg drawModule.js:1376:13
+[draw] Track pin positioned at geometric center: 
+Array [ 145.5091463051759, -37.33407937358761 ]
+drawModule.js:1525:13
+[draw] Visibility update called for track: draw test 1, zoom: 7, editing: false, unnamed: false, startMinimized: true drawModule.js:1537:15
+[draw] Showing pin only (zoomed out or startMinimized) for track: draw test 1 drawModule.js:1554:17
+[draw] Track draw test 1 computed display: block, visibility: visible drawModule.js:1563:15
+[draw] Added track label "draw test 1" at: 
+Array [ 145.5091463051759, -37.33407937358761 ]
+drawModule.js:1645:13
+[draw] Track color: #ff0080, Hue rotation: 320deg drawModule.js:1376:13
+[draw] Track pin positioned at geometric center: 
+Array [ 146.72521734475905, -36.450322009309886 ]
+drawModule.js:1525:13
+[draw] Visibility update called for track: test 6, zoom: 7, editing: false, unnamed: false, startMinimized: true drawModule.js:1537:15
+[draw] Showing pin only (zoomed out or startMinimized) for track: test 6 drawModule.js:1554:17
+[draw] Track test 6 computed display: block, visibility: visible drawModule.js:1563:15
+[draw] Added track label "test 6" at: 
+Array [ 146.72521734475905, -36.450322009309886 ]
+drawModule.js:1645:13
+[draw] Track color: #ff0080, Hue rotation: 320deg drawModule.js:1376:13
+[draw] Track pin positioned at geometric center: 
+Array [ 147.15096926137184, -36.6592356522982 ]
+drawModule.js:1525:13
+[draw] Visibility update called for track: Tawonga, zoom: 7, editing: false, unnamed: false, startMinimized: true drawModule.js:1537:15
+[draw] Showing pin only (zoomed out or startMinimized) for track: Tawonga drawModule.js:1554:17
+[draw] Track Tawonga computed display: block, visibility: visible drawModule.js:1563:15
+[draw] Added track label "Tawonga" at: 
+Array [ 147.15096926137184, -36.6592356522982 ]
+drawModule.js:1645:13
+[draw] Track color: #ffff00, Hue rotation: 60deg drawModule.js:1376:13
+[draw] Track pin positioned at geometric center: 
+Array [ 147.1408877125686, -36.65672622341878 ]
+drawModule.js:1525:13
+[draw] Visibility update called for track: Tawonga 2, zoom: 7, editing: false, unnamed: false, startMinimized: true drawModule.js:1537:15
+[draw] Showing pin only (zoomed out or startMinimized) for track: Tawonga 2 drawModule.js:1554:17
+[draw] Track Tawonga 2 computed display: block, visibility: visible drawModule.js:1563:15
+[draw] Added track label "Tawonga 2" at: 
+Array [ 147.1408877125686, -36.65672622341878 ]
+drawModule.js:1645:13
+[draw] Track color: #00ffff, Hue rotation: 180deg drawModule.js:1376:13
+[draw] Track pin positioned at geometric center: 
+Array [ 147.14615434664768, -36.65992706197045 ]
+drawModule.js:1525:13
+[draw] Visibility update called for track: Drawn Track 6, zoom: 7, editing: false, unnamed: true, startMinimized: true drawModule.js:1537:15
+[draw] Showing full label (editing/unnamed) for track: Drawn Track 6 drawModule.js:1543:17
+[draw] Track Drawn Track 6 computed display: block, visibility: visible drawModule.js:1563:15
+[draw] Added track label "Drawn Track 6" at: 
+Array [ 147.14615434664768, -36.65992706197045 ]
+drawModule.js:1645:13
+WebGL warning: bindAttribLocation: `location` must be less than MAX_VERTEX_ATTRIBS. 2
+Attribution control repositioned mapEngine.js:153:17
+Scale control repositioned mapEngine.js:162:17
+WebGL warning: texSubImage: Alpha-premult and y-flip are deprecated for non-DOM-Element uploads. 9
+Error in parsing value for ‘user-select’.  Declaration dropped. map:1:1
