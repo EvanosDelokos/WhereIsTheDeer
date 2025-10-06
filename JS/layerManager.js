@@ -24,9 +24,9 @@ function initializeLayerManager() {
   // --- Base layer styles ---
   const baseLayers = {
     terrain: 'mapbox://styles/mapbox/outdoors-v12', // Outdoor terrain with natural colors
-    satellite: 'mapbox://styles/mapbox/satellite-streets-v12', // Satellite with streets and labels
+    satellite: 'mapbox://styles/mapbox/standard-satellite', // High-resolution satellite imagery
     contours: 'mapbox://styles/mapbox/light-v11', // Clean light style for contour lines
-    hybrid: 'mapbox://styles/mapbox/satellite-streets-v12' // Satellite with streets and labels for hybrid
+    hybrid: 'mapbox://styles/mapbox/standard-satellite' // High-resolution satellite for hybrid view
   };
 
   // Store base layers for external access
@@ -34,6 +34,7 @@ function initializeLayerManager() {
   window.WITD.activeSpeciesLayer = null;
 
   console.log("Layer Manager ready: Mapbox styles configured.");
+  console.log("Available base layers:", window.WITD.baseLayers);
 
   // Set default active layer (Terrain)
   const layerButtons = document.querySelectorAll('button[data-layer]');
@@ -91,11 +92,39 @@ window.switchBaseLayer = function(name) {
     const currentPitch = map.getPitch();
     const currentBearing = map.getBearing();
 
+    // Clean up user-created sources before switching styles to prevent conflicts
+    const userSources = ['freehand-draw', 'measurement-source'];
+    userSources.forEach(sourceId => {
+      if (map.getSource(sourceId)) {
+        try {
+          // Remove layers that use this source first
+          const style = map.getStyle();
+          if (style && style.layers) {
+            style.layers.forEach(layer => {
+              if (layer.source === sourceId) {
+                if (map.getLayer(layer.id)) {
+                  map.removeLayer(layer.id);
+                }
+              }
+            });
+          }
+          // Then remove the source
+          map.removeSource(sourceId);
+          console.log(`Cleaned up source: ${sourceId}`);
+        } catch (error) {
+          console.log(`Source ${sourceId} already removed or not found`);
+        }
+      }
+    });
+
     // Switch style
     map.setStyle(newStyle);
 
     // Restore view state after style loads
     map.once('style.load', () => {
+      console.log(`Style loaded for ${name} layer. Current style:`, map.getStyle());
+      console.log(`Style sources:`, Object.keys(map.getStyle().sources || {}));
+      
       map.setCenter(currentCenter);
       map.setZoom(currentZoom);
       map.setPitch(currentPitch);
@@ -320,3 +349,50 @@ function restoreUserTracksAfterStyleSwitch() {
   
   console.log('[LayerManager] User tracks restoration complete');
 }
+
+// Global function to force refresh map tiles (useful for clearing cached imagery)
+window.refreshMapTiles = function() {
+  const map = window.WITD?.map;
+  if (!map) {
+    console.warn("Map not available for tile refresh");
+    return;
+  }
+  
+  console.log("Forcing map tile refresh...");
+  
+  // Force reload of all sources
+  const style = map.getStyle();
+  if (style && style.sources) {
+    Object.keys(style.sources).forEach(sourceId => {
+      const source = map.getSource(sourceId);
+      if (source && source.refresh) {
+        // For raster sources, force a refresh
+        console.log(`Refreshing source: ${sourceId}`);
+        source.refresh();
+      }
+    });
+  }
+  
+  // Force a repaint
+  map.triggerRepaint();
+  
+  console.log("Map tiles refresh complete");
+};
+
+// Global function to clear map cache and reload
+window.clearMapCache = function() {
+  const map = window.WITD?.map;
+  if (!map) {
+    console.warn("Map not available for cache clear");
+    return;
+  }
+  
+  console.log("Clearing map cache...");
+  
+  // Force reload the current style
+  const currentStyle = map.getStyle();
+  if (currentStyle && currentStyle.name) {
+    map.setStyle(currentStyle.name);
+    console.log("Map style reloaded");
+  }
+};

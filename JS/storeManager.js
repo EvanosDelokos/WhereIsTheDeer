@@ -368,10 +368,10 @@ export async function loadPins(map, customPins, attachPopupActions) {
     savedPins = [];
   }
   
-  // Check if localStorage was recently updated (within last 5 seconds) - indicates local clear operation
+  // Check if localStorage was recently updated (within last 30 seconds) - indicates local clear operation
   const lastLocalUpdate = localStorage.getItem('witd_pins_last_update');
   const now = Date.now();
-  const isRecentLocalUpdate = lastLocalUpdate && (now - parseInt(lastLocalUpdate)) < 5000;
+  const isRecentLocalUpdate = lastLocalUpdate && (now - parseInt(lastLocalUpdate)) < 30000;
   
   // If localStorage was recently updated, prioritize it over Supabase
   if (isRecentLocalUpdate) {
@@ -717,6 +717,38 @@ function bindActionsToPopup(popupElement, marker, pin) {
         }
         
         await savePins(window.customPins);
+        
+        // Force update Supabase with the current state
+        try {
+          const { data: { user } } = await supabase.auth.getUser();
+          if (user) {
+            const cleanPins = window.customPins.map(pin => ({
+              id: pin.marker?.id || pin.id,
+              name: pin.name,
+              lat: pin.lat,
+              lng: pin.lng,
+              style: pin.style || { variant: 'orange', size: 0.3 }
+            }));
+            
+            const { error } = await supabase
+              .from('user_pins')
+              .upsert({
+                user_id: user.id,
+                pins: cleanPins,
+                updated_at: new Date().toISOString()
+              }, {
+                onConflict: 'user_id'
+              });
+            
+            if (error) {
+              console.error('[Pins] Failed to update Supabase after deletion:', error.message);
+            } else {
+              console.log('[Pins] Successfully updated Supabase after pin deletion');
+            }
+          }
+        } catch (error) {
+          console.error('[Pins] Error updating Supabase after deletion:', error.message);
+        }
         
         // Re-bind event listeners for all remaining pins
         console.log('[Delete] Re-binding event listeners for remaining pins...');

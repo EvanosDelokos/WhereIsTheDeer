@@ -748,13 +748,11 @@ document.addEventListener("DOMContentLoaded", () => {
      clearPinsBtn.addEventListener("click", async () => {
      if (confirm("Clear all pins?")) {
        customPins.forEach(pin => {
-         if (pin.marker) {
-           map.removeLayer(pin.marker.id);
-           map.removeSource(pin.marker.id);
+         if (pin.marker?.element) {
+           pin.marker.element.remove();
          }
-         if (pin.labelMarker) {
-           map.removeLayer(pin.labelMarker.id);
-           map.removeSource(pin.labelMarker.id);
+         if (pin.labelMarker?.element) {
+           pin.labelMarker.element.remove();
          }
        });
        customPins.length = 0;
@@ -764,6 +762,30 @@ document.addEventListener("DOMContentLoaded", () => {
        console.log('[Pins] Cleared localPinData');
        
        await persistPins(customPins);
+       
+       // Force update Supabase with empty state
+       try {
+         const { data: { user } } = await supabase.auth.getUser();
+         if (user) {
+           const { error } = await supabase
+             .from('user_pins')
+             .upsert({
+               user_id: user.id,
+               pins: [],
+               updated_at: new Date().toISOString()
+             }, {
+               onConflict: 'user_id'
+             });
+           
+           if (error) {
+             console.error('[Pins] Failed to clear Supabase pins:', error.message);
+           } else {
+             console.log('[Pins] Successfully cleared Supabase pins');
+           }
+         }
+       } catch (error) {
+         console.error('[Pins] Error clearing Supabase pins:', error.message);
+       }
      }
    });
 
@@ -1176,6 +1198,9 @@ async function clearAllPins() {
 
   // Empty array in memory
   customPins.length = 0;
+  
+  // Clear localPinData as well
+  localPinData.length = 0;
 
   // Persist empty state to both localStorage and Supabase
   try {
@@ -1185,18 +1210,26 @@ async function clearAllPins() {
     console.log("🗑️ Local pins cleared");
 
     // Supabase
-    if (window.supabase && window.currentUser) {
-      const { error } = await window.supabase
-        .from('pins')
-        .upsert({
-          user_id: window.currentUser.id,
-          pins: []
-        });
-      if (error) {
-        console.error("❌ Failed to clear Supabase pins:", error);
-      } else {
-        console.log("☁️ Supabase pins cleared");
+    try {
+      const { data: { user } } = await supabase.auth.getUser();
+      if (user) {
+        const { error } = await supabase
+          .from('user_pins')
+          .upsert({
+            user_id: user.id,
+            pins: [],
+            updated_at: new Date().toISOString()
+          }, {
+            onConflict: 'user_id'
+          });
+        if (error) {
+          console.error("❌ Failed to clear Supabase pins:", error);
+        } else {
+          console.log("☁️ Supabase pins cleared");
+        }
       }
+    } catch (supabaseError) {
+      console.error("❌ Error clearing Supabase pins:", supabaseError);
     }
   } catch (err) {
     console.error("❌ Error clearing pins:", err);
@@ -1213,7 +1246,43 @@ async function deletePin(pinToDelete) {
     if (pinToDelete.marker?.element) pinToDelete.marker.element.remove();
     if (pinToDelete.labelMarker?.element) pinToDelete.labelMarker.element.remove();
     customPins.splice(index, 1);
+    
+    // Also remove from localPinData
+    const localIndex = localPinData.findIndex(p => 
+      p.lat === pinToDelete.lat && p.lng === pinToDelete.lng && p.label === pinToDelete.name
+    );
+    if (localIndex > -1) {
+      localPinData.splice(localIndex, 1);
+      console.log('[Pins] Removed from localPinData, remaining:', localPinData.length);
+    }
+    
     await persistPins(customPins);
+    
+    // Force update Supabase with the current state
+    try {
+      const { data: { user } } = await supabase.auth.getUser();
+      if (user) {
+        const cleanPins = cleanPinDataForSerialization(customPins);
+        const { error } = await supabase
+          .from('user_pins')
+          .upsert({
+            user_id: user.id,
+            pins: cleanPins,
+            updated_at: new Date().toISOString()
+          }, {
+            onConflict: 'user_id'
+          });
+        
+        if (error) {
+          console.error('[Pins] Failed to update Supabase after deletion:', error.message);
+        } else {
+          console.log('[Pins] Successfully updated Supabase after pin deletion');
+        }
+      }
+    } catch (error) {
+      console.error('[Pins] Error updating Supabase after deletion:', error.message);
+    }
+    
     console.log("🗑️ Pin deleted (local + Supabase updated)");
   }
 }

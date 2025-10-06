@@ -237,8 +237,8 @@ function showSSSComingSoonModal() {
 }
 
 document.addEventListener('DOMContentLoaded', function() {
-  const sssBtn = document.getElementById('toolbarSSSBtn');
-  if (sssBtn) {
-    sssBtn.addEventListener('click', showSSSComingSoonModal);
-  }
+  // const sssBtn = document.getElementById('toolbarSSSBtn');
+  // if (sssBtn) {
+  //   sssBtn.addEventListener('click', showSSSComingSoonModal);
+  // }
 });

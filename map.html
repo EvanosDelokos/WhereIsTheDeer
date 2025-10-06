@@ -516,7 +516,7 @@ if (speciesFilter) {
   <button id="toolbarGpxBtn" class="toolbar-btn">📁 <span>GPX</span></button>
   <button id="toolbarWeatherBtn" class="toolbar-btn">🌤️ <span>Weather</span></button>
   <button id="toolbarJournalBtn" class="toolbar-btn">📓 <span>Journal</span></button>
-  <button id="toolbarSSSBtn" class="toolbar-btn">💡 <span>SSS</span></button>
+  <!-- <button id="toolbarSSSBtn" class="toolbar-btn">💡 <span>SSS</span></button> -->
   <button id="toolbarLoginBtn" class="toolbar-btn">🔐 <span>Login</span></button>
 </div>
 
@@ -542,7 +542,7 @@ if (speciesFilter) {
       overflow-x: auto;
       overflow-y: hidden;
       white-space: nowrap;
-      justify-content: flex-start;
+      justify-content: space-evenly;
       align-items: center;
       gap: 0;
       scrollbar-width: none;
@@ -552,8 +552,8 @@ if (speciesFilter) {
       display: none;
     }
     .bottom-toolbar .toolbar-btn {
-      min-width: 90px;
-      max-width: 120px;
+      min-width: 85px;
+      max-width: 110px;
       font-size: 1.3em;
       padding: 4px 0;
       margin: 0 6px;
@@ -1996,7 +1996,7 @@ function restoreOriginalButtonFunctionality() {
   // Close submenus when other toolbars are opened
   const toolbarButtons = [
     'toolbarLayersBtn', 'toolbarGpxBtn', 'toolbarWeatherBtn', 
-    'toolbarJournalBtn', 'toolbarSSSBtn', 'toolbarAccountBtn'
+    'toolbarJournalBtn', /* 'toolbarSSSBtn', */ 'toolbarAccountBtn'
   ];
   
   toolbarButtons.forEach(btnId => {
@@ -2914,10 +2914,10 @@ function showSSSComingSoonModal() {
 }
 
 document.addEventListener('DOMContentLoaded', function() {
-  var sssBtn = document.getElementById('toolbarSSSBtn');
-  if (sssBtn) {
-    sssBtn.addEventListener('click', showSSSComingSoonModal);
-  }
+  // var sssBtn = document.getElementById('toolbarSSSBtn');
+  // if (sssBtn) {
+  //   sssBtn.addEventListener('click', showSSSComingSoonModal);
+  // }
 });
 </script>
 <script>

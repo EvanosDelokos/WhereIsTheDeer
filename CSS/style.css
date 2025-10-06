@@ -41,6 +41,7 @@
   position: absolute;
   top: 0;
   left: 0;
+  image-rendering: auto;
   z-index: 0;
 }
 
@@ -2132,7 +2133,7 @@ button[data-layer].active {
   position: fixed;
   left: 0; right: 0; bottom: 0;
   display: flex;
-  justify-content: space-around;
+  justify-content: space-evenly;
   align-items: center;
   background: rgba(255,255,255,0.97);
   box-shadow: 0 -2px 8px rgba(0,0,0,0.12);
@@ -3027,7 +3028,7 @@ button[data-layer].active {
     overflow-x: auto !important;
     overflow-y: hidden !important;
     white-space: nowrap !important;
-    justify-content: flex-start !important;
+    justify-content: space-evenly !important;
     align-items: center !important;
     padding: 12px 0 12px 4px !important;
     gap: 0 !important;
@@ -3042,9 +3043,9 @@ button[data-layer].active {
     display: none !important;
   }
   .bottom-toolbar button {
-    flex: 0 0 33vw !important;
-    min-width: 90px !important;
-    max-width: 120px !important;
+    flex: 0 0 28vw !important;
+    min-width: 85px !important;
+    max-width: 110px !important;
     font-size: 1.3em !important;
     padding: 4px 0 !important;
     margin: 0 6px !important;

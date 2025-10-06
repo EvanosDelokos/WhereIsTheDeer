@@ -75,12 +75,14 @@ document.addEventListener("DOMContentLoaded", () => {
   // Initialize Mapbox map
   const map = new mapboxgl.Map({
     container: 'map',
-    style: 'mapbox://styles/mapbox/standard-satellite', // High resolution + labels + terrain support
+    style: 'mapbox://styles/mapbox/outdoors-v12', // Terrain view to match default button state
     center: DEFAULT_CENTER,
     zoom: DEFAULT_ZOOM,
     pitch: 0,
     bearing: 0,
-    antialias: true
+    antialias: true,
+    pixelRatio: window.devicePixelRatio || 1, // Use device pixel ratio for crisp rendering
+    renderWorldCopies: false // Prevent duplicate world rendering
   });
 
   // Add navigation controls (zoom, compass, pitch)
