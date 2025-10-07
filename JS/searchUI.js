@@ -61,6 +61,14 @@ function setupSearchListeners() {
     }
   });
 
+  // Select all text when input is focused (for easy replacement)
+  searchInput.addEventListener('focus', function(e) {
+    // Small delay to ensure the input is fully focused before selecting
+    setTimeout(() => {
+      e.target.select();
+    }, 10);
+  });
+
   // Click outside hides suggestions
   document.addEventListener('click', function(e) {
     if (!searchInput.contains(e.target) && !suggestionsBox.contains(e.target)) {

@@ -1764,17 +1764,24 @@ body, html {
   display: flex;
   justify-content: center;
   align-items: center;
-  gap: 8px;
+  gap: 12px;
   width: 100%;
-  max-width: 180px;
+  max-width: 200px;
   margin: 0 auto;
-  padding: 4px 2px;
+  padding: 4px;
+  box-sizing: border-box;
 }
 
-/* GPX Modal specific grid styling for better spacing */
+/* GPX Modal specific grid styling - 1x2 layout */
 #gpxModal .popup-grid {
-  gap: 16px 20px;
-  padding: 0 4px;
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 12px;
+  padding: 0;
+  width: 100%;
+  margin: 0 auto;
+  min-width: 0;
+  box-sizing: border-box;
 }
 
 .modern-popup .popup-btn {
@@ -1796,23 +1803,20 @@ body, html {
   min-height: 56px;
   flex: 0 0 auto;
   width: 100px;
+  max-width: 100px;
+  box-sizing: border-box;
+  overflow: hidden;
 }
 
-/* GPX Modal specific button styling for equal sizing and alignment */
-#gpxModal .popup-btn {
-  min-width: 120px;
-  width: 100%;
-  height: 80px;
-  justify-content: center;
-  text-align: center;
-  padding: 12px 8px 8px 8px;
+/* GPX Modal container styling to match other modals */
+#gpxModal.modern-popup {
+  padding: 16px !important;
+  box-sizing: border-box;
+  min-width: 220px !important;
+  max-width: 98vw !important;
 }
 
-#gpxModal .popup-btn span {
-  margin-top: 4px;
-  font-size: 0.9em;
-  line-height: 1.2;
-}
+/* GPX Modal buttons now use the same styling as other popups */
 
 .modern-popup .popup-btn:hover {
   background: #ffffff;
@@ -2108,23 +2112,74 @@ button[data-layer].active {
 
 /* Specific: position Tools popup above toolbar */
 #toolsDropdown.modern-popup {
-  bottom: 64px;
-  width: max-content;
-  min-width: 180px;
+  position: absolute;
+  top: -120px;
+  left: 50%;
+  transform: translateX(-50%);
+  width: auto;
+  min-width: 200px;
   max-width: 95vw;
-  padding: 6px 2px 2px 2px;
+  padding: 16px;
   display: flex;
-  align-items: flex-end;
+  align-items: center;
   justify-content: center;
+  background: #fff;
+  border-radius: 16px;
+  box-shadow: 0 6px 24px rgba(0,0,0,0.13), 0 1.5px 6px rgba(0,0,0,0.07);
+  box-sizing: border-box;
+  overflow: hidden;
+  z-index: 1002;
+}
+
+/* Layers popup spacing to match tools popup */
+#layersDropdown.modern-popup,
+#mapLayersWrapper.modern-popup,
+.modern-popup[data-popup="layers"] {
+  padding: 16px !important;
+  box-sizing: border-box;
+}
+
+/* Uniform spacing for layers popup buttons */
+#layersDropdown.modern-popup .popup-grid,
+#mapLayersWrapper.modern-popup .popup-grid,
+.modern-popup[data-popup="layers"] .popup-grid {
+  gap: 12px !important;
 } 
 
 @media (max-width: 600px) {
   #toolsDropdown.modern-popup {
     min-width: 180px;
-    padding: 6px 2px 2px 2px;
+    max-width: 90vw;
+    padding: 12px;
+    top: -100px;
+    left: 50%;
+    transform: translateX(-50%);
+  }
+  /* Layers popup mobile spacing */
+  #layersDropdown.modern-popup,
+  #mapLayersWrapper.modern-popup,
+  .modern-popup[data-popup="layers"] {
+    padding: 12px !important;
+  }
+  /* Uniform mobile spacing for layers popup buttons */
+  #layersDropdown.modern-popup .popup-grid,
+  #mapLayersWrapper.modern-popup .popup-grid,
+  .modern-popup[data-popup="layers"] .popup-grid {
+    gap: 10px !important;
   }
   .modern-popup .popup-grid {
     gap: 10px 8px;
+  }
+  .modern-popup .popup-grid-horizontal {
+    gap: 8px;
+    max-width: 160px;
+  }
+  .modern-popup .popup-btn {
+    min-width: 70px;
+    width: 80px;
+    max-width: 80px;
+    padding: 10px 12px;
+    font-size: 0.85em;
   }
 }
 
@@ -2383,6 +2438,17 @@ button[data-layer].active {
   .modern-popup .popup-grid {
     gap: 6px 4px;
   }
+  /* Journal modal mobile sizing */
+  body #journalModal.modern-popup {
+    width: 85vw !important;
+    max-width: 400px !important;
+    height: 480px !important;
+    left: 50% !important;
+    top: 50% !important;
+    transform: translate(-50%, -50%) !important;
+    margin: 0 !important;
+    min-width: 0 !important;
+  }
 }
 @media (max-width: 400px) {
   .modern-popup {
@@ -2392,6 +2458,66 @@ button[data-layer].active {
   }
   .modern-popup .popup-grid {
     gap: 4px 2px;
+  }
+  /* Journal modal small mobile sizing */
+  body #journalModal.modern-popup {
+    width: 90vw !important;
+    max-width: 350px !important;
+    height: 450px !important;
+    left: 50% !important;
+    top: 50% !important;
+    transform: translate(-50%, -50%) !important;
+    margin: 0 !important;
+    min-width: 0 !important;
+  }
+  #toolsDropdown.modern-popup {
+    min-width: 160px;
+    max-width: 85vw;
+    padding: 8px;
+    top: -90px;
+  }
+  /* Layers popup small mobile spacing */
+  #layersDropdown.modern-popup,
+  #mapLayersWrapper.modern-popup,
+  .modern-popup[data-popup="layers"] {
+    padding: 8px !important;
+  }
+  /* Uniform small mobile spacing for layers popup buttons */
+  #layersDropdown.modern-popup .popup-grid,
+  #mapLayersWrapper.modern-popup .popup-grid,
+  .modern-popup[data-popup="layers"] .popup-grid {
+    gap: 8px !important;
+  }
+  .modern-popup .popup-grid-horizontal {
+    gap: 6px;
+    max-width: 140px;
+  }
+  .modern-popup .popup-btn {
+    min-width: 60px;
+    width: 70px;
+    max-width: 70px;
+    padding: 8px 10px;
+    font-size: 0.8em;
+  }
+  /* GPX modal small mobile 1x2 layout */
+  #gpxModal .popup-grid {
+    grid-template-columns: 80px 80px !important;
+    gap: 8px !important;
+    justify-content: center !important;
+  }
+  /* GPX modal small mobile padding */
+  #gpxModal.modern-popup {
+    padding: 8px !important;
+    min-width: 80px !important;
+    max-width: 100vw !important;
+  }
+  /* GPX buttons equal width on small mobile */
+  #gpxModal .popup-btn {
+    width: 80px !important;
+    min-width: 80px !important;
+    max-width: 80px !important;
+    flex: none !important;
+    margin: 0 !important;
   }
 }
 
@@ -3070,8 +3196,80 @@ button[data-layer].active {
     margin-top: 2px !important;
     display: block !important;
   }
+  /* Ensure Account button matches other toolbar buttons exactly */
+  .bottom-toolbar #toolbarLoginBtn.toolbar-btn,
+  #bottomToolbar #toolbarLoginBtn {
+    flex: 0 0 28vw !important;
+    min-width: 85px !important;
+    max-width: 110px !important;
+    width: 28vw !important;
+    font-size: 1.3em !important;
+    padding: 4px 0 !important;
+    margin: 0 6px !important;
+    border-radius: 14px !important;
+    background: #fff !important;
+    border: 1.5px solid #e0e0e0 !important;
+    box-shadow: 0 1px 4px rgba(0,0,0,0.04) !important;
+    transition: background 0.2s, border 0.2s !important;
+    display: flex !important;
+    flex-direction: column !important;
+    align-items: center !important;
+    justify-content: center !important;
+    text-align: center !important;
+    white-space: nowrap !important;
+    overflow: hidden !important;
+    text-overflow: ellipsis !important;
+    height: 48px !important;
+    box-sizing: border-box !important;
+  }
+  .bottom-toolbar #toolbarLoginBtn.toolbar-btn span,
+  #bottomToolbar #toolbarLoginBtn span {
+    font-size: 0.95em !important;
+    margin-top: 2px !important;
+    display: block !important;
+    line-height: 1.2 !important;
+  }
+  .bottom-toolbar #toolbarLoginBtn.toolbar-btn:active,
+  .bottom-toolbar #toolbarLoginBtn.toolbar-btn:focus,
+  #bottomToolbar #toolbarLoginBtn:active,
+  #bottomToolbar #toolbarLoginBtn:focus {
+    background: #f0f8ff !important;
+    border-color: #b3d8ff !important;
+  }
   .bottom-toolbar button:not(:last-child)::after {
     display: none !important;
+  }
+}
+
+/* ULTRA-HIGH SPECIFICITY: Force Account button to match other toolbar buttons */
+@media (max-width: 900px) {
+  body .bottom-toolbar #toolbarLoginBtn,
+  body #bottomToolbar #toolbarLoginBtn {
+    flex: 0 0 28vw !important;
+    min-width: 85px !important;
+    max-width: 110px !important;
+    width: 28vw !important;
+    height: 48px !important;
+    padding: 4px 0 !important;
+    margin: 0 6px !important;
+    border-radius: 14px !important;
+    background: #fff !important;
+    border: 1.5px solid #e0e0e0 !important;
+    box-shadow: 0 1px 4px rgba(0,0,0,0.04) !important;
+    display: flex !important;
+    flex-direction: column !important;
+    align-items: center !important;
+    justify-content: center !important;
+    text-align: center !important;
+    font-size: 1.3em !important;
+    box-sizing: border-box !important;
+  }
+  body .bottom-toolbar #toolbarLoginBtn span,
+  body #bottomToolbar #toolbarLoginBtn span {
+    font-size: 0.95em !important;
+    margin-top: 2px !important;
+    display: block !important;
+    line-height: 1.2 !important;
   }
 }
 
@@ -3091,18 +3289,42 @@ button[data-layer].active {
     background: #f0f8ff;
     border-color: #b3d8ff;
   }
+  
+  /* Ensure GPX buttons match layers buttons on desktop */
+  #gpxModal .popup-grid {
+    grid-template-columns: 120px 120px !important;
+    gap: 12px !important;
+    justify-content: center !important;
+  }
+  #gpxModal .popup-btn {
+    background: #fafafa !important;
+    border: 1.5px solid #e5e5e5 !important;
+    border-radius: 10px !important;
+    font-size: 1.1em !important;
+    padding: 8px 0 !important;
+    box-shadow: 0 1px 2px rgba(0,0,0,0.03) !important;
+    color: #222 !important;
+    transition: background 0.2s, border 0.2s !important;
+    margin: 0 !important;
+    width: 120px !important;
+    min-width: 120px !important;
+    max-width: 120px !important;
+    flex: none !important;
+  }
+  #gpxModal .popup-btn:active, #gpxModal .popup-btn:focus, #gpxModal .popup-btn:hover {
+    background: #f0f8ff;
+    border-color: #b3d8ff;
+  }
 }
 
 @media (max-width: 900px) {
   #journalModal.modern-popup,
-  #sssModal.modern-popup,
-  #gpxModal.modern-popup {
+  #sssModal.modern-popup {
     padding-left: 12px !important;
     padding-right: 12px !important;
   }
   #journalModal.modern-popup .popup-btn,
-  #sssModal.modern-popup .popup-btn,
-  #gpxModal.modern-popup .popup-btn {
+  #sssModal.modern-popup .popup-btn {
     width: 100%;
     box-sizing: border-box;
     margin-left: 0 !important;
@@ -3124,8 +3346,31 @@ button[data-layer].active {
     padding-right: 4px;
   }
   #gpxModal.modern-popup {
-    min-width: 320px !important;
+    min-width: 120px !important;
     max-width: 95vw !important;
+  }
+  /* GPX modal mobile 1x2 layout */
+  #gpxModal .popup-grid {
+    grid-template-columns: 100px 100px !important;
+    gap: 10px !important;
+    justify-content: center !important;
+    width: 220px !important;
+    margin: 0 auto !important;
+  }
+  /* GPX modal mobile padding */
+  #gpxModal.modern-popup {
+    padding: 12px !important;
+  }
+  /* GPX buttons equal width on mobile */
+  #gpxModal .popup-btn {
+    width: 100px !important;
+    min-width: 100px !important;
+    max-width: 100px !important;
+    flex: none !important;
+    margin: 0 !important;
+    padding: 12px 8px !important;
+    box-sizing: border-box !important;
+    text-align: center !important;
   }
 }
 
@@ -3471,11 +3716,13 @@ body div.mapboxgl-ctrl-scale {
   transform: none !important;
 }
 
-/* ULTRA-HIGH SPECIFICITY JOURNAL MODAL WIDTH OVERRIDE */
-body #journalModal.modern-popup {
-  max-width: none !important;
-  width: auto !important;
-  min-width: 400px !important;
+/* ULTRA-HIGH SPECIFICITY JOURNAL MODAL WIDTH OVERRIDE - Desktop only */
+@media (min-width: 601px) {
+  body #journalModal.modern-popup {
+    max-width: none !important;
+    width: auto !important;
+    min-width: 400px !important;
+  }
 }
 
 body #journalModal.modern-popup #journalForm input,

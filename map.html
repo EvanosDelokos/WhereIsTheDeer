@@ -375,7 +375,6 @@ if (speciesFilter) {
     <button id="removeGpxProxy" class="popup-btn disabled">🗑️<br><span>Clear</span></button>
   </div>
   <div id="gpxListProxy" style="width:100%;margin:10px 0 0 0;"></div>
-  <button class="close-modal popup-btn disabled" style="width:100%;margin-top:10px;">Close</button>
   <div class="modern-popup-arrow">
     <svg width="28" height="14" viewBox="0 0 28 14"><polygon points="14,14 0,0 28,0" fill="#fff" stroke="#e0e0e0" stroke-width="1"/></svg>
   </div>
@@ -839,21 +838,7 @@ if (gpxBtn && gpxModal) {
     } else {
       openPopupAboveButton(gpxModal, gpxBtn);
       
-      // Always enable the close button regardless of user plan
-      const closeBtn = gpxModal.querySelector('.close-modal');
-      if (closeBtn) {
-        closeBtn.classList.remove('disabled');
-        closeBtn.removeAttribute('disabled');
-        closeBtn.style.opacity = '1';
-        closeBtn.style.filter = 'none';
-        
-        // Set up close button functionality
-        closeBtn.onclick = () => {
-          gpxModal.style.display = 'none';
-          openPopup = null;
-          openButton = null;
-        };
-      }
+      // Close button removed - modal closes on outside click
       
       // Apply gating based on user plan
       if (currentUserPlan === 'premium') {
@@ -2016,30 +2001,8 @@ function restoreOriginalButtonFunctionality() {
     });
   }
 
-  // --- GPX Modal Close Button Fix ---
-  const gpxCloseBtn = document.querySelector('#gpxModal .close-modal');
-  if (gpxCloseBtn) {
-    // Remove any existing event listeners by cloning
-    const newGpxCloseBtn = gpxCloseBtn.cloneNode(true);
-    gpxCloseBtn.parentNode.replaceChild(newGpxCloseBtn, gpxCloseBtn);
-    
-    // Add the proper close functionality
-    newGpxCloseBtn.addEventListener('click', () => {
-      const gpxModal = document.getElementById('gpxModal');
-      if (gpxModal) {
-        gpxModal.style.display = 'none';
-        openPopup = null;
-        openButton = null;
-      }
-    });
-    
-    // Ensure it's not disabled
-    newGpxCloseBtn.classList.remove('disabled');
-    newGpxCloseBtn.removeAttribute('disabled');
-    newGpxCloseBtn.style.opacity = '1';
-    newGpxCloseBtn.style.cursor = 'pointer';
-    newGpxCloseBtn.style.pointerEvents = 'auto';
-  }
+  // --- GPX Modal Close Button Removed ---
+  // Close button removed - modal closes on outside click
 
   // --- GPX Upload Proxy → Real Input Forwarder ---
   const proxy = document.getElementById('gpxUploadProxy');
