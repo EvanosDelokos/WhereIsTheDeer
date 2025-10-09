@@ -1,5 +1,4 @@
-console.log("Module loaded: storeManager (Mapbox GL JS)");
-console.log("🔍 storeManager.js loaded successfully");
+// Store manager module loaded
 
 // Import unified pin builder functions
 import { createPinMarker, createPinPopup, createLabelElement, buildPinPopupHTML } from './pinManager.js';
@@ -37,7 +36,7 @@ async function checkUserPinsTableExists() {
     
     return true; // Table exists
   } catch (error) {
-    console.log('[Pins] Error checking if user_pins table exists:', error.message);
+    console.error('[Pins] Error checking if user_pins table exists:', error.message);
     return false;
   }
 }
@@ -45,12 +44,12 @@ async function checkUserPinsTableExists() {
 // --- Helper function to create user_pins table if it doesn't exist ---
 async function createUserPinsTable(userId) {
   try {
-    console.log('[Pins] Attempting to create user_pins table...');
+    // Attempting to create user_pins table
     
     // First check if table exists
     const tableExists = await checkUserPinsTableExists();
     if (tableExists) {
-      console.log('[Pins] user_pins table already exists');
+      // user_pins table already exists
       return true;
     }
     
@@ -58,7 +57,7 @@ async function createUserPinsTable(userId) {
     const { error } = await supabase.rpc('create_user_pins_table', { user_id: userId });
     
     if (error) {
-      console.log('[Pins] RPC function not available, trying direct SQL...');
+      // RPC function not available, trying direct SQL
       
       // Fallback: try to create table directly (this might not work due to RLS)
       const { error: sqlError } = await supabase
@@ -71,16 +70,16 @@ async function createUserPinsTable(userId) {
         }]);
       
       if (sqlError) {
-        console.log('[Pins] Could not create table or insert initial record:', sqlError.message);
-        console.log('[Pins] This is expected if the table structure is different or RLS is blocking access');
+        console.warn('[Pins] Could not create table or insert initial record:', sqlError.message);
+        // This is expected if the table structure is different or RLS is blocking access
         return false;
       }
     }
     
-    console.log('[Pins] user_pins table/record created successfully');
+    // user_pins table/record created successfully
     return true;
   } catch (error) {
-    console.log('[Pins] Error creating user_pins table:', error.message);
+    console.error('[Pins] Error creating user_pins table:', error.message);
     return false;
   }
 }
@@ -88,31 +87,31 @@ async function createUserPinsTable(userId) {
 // --- Debug function to check Supabase setup ---
 export async function debugSupabaseSetup() {
   try {
-    console.log('[Debug] Checking Supabase setup...');
+    // Checking Supabase setup
     
     // Check if supabase client is available
     if (!supabase) {
-      console.log('[Debug] ❌ Supabase client not available');
+      console.error('[Debug] Supabase client not available');
       return { status: 'error', message: 'Supabase client not available' };
     }
     
     // Check if user is authenticated
     const { data: { user }, error: authError } = await supabase.auth.getUser();
     if (authError) {
-      console.log('[Debug] ❌ Auth error:', authError.message);
+      console.error('[Debug] Auth error:', authError.message);
       return { status: 'error', message: 'Auth error: ' + authError.message };
     }
     
     if (!user) {
-      console.log('[Debug] ❌ No user authenticated');
+      console.error('[Debug] No user authenticated');
       return { status: 'error', message: 'No user authenticated' };
     }
     
-    console.log('[Debug] ✅ User authenticated:', user.id);
+    // User authenticated
     
     // Check if user_pins table exists
     const tableExists = await checkUserPinsTableExists();
-    console.log('[Debug] Table exists:', tableExists);
+    // Table exists check completed
     
     // Try to query the table
     if (tableExists) {
@@ -123,7 +122,7 @@ export async function debugSupabaseSetup() {
           .eq('user_id', user.id);
         
         if (error) {
-          console.log('[Debug] ❌ Query error:', error.message);
+          console.error('[Debug] Query error:', error.message);
           return { 
             status: 'partial', 
             message: 'Table exists but query failed: ' + error.message,
@@ -132,7 +131,7 @@ export async function debugSupabaseSetup() {
           };
         }
         
-        console.log('[Debug] ✅ Query successful, data:', data);
+        // Query successful
         return { 
           status: 'success', 
           message: 'Supabase setup working correctly',
@@ -141,7 +140,7 @@ export async function debugSupabaseSetup() {
           data: data
         };
       } catch (queryError) {
-        console.log('[Debug] ❌ Query exception:', queryError.message);
+        console.error('[Debug] Query exception:', queryError.message);
         return { 
           status: 'error', 
           message: 'Query exception: ' + queryError.message,
@@ -150,7 +149,7 @@ export async function debugSupabaseSetup() {
         };
       }
     } else {
-      console.log('[Debug] ⚠️ user_pins table does not exist');
+      console.warn('[Debug] user_pins table does not exist');
       return { 
         status: 'warning', 
         message: 'user_pins table does not exist',
@@ -159,7 +158,7 @@ export async function debugSupabaseSetup() {
       };
     }
   } catch (error) {
-    console.log('[Debug] ❌ Debug function error:', error.message);
+    console.error('[Debug] Debug function error:', error.message);
     return { status: 'error', message: 'Debug function error: ' + error.message };
   }
 }
@@ -210,7 +209,7 @@ export async function saveUserPinsToSupabase(newPin, userId) {
       return false;
     }
 
-    console.log('[Pins] Saved pin to Supabase (array updated)');
+    // Saved pin to Supabase
     return true;
 
   } catch (err) {
@@ -231,7 +230,7 @@ export async function addNewPinToSupabase(pinData, userId) {
     
     const success = await saveUserPinsToSupabase(newPin, userId);
     if (success) {
-      console.log(`[Pins] Successfully added new pin "${pinData.name}" to Supabase`);
+      // Successfully added new pin to Supabase
       return true;
     } else {
       console.error(`[Pins] Failed to add new pin "${pinData.name}" to Supabase`);
@@ -246,7 +245,7 @@ export async function addNewPinToSupabase(pinData, userId) {
 // Function to load user pins from Supabase
 export async function loadUserPinsFromSupabase(userId) {
   try {
-    console.log('[Pins] Loading pins from Supabase for user:', userId);
+    // Loading pins from Supabase
     
     // Query the user_pins table
     const { data, error } = await supabase
@@ -258,7 +257,7 @@ export async function loadUserPinsFromSupabase(userId) {
     if (error) {
       if (error.code === 'PGRST116') {
         // Row not found - create empty row
-        console.log('[Pins] No existing row found, creating empty one');
+        // No existing row found, creating empty one
         const { error: insertError } = await supabase
           .from('user_pins')
           .insert([{

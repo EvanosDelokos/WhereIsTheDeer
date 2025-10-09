@@ -1,0 +1,135 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Auth Test Page</title>
+    <style>
+        body { font-family: Arial, sans-serif; padding: 20px; }
+        button { padding: 10px 20px; margin: 10px; font-size: 16px; }
+        .test-section { margin: 20px 0; padding: 20px; border: 1px solid #ccc; }
+    </style>
+</head>
+<body>
+    <h1>🔐 Authentication Test Page</h1>
+    
+    <div class="test-section">
+        <h2>Chrome Auto-Login Fix</h2>
+        <p>If Chrome auto-logs you in, use this button to force a complete logout:</p>
+        <button onclick="forceLogout()" style="background: #ff4444; color: white;">
+            🔓 Force Logout (Clear All Data)
+        </button>
+    </div>
+    
+    <div class="test-section">
+        <h2>Firefox Account Chooser Fix</h2>
+        <p>Test the improved Google login with forced account selection:</p>
+        <button onclick="testGoogleLogin()" style="background: #4285f4; color: white;">
+            🔐 Test Google Login (Force Account Chooser)
+        </button>
+    </div>
+    
+    <div class="test-section">
+        <h2>Current Status</h2>
+        <p id="status">Checking authentication status...</p>
+        <button onclick="checkStatus()">🔄 Refresh Status</button>
+    </div>
+
+    <!-- Include your auth modal -->
+    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.39.4/dist/umd/supabase.min.js"></script>
+    <script>
+        // Initialize Supabase (same as your main app)
+        const supabase = window.supabase.createClient(
+            'https://pdskokilsaljhagvwazn.supabase.co',
+            'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InBkc2tva2lsc2FsamhhZ3Z3YXpuIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NTM2MTQwOTUsImV4cCI6MjA2OTE5MDA5NX0.ekpHjsXv55MgOvAVJNYdp4wNuGkGhZghMt8DWfzZikE'
+        );
+        
+        window.supabaseClient = supabase;
+        
+        // Test Google login function
+        async function testGoogleLogin() {
+            try {
+                console.log("🔹 Testing Google login with force account chooser...");
+                
+                const origin = window.location.origin;
+                const isLocal = origin.includes('localhost') || origin.includes('127.0.0.1');
+                const redirectUrl = isLocal ? `${origin}/map.html` : `https://www.whereisthedeer.com.au/map.html`;
+                
+                console.log("🌐 Using redirect URL:", redirectUrl);
+                
+                const { data, error } = await supabase.auth.signInWithOAuth({
+                    provider: 'google',
+                    options: {
+                        redirectTo: redirectUrl,
+                        queryParams: {
+                            prompt: 'select_account',
+                            access_type: 'offline',
+                            include_granted_scopes: 'true'
+                        },
+                        scopes: 'https://www.googleapis.com/auth/userinfo.email https://www.googleapis.com/auth/userinfo.profile'
+                    }
+                });
+                
+                if (error) {
+                    console.error("❌ Google OAuth error:", error.message);
+                    alert("Login failed: " + error.message);
+                } else if (data?.url) {
+                    console.log("🟢 Redirecting to:", data.url);
+                    window.location.href = data.url;
+                }
+            } catch (err) {
+                console.error("🚨 Test login error:", err);
+                alert('Test login failed: ' + (err?.message || JSON.stringify(err)));
+            }
+        }
+        
+        // Force logout function
+        async function forceLogout() {
+            try {
+                console.log("🔓 Force logout initiated...");
+                
+                const { error } = await supabase.auth.signOut();
+                if (error) {
+                    console.error("❌ Logout error:", error.message);
+                } else {
+                    console.log("✅ Supabase logout successful");
+                }
+                
+                localStorage.clear();
+                sessionStorage.clear();
+                
+                document.cookie.split(";").forEach(function(c) { 
+                    document.cookie = c.replace(/^ +/, "").replace(/=.*/, "=;expires=" + new Date().toUTCString() + ";path=/"); 
+                });
+                
+                console.log("🧹 All local data cleared");
+                alert("Force logout complete! Page will reload.");
+                window.location.reload();
+                
+            } catch (err) {
+                console.error("🚨 Force logout error:", err);
+                window.location.reload();
+            }
+        }
+        
+        // Check current status
+        async function checkStatus() {
+            const { data: { session } } = await supabase.auth.getSession();
+            const statusEl = document.getElementById('status');
+            
+            if (session && session.user) {
+                statusEl.innerHTML = `
+                    <strong>✅ Logged In:</strong> ${session.user.email}<br>
+                    <strong>Provider:</strong> ${session.user.app_metadata?.provider || 'Unknown'}<br>
+                    <strong>Session ID:</strong> ${session.session_id}
+                `;
+            } else {
+                statusEl.innerHTML = '<strong>❌ Not Logged In</strong>';
+            }
+        }
+        
+        // Check status on page load
+        checkStatus();
+    </script>
+</body>
+</html>

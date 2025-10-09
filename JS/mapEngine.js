@@ -1,4 +1,4 @@
-console.log("Module loaded: mapEngine");
+// Map engine module loaded
 
 // Utility function to safely add sources and layers
 window.safeMapOperation = function(operation, retryDelay = 100) {
@@ -18,16 +18,16 @@ window.safeMapOperation = function(operation, retryDelay = 100) {
       
       // Check if it's a duplicate source/layer error
       if (error.message && error.message.includes('already a source with ID')) {
-        console.log('Source already exists, skipping operation');
+        // Source already exists, skipping operation
         return true; // Don't retry for duplicate source errors
       }
       
       return false;
     }
   } else {
-    console.log('Map style not loaded, waiting...');
+    // Map style not loaded, waiting
     map.once('load', () => {
-      console.log('Map style now loaded, retrying operation...');
+      // Map style now loaded, retrying operation
       setTimeout(() => {
         if (map.isStyleLoaded()) {
           try {
@@ -37,7 +37,7 @@ window.safeMapOperation = function(operation, retryDelay = 100) {
             
             // Check if it's a duplicate source/layer error
             if (error.message && error.message.includes('already a source with ID')) {
-              console.log('Source already exists on retry, skipping operation');
+              // Source already exists on retry, skipping operation
               return; // Don't retry for duplicate source errors
             }
           }

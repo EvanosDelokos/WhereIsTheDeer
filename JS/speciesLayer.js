@@ -1,5 +1,4 @@
 console.log("Module loaded: speciesLayer");
-
 // Function to close any existing species popups
 function closeSpeciesPopups() {
   const map = window.WITD?.map;

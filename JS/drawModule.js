@@ -36,14 +36,14 @@
     // Validate coordinates format [lng, lat]
     if (!Array.isArray(point1) || !Array.isArray(point2) || 
         point1.length !== 2 || point2.length !== 2) {
-      console.error('[draw] Invalid coordinate format:', point1, point2);
+      console.error('[draw] Invalid coordinate format');
       return 0;
     }
     
     // Check if coordinates are in reasonable ranges
     if (Math.abs(point1[0]) > 180 || Math.abs(point1[1]) > 90 ||
         Math.abs(point2[0]) > 180 || Math.abs(point2[1]) > 90) {
-      console.error('[draw] Coordinates out of valid range:', point1, point2);
+      console.error('[draw] Coordinates out of valid range');
       return 0;
     }
     
@@ -91,7 +91,7 @@
       return distance > 0.00001; // Keep only if coordinates are significantly different
     });
     
-    console.log('[draw] Distance calculation - Original coords:', coordinates.length, 'Filtered coords:', filteredCoords.length);
+    // Distance calculation completed
     
     let totalDistance = 0;
     for (let i = 1; i < filteredCoords.length; i++) {
@@ -99,13 +99,12 @@
       
       // Safety check - if any segment is larger than 1000km, something is wrong
       if (segmentDistance > 1000) {
-        console.error(`[draw] ERROR: Segment distance too large: ${segmentDistance} km between points:`, 
-          filteredCoords[i - 1], filteredCoords[i]);
+        console.error(`[draw] ERROR: Segment distance too large: ${segmentDistance} km`);
         continue; // Skip this segment
       }
       
       totalDistance += segmentDistance;
-      console.log(`[draw] Segment ${i}: ${segmentDistance.toFixed(3)} km`);
+      // Segment distance calculated
     }
     
     // Safety check - if total distance is larger than 50000km (more than Earth's circumference), cap it
@@ -114,7 +113,7 @@
       totalDistance = 0;
     }
     
-    console.log('[draw] Total calculated distance:', totalDistance.toFixed(3), 'km');
+    // Total distance calculated
     return totalDistance;
   }
 
@@ -145,7 +144,7 @@
   function calculateArea(coordinates) {
     
     if (coordinates.length < 3) {
-      console.log('[draw] Not enough coordinates for area calculation:', coordinates.length);
+      // Not enough coordinates for area calculation
       return 0;
     }
     
@@ -153,13 +152,13 @@
     let coords = [...coordinates];
     if (coords[0][0] !== coords[coords.length - 1][0] || coords[0][1] !== coords[coords.length - 1][1]) {
       coords.push(coords[0]);
-      console.log('[draw] Added closing point to polygon');
+      // Added closing point to polygon
     }
     
     let area = 0;
     const n = coords.length - 1; // Exclude the duplicate closing point
     
-    console.log('[draw] Processing polygon with', n, 'vertices');
+    // Processing polygon vertices
     
     for (let i = 0; i < n; i++) {
       const j = (i + 1) % n;
@@ -219,7 +218,7 @@
         change: elevationChange
       };
     } catch (error) {
-      console.warn('[draw] Failed to get elevation from Mapbox, using fallback:', error);
+      console.warn('[draw] Failed to get elevation from Mapbox, using fallback');
       // Fallback to basic estimation if API fails
       return calculateElevationFallback(coordinates);
     }
@@ -235,11 +234,11 @@
         try {
           const elevation = map.queryTerrainElevation([lng, lat]);
           if (elevation !== null && elevation !== undefined && !isNaN(elevation)) {
-            console.log(`[draw] Got elevation from map.queryTerrainElevation: ${elevation}m at [${lat}, ${lng}]`);
+            // Got elevation from map.queryTerrainElevation
             return elevation;
           }
         } catch (e) {
-          console.warn('[draw] map.queryTerrainElevation failed:', e);
+          console.warn('[draw] map.queryTerrainElevation failed');
         }
       }
       
@@ -257,7 +256,7 @@
       return elevation;
       
     } catch (error) {
-      console.warn('[draw] Mapbox elevation API failed:', error);
+      console.warn('[draw] Mapbox elevation API failed');
       // Return fallback estimation
       return estimateElevationFromCoords(lat, lng);
     }
@@ -345,17 +344,17 @@
 
   // --- init: call once after map exists ---
   function init(mapInstance, skipAutoLoad = false) {
-    console.log('[draw] Initializing with map instance:', mapInstance);
+    // Initializing drawing module
     
     // Prevent multiple initializations
     if (map && map === mapInstance) {
-      console.log('[draw] Already initialized with this map instance, skipping...');
+      // Already initialized with this map instance
       return;
     }
     
     // Clean up previous instance if exists
     if (map && map !== mapInstance) {
-      console.log('[draw] Cleaning up previous map instance...');
+      // Cleaning up previous map instance
       cleanup();
     }
     
@@ -396,52 +395,52 @@
     }, 500);
 
     // Start stroke on pointer down ONLY when mode is active
-    console.log('[draw] Adding event listeners to map');
+    // Adding event listeners to map
     map.on('mousedown', onPointerDown);
     map.on('touchstart', onPointerDown);
-    console.log('[draw] Event listeners added successfully');
+    // Event listeners added successfully
     
     // Test if the map is receiving events
     map.on('click', (e) => {
-      console.log('[draw] Map click event received (test):', e.lngLat);
+      // Map click event received
     });
     
     // Test if mousedown events are being received at all
     map.on('mousedown', (e) => {
-      console.log('[draw] Map mousedown event received (test):', e.lngLat, 'isActive:', isActive);
+      // Map mousedown event received
     });
     
-    console.log('[draw] Initialization complete');
+    // Initialization complete
   }
 
   // --- cleanup: remove sources, layers, and event listeners ---
   function cleanup() {
     if (!map) return;
     
-    console.log('[draw] Cleaning up drawing module...');
+    // Cleaning up drawing module
     
     // Remove event listeners
     try {
       map.off('mousedown', onPointerDown);
       map.off('touchstart', onPointerDown);
-      console.log('[draw] Event listeners removed');
+      // Event listeners removed
     } catch (error) {
-      console.warn('[draw] Error removing event listeners:', error.message);
+      console.warn('[draw] Error removing event listeners');
     }
     
     // Remove layers and sources
     try {
       if (map.getLayer(LINE_LAYER_ID)) {
         map.removeLayer(LINE_LAYER_ID);
-        console.log('[draw] Layer removed');
+        // Layer removed
       }
       
       if (map.getSource(SRC_ID)) {
         map.removeSource(SRC_ID);
-        console.log('[draw] Source removed');
+        // Source removed
       }
     } catch (error) {
-      console.warn('[draw] Error removing layers/sources:', error.message);
+      console.warn('[draw] Error removing layers/sources');
     }
     
     // Clear all track labels
@@ -457,7 +456,7 @@
     polygonPoints = [];
     circleCenter = null;
     
-    console.log('[draw] Cleanup complete');
+    // Cleanup complete
   }
 
   // Add a flag to prevent multiple simultaneous initialization attempts
@@ -476,7 +475,7 @@
     if (!map.isStyleLoaded()) {
       console.log('[draw] Map style not loaded yet, waiting...');
       map.once('styledata', () => {
-        console.log('[draw] Map style now loaded, retrying source/layer creation...');
+        // Map style now loaded, retrying source/layer creation
         ensureSourceAndLayer();
       });
       return;
@@ -484,13 +483,13 @@
 
     // Prevent multiple simultaneous initialization attempts
     if (isInitializing) {
-      console.log('[draw] Initialization already in progress, skipping...');
+      // Initialization already in progress
       return;
     }
 
     // Check if both source and layer already exist
     if (map.getSource(SRC_ID) && map.getLayer(LINE_LAYER_ID)) {
-      console.log('[draw] Source and layer already exist, skipping creation');
+      // Source and layer already exist
       return;
     }
 

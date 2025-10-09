@@ -1,5 +1,4 @@
 console.log("Module loaded: main.js");
-
 // Initialize Supabase client ONCE, early in your app (if not already done)
 if (!window.supabaseClient) {
   window.supabaseClient = window.supabase.createClient(
@@ -66,6 +65,7 @@ window.supabaseClient.auth.onAuthStateChange((event, session) => {
 
 // GPX functionality is now handled directly in map.html
 // No more file forwarding needed - using handleGpxFiles() function
+
 console.log("Module loaded: main.js - GPX forwarding removed");
 
 // Initialize SSS module when DOM is ready
@@ -302,7 +302,42 @@ window.showAccountPopover = function(user) {
 
     // Sign out
     signOutBtn.addEventListener('click', async () => {
-      await window.supabaseClient.auth.signOut();
+      console.log('🔓 Sign out clicked...');
+      
+      // Try to sign out from Supabase (may fail if session is already invalid)
+      try {
+        await window.supabaseClient.auth.signOut();
+        console.log('✅ Supabase signOut() completed');
+      } catch (error) {
+        console.log('⚠️ SignOut error (this is OK if session was already invalid):', error);
+      }
+      
+      // Clear global user state immediately
+      loggedInUser = null;
+      currentUserPlan = 'free';
+      
+      // Clear auth cache (Chrome fix)
+      window.__isLoggedIn = false;
+      window.__sessionUser = null;
+      console.log('✅ Cache cleared');
+      
+      // Clear ALL localStorage (not just Supabase - Chrome caches everything)
+      console.log('🧹 Clearing ALL localStorage...');
+      localStorage.clear();
+      console.log('✅ localStorage completely cleared');
+      
+      // Clear ALL sessionStorage
+      console.log('🧹 Clearing ALL sessionStorage...');
+      sessionStorage.clear();
+      console.log('✅ sessionStorage completely cleared');
+      
+      // Clear all cookies
+      console.log('🧹 Clearing cookies...');
+      document.cookie.split(";").forEach(function(c) {
+        document.cookie = c.replace(/^ +/, "").replace(/=.*/, "=;expires=" + new Date().toUTCString() + ";path=/");
+      });
+      console.log('✅ Cookies cleared');
+      
       popover.remove();
       
       // Show signed-out notification with SSS-style styling
@@ -385,6 +420,7 @@ function showSignedOutNotification() {
   btn.style.cursor = 'pointer';
   btn.style.boxShadow = '0 2px 8px rgba(0,0,0,0.08)';
   btn.addEventListener('click', () => {
+    console.log('🔄 "Got it" clicked - reloading page...');
     overlay.remove();
     window.location.reload();
   });
@@ -393,10 +429,12 @@ function showSignedOutNotification() {
   overlay.appendChild(modal);
   document.body.appendChild(overlay);
 
-  // Auto-close after 5 seconds
+  // Auto-close after 5 seconds and reload
   setTimeout(() => {
     if (overlay.parentNode) {
+      console.log('🔄 Auto-close timeout - reloading page...');
       overlay.remove();
+      window.location.reload();
     }
   }, 5000);
 }

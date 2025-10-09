@@ -1,4 +1,4 @@
-console.log("Module loaded: gpxManager (Mapbox GL JS)");
+// GPX manager module loaded
 
 // Remove ES6 import - use global functions instead
 // import { saveGpxFiles, loadGpxFiles } from './storeManager.js';
@@ -10,7 +10,7 @@ function saveGpxFiles(files) {
       window.saveGpxFiles(files);
     } else {
       localStorage.setItem('gpxFiles', JSON.stringify(files));
-      console.log("[GPX] Saved to localStorage:", files.length, "files");
+      // Saved to localStorage
     }
   } catch (error) {
     console.warn("[GPX] Could not save GPX files:", error);
@@ -33,27 +33,20 @@ function loadGpxFiles() {
 
 // Test function to verify GPX manager is working
 window.testGPXManager = function() {
-  console.log("🧪 Testing GPX Manager...");
-  console.log("- Window.WITD exists:", !!window.WITD);
-  console.log("- Window.WITD.map exists:", !!window.WITD?.map);
-  console.log("- GPX Manager loaded:", true);
-  console.log("- Current gpxFiles:", window.gpxFiles || []);
+  // Testing GPX Manager
   
   if (window.WITD?.map) {
-    console.log("- Map object:", window.WITD.map);
-    console.log("- Map ready:", window.WITD.map.loaded());
-    console.log("- Map style loaded:", window.WITD.map.isStyleLoaded());
+    // Map status checked
     
     // Test if our source and layer exist
     const source = window.WITD.map.getSource('gpx-tracks');
     const layer = window.WITD.map.getLayer('gpx-tracks-layer');
-    console.log("- GPX source exists:", !!source);
-    console.log("- GPX layer exists:", !!layer);
+    // GPX source and layer status checked
     
     if (source && layer) {
-      console.log("✅ GPX manager is fully initialized and ready!");
+      // GPX manager is fully initialized and ready
     } else {
-      console.log("⚠️ GPX manager not fully initialized");
+      console.warn("GPX manager not fully initialized");
     }
   }
   
@@ -62,7 +55,7 @@ window.testGPXManager = function() {
 
 // Test function to add a sample track
 window.testGPXTrack = function() {
-  console.log("🧪 Testing GPX track addition...");
+  // Testing GPX track addition
   
   if (!window.WITD?.map) {
     console.error("Map not available");
@@ -97,7 +90,7 @@ window.testGPXTrack = function() {
   
   try {
     source.setData(testTrack);
-    console.log("✅ Test track added successfully!");
+    // Test track added successfully
     
     // Fit map to show the test track
     window.WITD.map.fitBounds([
@@ -112,26 +105,26 @@ window.testGPXTrack = function() {
 
 // Manual initialization function
 window.initGPXManager = function() {
-  console.log("[GPX] Manual initialization requested");
+  // Manual initialization requested
   if (window.WITD && window.WITD.map) {
-    console.log("[GPX] Map available, initializing now");
+    // Map available, initializing now
     initGpxManager(window.WITD.map);
   } else {
-    console.log("[GPX] Map not available for manual init");
+    console.warn("[GPX] Map not available for manual init");
   }
 };
 
 // Always wait for the map to be ready - don't check immediately
-console.log("[GPX] GPX Manager loaded, waiting for map to be ready...");
+// GPX Manager loaded, waiting for map to be ready
 
 // Function to wait for map and initialize
 function waitForMapAndInit() {
-  console.log("[GPX] Checking for map...", !!window.WITD, !!window.WITD?.map);
+  // Checking for map
   if (window.WITD && window.WITD.map) {
-    console.log("[GPX] Map found, initializing GPX manager");
+    // Map found, initializing GPX manager
     initGpxManager(window.WITD.map);
   } else {
-    console.log("[GPX] Map not ready yet, retrying in 100ms...");
+    // Map not ready yet, retrying in 100ms
     setTimeout(waitForMapAndInit, 100);
   }
 }
@@ -140,7 +133,7 @@ function waitForMapAndInit() {
 waitForMapAndInit();
 
 function initGpxManager(map) {
-  console.log("[GPX] initGpxManager called with map:", !!map);
+  // initGpxManager called with map
   
   if (!map) {
     console.warn("Map not available for GPX manager");
@@ -151,21 +144,19 @@ function initGpxManager(map) {
   let gpxSourceId = 'gpx-tracks';
   let gpxLayerId = 'gpx-tracks-layer';
 
-  console.log("[GPX] Setting up GPX manager for map:", map);
+  // Setting up GPX manager for map
 
   // Wait for map style to be fully loaded before adding sources/layers
   function waitForStyleAndInit() {
-    console.log("[GPX] Checking map style status...");
-    console.log("[GPX] Map style loaded:", map.isStyleLoaded());
-    console.log("[GPX] Map loaded:", map.loaded());
+    // Checking map style status
     
     if (map.isStyleLoaded()) {
-      console.log("[GPX] Map style loaded, creating source and layer");
+      // Map style loaded, creating source and layer
       createGpxSourceAndLayer();
     } else {
-      console.log("[GPX] Map style not ready yet, waiting for 'styledata' event...");
+      // Map style not ready yet, waiting for 'styledata' event
       map.once('styledata', () => {
-        console.log("[GPX] 'styledata' event fired, creating source and layer");
+        // 'styledata' event fired, creating source and layer
         createGpxSourceAndLayer();
       });
     }
@@ -186,7 +177,7 @@ function initGpxManager(map) {
     try {
       // Check if source/layer already exist
       if (map.getSource(gpxSourceId)) {
-        console.log("[GPX] GPX source already exists, removing old source and layer first");
+        // GPX source already exists, removing old source and layer first
         // Remove existing layers first
         if (map.getLayer('gpx-track-labels')) {
           map.removeLayer('gpx-track-labels');
@@ -198,7 +189,7 @@ function initGpxManager(map) {
         map.removeSource(gpxSourceId);
       }
 
-      console.log("[GPX] Creating new GPX source and layer");
+      // Creating new GPX source and layer
       
       // Add source
       map.addSource(gpxSourceId, {
@@ -243,7 +234,7 @@ function initGpxManager(map) {
         }
       });
 
-      console.log("[GPX] Mapbox source and layer created successfully");
+      // Mapbox source and layer created successfully
       
       // Add GPX waypoint icons to the map
       addGpxIcons();

@@ -1,5 +1,4 @@
-console.log("Module loaded: pinManager (Mapbox GL JS + DivIcon Label + Centered + Reload)");
-console.log("🔍 pinManager.js loaded successfully");
+// Pin manager module loaded
 
 // ============================================================================
 // UNIFIED PIN BUILDER FUNCTIONS
@@ -36,12 +35,12 @@ export function buildPinElement(style = {}) {
 
 // --- 2) Marker factory (Mapbox GL DOM marker) ---
 export function createPinMarker(pinData, handlers = {}) {
-  console.log('🚨 [createPinMarker] FUNCTION CALLED with pinData:', pinData);
+  // Creating pin marker
   const { lng, lat, style } = pinData;
   const element = buildPinElement(style);
 
   if (handlers.onClick) element.addEventListener('click', (e) => {
-    console.log('[pin] Pin click detected, stopping propagation to prevent species layer conflict');
+    // Pin click detected, stopping propagation
     e.stopPropagation(); // Prevent event from bubbling to map/species layer
     handlers.onClick(e, pinData);
   });
@@ -52,23 +51,23 @@ export function createPinMarker(pinData, handlers = {}) {
 
   // IMPORTANT: do NOT use Marker({ color: ... }) which draws a default red pin
   const marker = new mapboxgl.Marker({ element, anchor: 'bottom' }).setLngLat([lng, lat]);
-  console.log('🚨 [createPinMarker] Created marker at coordinates:', { lng, lat });
+  // Created marker at coordinates
   return marker;
 }
 
 // --- 3) Popup factory (reuse your working popup HTML builder) ---
 export function createPinPopup(pinData) {
-  console.log('🚨 [createPinPopup] FUNCTION CALLED with pinData:', pinData);
+  // Creating pin popup
   const popup = new mapboxgl.Popup({ closeButton: false, offset: 18 })
     .setHTML(buildPinPopupHTML(pinData));
-  console.log('🚨 [createPinPopup] Created popup:', popup);
+  // Created popup
   return popup;
 }
 
 // --- 4) Popup HTML builder ---
 export function buildPinPopupHTML(pinData) {
   const { name, lat, lng } = pinData;
-  console.log('[buildPinPopupHTML] Creating popup HTML for pin:', name);
+  // Creating popup HTML for pin
   const html = `
     <div class="saved-pin-popup">
       <div class="saved-pin-header">
@@ -86,7 +85,7 @@ export function buildPinPopupHTML(pinData) {
       </div>
     </div>
   `;
-  console.log('[buildPinPopupHTML] Generated HTML:', html);
+  // Generated popup HTML
   return html;
 }
 
@@ -135,7 +134,7 @@ let localPinData = [];
 
 // Function to draw pins on the map using unified builder
 function drawPins(pins) {
-  console.log('[drawPins] Drawing pins:', pins);
+  // Drawing pins
   
   if (!Array.isArray(pins)) {
     console.error('[drawPins] Pins is not an array:', pins);
@@ -154,10 +153,10 @@ function drawPins(pins) {
     return;
   }
   
-  console.log('[drawPins] Map instance:', map);
+  // Map instance available
   
   pins.forEach((pin, index) => {
-    console.log('Rendering pin at:', pin.lat, pin.lng);
+    // Rendering pin
     
     try {
       // Create pin using unified builder
@@ -174,10 +173,10 @@ window.drawPins = drawPins;
 // Function to save pins to Supabase with local data logging
 async function savePinsToSupabase(userId) {
   try {
-    console.log('[Debug] Local pin data before saving:', localPinData);
+    // Local pin data before saving
     
     if (!localPinData || localPinData.length === 0) {
-      console.log('[Pins] No local pin data to save');
+      // No local pin data to save
       return false;
     }
     
@@ -195,7 +194,7 @@ async function savePinsToSupabase(userId) {
       return false;
     }
     
-    console.log('[Pins] Successfully saved pins to Supabase:', localPinData.length, 'pins');
+    // Successfully saved pins to Supabase
     return true;
   } catch (error) {
     console.error('[Pins] Error saving pins to Supabase:', error.message);
@@ -209,10 +208,10 @@ window.savePinsToSupabase = savePinsToSupabase;
 // Function to load pins and render them on the map
 async function loadPinsFromSupabase(userId) {
   try {
-    console.log('[Pins] Loading pins from Supabase for user:', userId);
+    // Loading pins from Supabase
     
     const pins = await loadUserPinsFromSupabase(userId);
-    console.log('[Pins] Loaded from Supabase:', pins.length, 'pins');
+    // Loaded pins from Supabase
     
     if (pins && pins.length > 0) {
       // Update local pin data
@@ -222,15 +221,15 @@ async function loadPinsFromSupabase(userId) {
         label: pin.name
       }));
       
-      console.log('[Pins] Updated localPinData:', localPinData);
+      // Updated localPinData
       
       // Render pins on the map
-      console.log('[Pins] Rendering pins on map:', pins.length);
+      // Rendering pins on map
       pins.forEach((pin) => {
         createPinOnMap(pin);
       });
     } else {
-      console.log('[Pins] No pins to render');
+      // No pins to render
     }
     
     return pins;
@@ -242,7 +241,7 @@ async function loadPinsFromSupabase(userId) {
 
 // Function to create a pin on the map
 function createPinOnMap(pin) {
-  console.log('🚨 [createPinOnMap] FUNCTION CALLED with pin:', pin);
+  // Creating pin on map
   const map = window.WITD?.map;
   if (!map) {
     console.error('[createPinOnMap] Map instance not available');
@@ -298,7 +297,7 @@ function createPinOnMap(pin) {
     
     window.customPins.push(pinObj);
     
-    console.log(`[createPinOnMap] Successfully created pin: ${pin.name} at [${pin.lat}, ${pin.lng}]`);
+    // Successfully created pin
   } catch (error) {
     console.error(`[createPinOnMap] Error creating pin ${pin.name}:`, error);
   }

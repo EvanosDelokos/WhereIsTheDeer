@@ -1,10 +1,9 @@
-console.log("Module loaded: authModal");
-console.log("🚀 authModal.js script loaded successfully");
+// Auth modal module loaded
 
 // Auth Modal Management
 class AuthModal {
   constructor() {
-    console.log('🔧 AuthModal constructor called');
+    // AuthModal constructor called
     
     this.loginModal = document.getElementById('loginModal');
     this.registerModal = document.getElementById('registerModal');
@@ -20,12 +19,7 @@ class AuthModal {
     this.loginCloseBtn = document.getElementById('loginCloseBtn');
     this.registerCloseBtn = document.getElementById('registerCloseBtn');
     
-    console.log('🔍 Elements found:', {
-      loginModal: !!this.loginModal,
-      registerModal: !!this.registerModal,
-      loginCloseBtn: !!this.loginCloseBtn,
-      registerCloseBtn: !!this.registerCloseBtn
-    });
+    // Elements found and initialized
     
     this.initializeEventListeners();
   }
@@ -50,15 +44,44 @@ class AuthModal {
     if (this.googleLoginBtn) {
       this.googleLoginBtn.addEventListener('click', async (e) => {
         e.preventDefault();
+
         try {
-          await window.supabaseClient.auth.signInWithOAuth({
+          console.log("🔹 Google login initiated...");
+
+          // Detect environment automatically
+          const origin = window.location.origin;
+          const isLocal = origin.includes('localhost') || origin.includes('127.0.0.1');
+
+          // Pick redirect based on environment
+          const redirectUrl = isLocal
+            ? `${origin}/map.html`                     // Local dev
+            : `https://www.whereisthedeer.com.au/map.html`; // Live site
+
+          console.log("🌐 Using redirect URL:", redirectUrl);
+
+          const { data, error } = await window.supabaseClient.auth.signInWithOAuth({
             provider: 'google',
             options: {
-              redirectTo: window.location.origin + '/map',
+              redirectTo: redirectUrl,
+              queryParams: {
+                prompt: 'select_account', // Always show account selector
+                access_type: 'offline', // Force fresh token
+                include_granted_scopes: 'true' // Ensure fresh permissions
+              },
               scopes: 'https://www.googleapis.com/auth/userinfo.email https://www.googleapis.com/auth/userinfo.profile'
             }
           });
+
+          if (error) {
+            console.error("❌ Google OAuth error:", error.message);
+            alert("Login failed: " + error.message);
+          } else if (data?.url) {
+            console.log("🟢 Redirecting to:", data.url);
+            window.location.href = data.url;
+          }
+
         } catch (err) {
+          console.error("🚨 Unexpected login error:", err);
           alert('Google login failed: ' + (err?.message || JSON.stringify(err)));
         }
       });
@@ -68,16 +91,45 @@ class AuthModal {
     if (this.googleRegisterBtn) {
       this.googleRegisterBtn.addEventListener('click', async (e) => {
         e.preventDefault();
+
         try {
-          await window.supabaseClient.auth.signInWithOAuth({
+          console.log("🔹 Google register initiated...");
+
+          // Detect environment automatically
+          const origin = window.location.origin;
+          const isLocal = origin.includes('localhost') || origin.includes('127.0.0.1');
+
+          // Pick redirect based on environment
+          const redirectUrl = isLocal
+            ? `${origin}/map.html`                     // Local dev
+            : `https://www.whereisthedeer.com.au/map.html`; // Live site
+
+          console.log("🌐 Using redirect URL:", redirectUrl);
+
+          const { data, error } = await window.supabaseClient.auth.signInWithOAuth({
             provider: 'google',
             options: {
-              redirectTo: window.location.origin + '/map',
+              redirectTo: redirectUrl,
+              queryParams: {
+                prompt: 'select_account', // Always show account selector
+                access_type: 'offline', // Force fresh token
+                include_granted_scopes: 'true' // Ensure fresh permissions
+              },
               scopes: 'https://www.googleapis.com/auth/userinfo.email https://www.googleapis.com/auth/userinfo.profile'
             }
           });
+
+          if (error) {
+            console.error("❌ Google OAuth error:", error.message);
+            alert("Registration failed: " + error.message);
+          } else if (data?.url) {
+            console.log("🟢 Redirecting to:", data.url);
+            window.location.href = data.url;
+          }
+
         } catch (err) {
-          alert('Google login failed: ' + (err?.message || JSON.stringify(err)));
+          console.error("🚨 Unexpected register error:", err);
+          alert('Google registration failed: ' + (err?.message || JSON.stringify(err)));
         }
       });
     }
@@ -316,6 +368,40 @@ class AuthModal {
     return (this.loginModal && this.loginModal.style.display === 'flex') ||
            (this.registerModal && this.registerModal.style.display === 'flex');
   }
+
+  // Force logout and clear all sessions
+  async forceLogout() {
+    try {
+      console.log("🔓 Force logout initiated...");
+      
+      // Sign out from Supabase
+      const { error } = await window.supabaseClient.auth.signOut();
+      if (error) {
+        console.error("❌ Logout error:", error.message);
+      } else {
+        console.log("✅ Supabase logout successful");
+      }
+      
+      // Clear all local storage
+      localStorage.clear();
+      sessionStorage.clear();
+      
+      // Clear cookies (if any)
+      document.cookie.split(";").forEach(function(c) { 
+        document.cookie = c.replace(/^ +/, "").replace(/=.*/, "=;expires=" + new Date().toUTCString() + ";path=/"); 
+      });
+      
+      console.log("🧹 All local data cleared");
+      
+      // Reload page to reset state
+      window.location.reload();
+      
+    } catch (err) {
+      console.error("🚨 Force logout error:", err);
+      // Still reload even if there's an error
+      window.location.reload();
+    }
+  }
 }
 
 // Initialize auth modal when DOM is ready
@@ -345,6 +431,12 @@ document.addEventListener('DOMContentLoaded', () => {
   window.closeRegisterModal = () => {
     if (window.authModal) {
       window.authModal.closeRegisterModal();
+    }
+  };
+  
+  window.forceLogout = () => {
+    if (window.authModal) {
+      window.authModal.forceLogout();
     }
   };
   
