@@ -3129,221 +3129,45 @@ button[data-layer].active {
 
 @media (max-width: 900px) {
   .bottom-toolbar {
-    display: flex !important;
-    flex-direction: row !important;
-    flex-wrap: nowrap !important;
-    overflow-x: auto !important;
-    overflow-y: hidden !important;
-    white-space: nowrap !important;
-    justify-content: space-evenly !important;
-    align-items: center !important;
-    padding: 12px 0 12px 4px !important;
-    gap: 0 !important;
-    width: 100vw !important;
-    scrollbar-width: none !important;
-    -ms-overflow-style: none !important;
-    background: #f8f8f8 !important;
-    /* scroll-snap-type: x mandatory !important; */
-    /* -webkit-overflow-scrolling: touch !important; */
+    position: fixed;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    z-index: 4000;
+    width: 100vw;
+    padding: 12px 0;
+    background: #f8f8f8;
+    box-shadow: 0 -2px 8px rgba(0,0,0,0.12);
+    display: flex;
+    flex-direction: row;
+    flex-wrap: nowrap;
+    overflow-x: auto;
+    justify-content: center;   /* was space-evenly */
+    align-items: center;
+    gap: 0;
+    scrollbar-width: none;
+    -ms-overflow-style: none;
   }
-  .bottom-toolbar::-webkit-scrollbar {
-    display: none !important;
-  }
-  .bottom-toolbar button {
-    flex: 0 0 28vw !important;
-    min-width: 85px !important;
-    max-width: 110px !important;
-    font-size: 1.3em !important;
-    padding: 4px 0 !important;
-    margin: 0 6px !important;
-    border-radius: 14px !important;
-    background: #fff !important;
-    border: 1.5px solid #e0e0e0 !important;
-    box-shadow: 0 1px 4px rgba(0,0,0,0.04) !important;
-    transition: background 0.2s, border 0.2s !important;
-    display: flex !important;
-    flex-direction: column !important;
-    align-items: center !important;
-    justify-content: center !important;
-    position: relative !important;
-    /* scroll-snap-align: center !important; */
-  }
-  .bottom-toolbar button:active, .bottom-toolbar button:focus {
-    background: #f0f8ff !important;
-    border-color: #b3d8ff !important;
-  }
-  .bottom-toolbar button span {
-    font-size: 0.95em !important;
-    margin-top: 2px !important;
-    display: block !important;
-  }
-  /* Ensure Account button matches other toolbar buttons exactly */
-  .bottom-toolbar #toolbarLoginBtn.toolbar-btn,
-  #bottomToolbar #toolbarLoginBtn {
-    flex: 0 0 28vw !important;
-    min-width: 85px !important;
-    max-width: 110px !important;
-    width: 28vw !important;
-    font-size: 1.3em !important;
-    padding: 4px 0 !important;
-    margin: 0 6px !important;
-    border-radius: 14px !important;
-    background: #fff !important;
-    border: 1.5px solid #e0e0e0 !important;
-    box-shadow: 0 1px 4px rgba(0,0,0,0.04) !important;
-    transition: background 0.2s, border 0.2s !important;
-    display: flex !important;
-    flex-direction: column !important;
-    align-items: center !important;
-    justify-content: center !important;
-    text-align: center !important;
-    white-space: nowrap !important;
-    overflow: hidden !important;
-    text-overflow: ellipsis !important;
-    height: 48px !important;
-    box-sizing: border-box !important;
-  }
-  .bottom-toolbar #toolbarLoginBtn.toolbar-btn span,
-  #bottomToolbar #toolbarLoginBtn span {
-    font-size: 0.95em !important;
-    margin-top: 2px !important;
-    display: block !important;
-    line-height: 1.2 !important;
-  }
-  .bottom-toolbar #toolbarLoginBtn.toolbar-btn:active,
-  .bottom-toolbar #toolbarLoginBtn.toolbar-btn:focus,
-  #bottomToolbar #toolbarLoginBtn:active,
-  #bottomToolbar #toolbarLoginBtn:focus {
-    background: #f0f8ff !important;
-    border-color: #b3d8ff !important;
-  }
-  .bottom-toolbar button:not(:last-child)::after {
-    display: none !important;
-  }
-}
 
-/* ULTRA-HIGH SPECIFICITY: Force Account button to match other toolbar buttons */
-@media (max-width: 900px) {
-  body .bottom-toolbar #toolbarLoginBtn,
-  body #bottomToolbar #toolbarLoginBtn,
-  body .bottom-toolbar #toolbarLoginBtn.toolbar-btn,
-  body #bottomToolbar #toolbarLoginBtn.toolbar-btn {
-    flex: 0 0 28vw !important;
-    min-width: 85px !important;
-    max-width: 110px !important;
-    width: 28vw !important;
-    height: 48px !important;
-    padding: 4px 0 !important;
-    margin: 0 6px !important;
-    border-radius: 14px !important;
-    background: #fff !important;
-    border: 1.5px solid #e0e0e0 !important;
-    box-shadow: 0 1px 4px rgba(0,0,0,0.04) !important;
-    display: flex !important;
-    flex-direction: column !important;
-    align-items: center !important;
-    justify-content: center !important;
-    text-align: center !important;
-    font-size: 1.3em !important;
-    box-sizing: border-box !important;
-    overflow: hidden !important;
-    white-space: nowrap !important;
+  .bottom-toolbar .toolbar-btn {
+    flex: 0 0 96px;            /* every button same width */
+    height: 54px;              /* same height */
+    margin: 0 6px;
+    border-radius: 14px;
+    background: #fff;
+    border: 1.5px solid #e0e0e0;
+    box-shadow: 0 1px 4px rgba(0,0,0,0.04);
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    font-size: 1.3em;
+    flex-shrink: 0;
   }
-  body .bottom-toolbar #toolbarLoginBtn span,
-  body #bottomToolbar #toolbarLoginBtn span,
-  body .bottom-toolbar #toolbarLoginBtn.toolbar-btn span,
-  body #bottomToolbar #toolbarLoginBtn.toolbar-btn span {
-    font-size: 0.95em !important;
-    margin-top: 2px !important;
-    display: block !important;
-    line-height: 1.2 !important;
-    overflow: hidden !important;
-    text-overflow: ellipsis !important;
-    white-space: nowrap !important;
-    max-width: 100% !important;
-  }
-}
 
-/* EXTREME SPECIFICITY: Override any other styles for Account button */
-@media (max-width: 900px) {
-  html body .bottom-toolbar #toolbarLoginBtn,
-  html body #bottomToolbar #toolbarLoginBtn,
-  html body .bottom-toolbar #toolbarLoginBtn.toolbar-btn,
-  html body #bottomToolbar #toolbarLoginBtn.toolbar-btn {
-    flex: 0 0 28vw !important;
-    min-width: 85px !important;
-    max-width: 110px !important;
-    width: 28vw !important;
-    height: 48px !important;
-    padding: 4px 0 !important;
-    margin: 0 6px !important;
-    border-radius: 14px !important;
-    background: #fff !important;
-    border: 1.5px solid #e0e0e0 !important;
-    box-shadow: 0 1px 4px rgba(0,0,0,0.04) !important;
-    transition: background 0.2s, border 0.2s !important;
-    display: flex !important;
-    flex-direction: column !important;
-    align-items: center !important;
-    justify-content: center !important;
-    position: relative !important;
-    text-align: center !important;
-    font-size: 1.3em !important;
-    box-sizing: border-box !important;
-    overflow: hidden !important;
-    white-space: nowrap !important;
-  }
-  
-  /* Force Account button to inherit exact same styling as other buttons */
-  html body .bottom-toolbar #toolbarLoginBtn,
-  html body #bottomToolbar #toolbarLoginBtn {
-    /* Copy exact same properties from .bottom-toolbar button rule */
-    flex: 0 0 28vw !important;
-    min-width: 85px !important;
-    max-width: 110px !important;
-    font-size: 1.3em !important;
-    padding: 4px 0 !important;
-    margin: 0 6px !important;
-    border-radius: 14px !important;
-    background: #fff !important;
-    border: 1.5px solid #e0e0e0 !important;
-    box-shadow: 0 1px 4px rgba(0,0,0,0.04) !important;
-    transition: background 0.2s, border 0.2s !important;
-    display: flex !important;
-    flex-direction: column !important;
-    align-items: center !important;
-    justify-content: center !important;
-    position: relative !important;
-  }
-}
-
-/* FINAL OVERRIDE: Ensure Account button matches other buttons exactly */
-@media (max-width: 900px) {
-  /* Target with maximum specificity possible */
-  html body div.bottom-toolbar button#toolbarLoginBtn.toolbar-btn,
-  html body div#bottomToolbar button#toolbarLoginBtn.toolbar-btn,
-  html body div.bottom-toolbar button#toolbarLoginBtn,
-  html body div#bottomToolbar button#toolbarLoginBtn {
-    flex: 0 0 28vw !important;
-    min-width: 85px !important;
-    max-width: 110px !important;
-    width: 28vw !important;
-    font-size: 1.3em !important;
-    padding: 4px 0 !important;
-    margin: 0 6px !important;
-    border-radius: 14px !important;
-    background: #fff !important;
-    border: 1.5px solid #e0e0e0 !important;
-    box-shadow: 0 1px 4px rgba(0,0,0,0.04) !important;
-    transition: background 0.2s, border 0.2s !important;
-    display: flex !important;
-    flex-direction: column !important;
-    align-items: center !important;
-    justify-content: center !important;
-    position: relative !important;
-    box-sizing: border-box !important;
-    overflow: hidden !important;
-    white-space: nowrap !important;
+  .bottom-toolbar .toolbar-btn span {
+    font-size: 0.95em;
+    margin-top: 2px;
   }
 }
 
