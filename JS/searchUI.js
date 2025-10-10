@@ -183,7 +183,7 @@ function flyToCoords(lat, lng, placeName) {
   // Create new Mapbox marker
   const el = document.createElement('div');
   el.className = 'search-marker';
-  el.style.backgroundImage = 'url(Images/RedMarkerPin.svg)';
+  el.style.backgroundImage = 'url(Images/Pins/RedMarkerPin.svg)';
   el.style.width = '40px';
   el.style.height = '40px';
   el.style.backgroundSize = '100%';

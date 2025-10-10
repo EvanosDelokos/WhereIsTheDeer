@@ -255,8 +255,8 @@ function initGpxManager(map) {
       
       // Load the SVG icons as images
       const icons = [
-        { name: 'StartPin', url: 'Images/StartPin.svg' },
-        { name: 'RedMarkerPin', url: 'Images/RedMarkerPin.svg' }
+        { name: 'StartPin', url: 'Images/Pins/StartPin.svg' },
+        { name: 'RedMarkerPin', url: 'Images/Pins/RedMarkerPin.svg' }
       ];
 
       icons.forEach(icon => {

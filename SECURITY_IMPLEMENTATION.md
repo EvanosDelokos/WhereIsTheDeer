@@ -56,7 +56,7 @@ Create a `.env` file in your project root with:
 ```env
 # Supabase Configuration
 VITE_SUPABASE_ANON_KEY=your_supabase_anon_key_here
-VITE_SUPABASE_URL=https://pdskokilsaljhagvwazn.supabase.co
+VITE_SUPABASE_URL=https://auth.whereisthedeer.com.au
 
 # Mapbox Configuration (optional)
 VITE_MAPBOX_TOKEN=your_mapbox_token_here

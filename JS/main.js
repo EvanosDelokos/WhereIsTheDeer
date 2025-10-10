@@ -2,7 +2,7 @@ console.log("Module loaded: main.js");
 // Initialize Supabase client ONCE, early in your app (if not already done)
 if (!window.supabaseClient) {
   window.supabaseClient = window.supabase.createClient(
-    'https://pdskokilsaljhagvwazn.supabase.co',
+    'https://auth.whereisthedeer.com.au',
     'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InBkc2tva2lsc2FsamhhZ3Z3YXpuIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NTM2MTQwOTUsImV4cCI6MjA2OTE5MDA5NX0.ekpHjsXv55MgOvAVJNYdp4wNuGkGhZghMt8DWfzZikE',
     {
       auth: {
@@ -29,11 +29,19 @@ window.supabaseClient.auth.onAuthStateChange((event, session) => {
       registerModal.style.display = 'none';
     }
     const btn = document.getElementById('toolbarLoginBtn');
-    if (btn) btn.textContent = '👤 Account';
+    if (btn) {
+      btn.innerHTML = '👤 <span>Account</span>';
+      // Force button sizing to match other buttons
+      forceAccountButtonSizing();
+    }
   } else if (event === 'SIGNED_OUT') {
     console.warn('⚠️ Signed out. Disable SSS.');
     const btn = document.getElementById('toolbarLoginBtn');
-    if (btn) btn.textContent = '🔐 Login';
+    if (btn) {
+      btn.innerHTML = '🔐 <span>Login</span>';
+      // Force button sizing to match other buttons
+      forceAccountButtonSizing();
+    }
   }
   if (session?.user) {
     console.log('✅ User is logged in:', session.user.email);
@@ -71,6 +79,16 @@ console.log("Module loaded: main.js - GPX forwarding removed");
 // Initialize SSS module when DOM is ready
 document.addEventListener('DOMContentLoaded', () => {
   console.log("DOM loaded, initializing SSS module...");
+  
+  // Force Account button sizing on page load
+  forceAccountButtonSizing();
+  
+  // Also apply sizing after a short delay to ensure everything is loaded
+  setTimeout(forceAccountButtonSizing, 100);
+  
+  // Apply sizing on window resize
+  window.addEventListener('resize', forceAccountButtonSizing);
+  
   const toolbarLoginBtn = document.getElementById('toolbarLoginBtn');
   if (toolbarLoginBtn && !window.__mainLoginHandlerAttached) {
     window.__mainLoginHandlerAttached = true;
@@ -129,10 +147,18 @@ window.supabaseClient.auth.onAuthStateChange((event, session) => {
       registerModal.style.display = 'none';
     }
     const btn = document.getElementById('toolbarLoginBtn');
-    if (btn) btn.textContent = '👤 Account';
+    if (btn) {
+      btn.innerHTML = '👤 <span>Account</span>';
+      // Force button sizing to match other buttons
+      forceAccountButtonSizing();
+    }
   } else if (event === 'SIGNED_OUT') {
     const btn = document.getElementById('toolbarLoginBtn');
-    if (btn) btn.textContent = '🔐 Login';
+    if (btn) {
+      btn.innerHTML = '🔐 <span>Login</span>';
+      // Force button sizing to match other buttons
+      forceAccountButtonSizing();
+    }
   }
   if (session?.user) {
     const modal = document.getElementById('loginModal');
@@ -146,6 +172,85 @@ window.supabaseClient.auth.onAuthStateChange((event, session) => {
     }
   }
 });
+
+// Function to force Account button sizing to match other toolbar buttons
+function forceAccountButtonSizing() {
+  const btn = document.getElementById('toolbarLoginBtn');
+  const journalBtn = document.getElementById('toolbarJournalBtn');
+  
+  if (btn && journalBtn) {
+    // Copy computed styles from the Journal button (which is working correctly)
+    const journalStyles = window.getComputedStyle(journalBtn);
+    
+    // Apply the same computed styles to the Account button
+    btn.style.flex = journalStyles.flex;
+    btn.style.minWidth = journalStyles.minWidth;
+    btn.style.maxWidth = journalStyles.maxWidth;
+    btn.style.width = journalStyles.width;
+    btn.style.height = journalStyles.height;
+    btn.style.padding = journalStyles.padding;
+    btn.style.margin = journalStyles.margin;
+    btn.style.borderRadius = journalStyles.borderRadius;
+    btn.style.background = journalStyles.background;
+    btn.style.border = journalStyles.border;
+    btn.style.boxShadow = journalStyles.boxShadow;
+    btn.style.display = journalStyles.display;
+    btn.style.flexDirection = journalStyles.flexDirection;
+    btn.style.alignItems = journalStyles.alignItems;
+    btn.style.justifyContent = journalStyles.justifyContent;
+    btn.style.position = journalStyles.position;
+    btn.style.fontSize = journalStyles.fontSize;
+    btn.style.boxSizing = journalStyles.boxSizing;
+    btn.style.overflow = journalStyles.overflow;
+    btn.style.whiteSpace = journalStyles.whiteSpace;
+    
+    // Also copy span styles
+    const btnSpan = btn.querySelector('span');
+    const journalSpan = journalBtn.querySelector('span');
+    
+    if (btnSpan && journalSpan) {
+      const journalSpanStyles = window.getComputedStyle(journalSpan);
+      btnSpan.style.fontSize = journalSpanStyles.fontSize;
+      btnSpan.style.marginTop = journalSpanStyles.marginTop;
+      btnSpan.style.display = journalSpanStyles.display;
+      btnSpan.style.lineHeight = journalSpanStyles.lineHeight;
+      btnSpan.style.overflow = journalSpanStyles.overflow;
+      btnSpan.style.textOverflow = journalSpanStyles.textOverflow;
+      btnSpan.style.whiteSpace = journalSpanStyles.whiteSpace;
+      btnSpan.style.maxWidth = journalSpanStyles.maxWidth;
+    }
+  }
+}
+
+// Function to position account popover relative to login button
+function positionAccountPopover(popover) {
+  const loginBtn = document.getElementById('toolbarLoginBtn');
+  if (!loginBtn) return;
+  
+  const btnRect = loginBtn.getBoundingClientRect();
+  const popoverWidth = popover.offsetWidth || 280; // Use minWidth as fallback
+  const popoverHeight = popover.offsetHeight || 200; // Estimate height
+  const isMobile = window.innerWidth <= 900;
+  
+  let left, top;
+  
+  if (isMobile) {
+    // On mobile, center horizontally and position above toolbar
+    left = (window.innerWidth / 2) - (popoverWidth / 2);
+    top = btnRect.top - popoverHeight - 20; // Extra gap for mobile
+  } else {
+    // On desktop, align right edge with button right edge (since it's the rightmost button)
+    left = btnRect.right - popoverWidth;
+    top = btnRect.top - popoverHeight - 20;
+  }
+  
+  // Ensure popover doesn't go off screen
+  left = Math.max(10, Math.min(left, window.innerWidth - popoverWidth - 10));
+  top = Math.max(10, top);
+  
+  popover.style.left = `${left}px`;
+  popover.style.top = `${top}px`;
+}
 
 // ✅ Single source of truth for account popover
 window.showAccountPopover = function(user) {
@@ -227,8 +332,6 @@ window.showAccountPopover = function(user) {
     const popover = document.createElement('div');
     popover.className = 'account-popover';
     popover.style.position = 'fixed';
-    popover.style.bottom = '64px';
-    popover.style.right = '50px';
     popover.style.background = '#fff';
     popover.style.border = '1px solid #e0e0e0';
     popover.style.borderRadius = '12px';
@@ -237,6 +340,9 @@ window.showAccountPopover = function(user) {
     popover.style.zIndex = '1000';
     popover.style.minWidth = '280px';
     popover.style.fontFamily = 'system-ui, -apple-system, sans-serif';
+    
+    // Position the popover relative to the login button
+    positionAccountPopover(popover);
 
     popover.innerHTML = `
       <div style="margin-bottom: 20px;">
@@ -289,6 +395,11 @@ window.showAccountPopover = function(user) {
     `;
 
     document.body.appendChild(popover);
+    
+    // Reposition after DOM insertion to get accurate dimensions
+    setTimeout(() => {
+      positionAccountPopover(popover);
+    }, 0);
 
     // Add hover effects
     const signOutBtn = popover.querySelector('#signOutBtn');
@@ -348,6 +459,23 @@ window.showAccountPopover = function(user) {
     closeBtn.addEventListener('click', () => {
       popover.remove();
     });
+    
+    // Add click outside to close
+    document.addEventListener('click', (e) => {
+      if (!popover.contains(e.target) && e.target.id !== 'toolbarLoginBtn') {
+        popover.remove();
+      }
+    });
+    
+    // Add resize listener to reposition popover
+    const resizeHandler = () => {
+      if (document.body.contains(popover)) {
+        positionAccountPopover(popover);
+      } else {
+        window.removeEventListener('resize', resizeHandler);
+      }
+    };
+    window.addEventListener('resize', resizeHandler);
   }
 };
 

@@ -6,8 +6,8 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
 
   <!-- Favicon -->
-  <link rel="icon" href="Images/WhereIsTheDeerLogo.png" type="image/png">
-  <link rel="shortcut icon" href="Images/WhereIsTheDeerLogo.png" type="image/png">
+  <link rel="icon" href="Images/Logos/WhereIsTheDeerLogo.png" type="image/png">
+  <link rel="shortcut icon" href="Images/Logos/WhereIsTheDeerLogo.png" type="image/png">
 
   <!-- Mapbox GL JS -->
   <script src='https://api.mapbox.com/mapbox-gl-js/v3.14.0/mapbox-gl.js'></script>
@@ -25,9 +25,12 @@
     window.currentUserPlan = currentUserPlan;
 
     const supabase = window.supabase.createClient(
-      'https://pdskokilsaljhagvwazn.supabase.co',
+      'https://auth.whereisthedeer.com.au',
       'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InBkc2tva2lsc2FsamhhZ3Z3YXpuIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NTM2MTQwOTUsImV4cCI6MjA2OTE5MDA5NX0.ekpHjsXv55MgOvAVJNYdp4wNuGkGhZghMt8DWfzZikE'
     );
+    
+    // ✅ Attach to window for global access (required by authModal.js)
+    window.supabaseClient = supabase;
 
     // 🗺️ Mapbox Configuration
     // Mapbox token configured
@@ -40,12 +43,36 @@
     // Only run exchangeCodeForSession() if URL contains ?code=
     const urlParams = new URLSearchParams(window.location.search);
     const hasOAuthCode = urlParams.has('code') && urlParams.has('state');
+    const hasOAuthError = urlParams.has('error');
+
+    // Handle OAuth errors from Supabase callback
+    if (hasOAuthError) {
+      const error = urlParams.get('error');
+      const errorCode = urlParams.get('error_code');
+      const errorDesc = urlParams.get('error_description');
+      console.error("🔴 OAuth Error:", error, errorCode, errorDesc);
+      
+      // Show user-friendly error message
+      if (errorDesc && errorDesc.includes('Unable to exchange external code')) {
+        alert('Google login failed: Please ensure your Google OAuth is properly configured in Google Cloud Console.\n\nThe redirect URI must include:\nhttps://auth.whereisthedeer.com.au/auth/v1/callback');
+      } else {
+        alert('Login failed: ' + (errorDesc || error));
+      }
+      
+      // Clean up URL
+      window.history.replaceState({}, document.title, window.location.pathname);
+    }
 
     if (hasOAuthCode) {
       console.log("🔄 Attempting to exchange OAuth code for session...");
+      console.log("🔍 OAuth code:", urlParams.get('code'));
+      console.log("🔍 OAuth state:", urlParams.get('state'));
+      
       supabase.auth.exchangeCodeForSession().then(({ data, error }) => {
         if (error) {
-          console.error("🔴 Session exchange error:", error.message);
+          console.error("🔴 Session exchange error:", error);
+          console.error("🔴 Full error details:", JSON.stringify(error, null, 2));
+          alert('Session exchange failed: ' + error.message + '\n\nCheck browser console for full error details.');
         } else if (data?.session) {
           console.log("🟢 Session restored from URL:", data.session.user.email);
           loggedInUser = data.session.user;
@@ -629,16 +656,30 @@ function positionPopup(popup, button, alignRight = false) {
 
   const isMobile = window.innerWidth <= 900;
 
-  if (isMobile) {
-    // 📱 Center popup horizontally on mobile
-    left = (window.innerWidth / 2) - (popupWidth / 2);
-    top = btnRect.top - popupHeight - 12 - 8; // 8px extra gap
+  // Special handling for tools dropdown - align left edge with button left edge
+  if (popup.id === 'toolsDropdown') {
+    if (isMobile) {
+      // 📱 Center popup horizontally on mobile and position above toolbar
+      left = (window.innerWidth / 2) - (popupWidth / 2);
+      top = btnRect.top - popupHeight - 20; // Extra gap for mobile
+    } else {
+      // 🖥️ Desktop: align left edge with button left edge
+      left = btnRect.left;
+      top = btnRect.top - popupHeight - 12 - 8; // 8px extra gap
+    }
   } else {
-    // 🖥️ Desktop: normal align logic
-    left = alignRight
-      ? btnRect.right - popup.offsetWidth
-      : btnRect.left;
-    top = btnRect.top - popupHeight - 12 - 8; // 8px extra gap
+    // Standard positioning for other popups
+    if (isMobile) {
+      // 📱 Center popup horizontally on mobile
+      left = (window.innerWidth / 2) - (popupWidth / 2);
+      top = btnRect.top - popupHeight - 12 - 8; // 8px extra gap
+    } else {
+      // 🖥️ Desktop: normal align logic
+      left = alignRight
+        ? btnRect.right - popup.offsetWidth
+        : btnRect.left;
+      top = btnRect.top - popupHeight - 12 - 8; // 8px extra gap
+    }
   }
 
   popup.style.left = `${Math.max(8, left)}px`;
@@ -646,6 +687,38 @@ function positionPopup(popup, button, alignRight = false) {
 
   // Arrows are now hidden via CSS, no need to position them
 }
+
+// Function to position tool submenus (pins, draw, etc.)
+function positionToolSubmenu(submenu) {
+  if (!submenu || submenu.style.display === 'none') return;
+  
+  const toolbar = document.getElementById('bottomToolbar');
+  if (!toolbar) return;
+  
+  const toolbarRect = toolbar.getBoundingClientRect();
+  const submenuHeight = submenu.offsetHeight;
+  const isMobile = window.innerWidth <= 900;
+  
+  let left, top;
+  
+  if (isMobile) {
+    // On mobile, center horizontally and position above toolbar
+    left = (window.innerWidth / 2) - (submenu.offsetWidth / 2);
+    top = toolbarRect.top - submenuHeight - 20; // Extra gap for mobile
+  } else {
+    // On desktop, align with toolbar left edge
+    left = toolbarRect.left + 20; // Small offset from edge
+    top = toolbarRect.top - submenuHeight - 20;
+  }
+  
+  // Ensure submenu doesn't go off screen
+  left = Math.max(10, Math.min(left, window.innerWidth - submenu.offsetWidth - 10));
+  top = Math.max(10, top);
+  
+  submenu.style.left = `${left}px`;
+  submenu.style.top = `${top}px`;
+}
+
 // Keep track of open popup/button
 let openPopup = null;
 let openButton = null;
@@ -1099,7 +1172,7 @@ document.addEventListener('DOMContentLoaded', () => {
     const { data, error } = await supabase.auth.signInWithOAuth({
       provider: 'google',
       options: {
-        redirectTo: redirectUrl
+        redirectTo: redirelctUr
       }
     });
 
@@ -1735,7 +1808,11 @@ function restoreOriginalButtonFunctionality() {
     const toolsDropdown = document.getElementById('toolsDropdown');
     const pinsSubmenu = document.getElementById('pinsSubmenu');
     if (toolsDropdown) toolsDropdown.style.display = 'none';
-    if (pinsSubmenu) pinsSubmenu.style.display = 'block';
+    if (pinsSubmenu) {
+      pinsSubmenu.style.display = 'block';
+      // Position the submenu properly
+      positionToolSubmenu(pinsSubmenu);
+    }
   });
   replaceButtonHandler('toolbarDraw', () => {
     console.log("✏️ Draw clicked - Opening draw submenu");
@@ -1745,7 +1822,11 @@ function restoreOriginalButtonFunctionality() {
     const toolsDropdown = document.getElementById('toolsDropdown');
     const drawSubmenu = document.getElementById('drawSubmenu');
     if (toolsDropdown) toolsDropdown.style.display = 'none';
-    if (drawSubmenu) drawSubmenu.style.display = 'block';
+    if (drawSubmenu) {
+      drawSubmenu.style.display = 'block';
+      // Position the submenu properly
+      positionToolSubmenu(drawSubmenu);
+    }
   });
 
   // === Submenu Navigation Logic ===
@@ -1756,7 +1837,14 @@ function restoreOriginalButtonFunctionality() {
     const pinsSubmenu = document.getElementById('pinsSubmenu');
     const toolsDropdown = document.getElementById('toolsDropdown');
     if (pinsSubmenu) pinsSubmenu.style.display = 'none';
-    if (toolsDropdown) toolsDropdown.style.display = 'block';
+    if (toolsDropdown) {
+      toolsDropdown.style.display = 'block';
+      // Reposition the main tools dropdown
+      const toolsBtn = document.getElementById('toolbarToolsBtn');
+      if (toolsBtn) {
+        positionPopup(toolsDropdown, toolsBtn);
+      }
+    }
   });
   
   replaceButtonHandler('drawBackBtn', () => {
@@ -1764,7 +1852,14 @@ function restoreOriginalButtonFunctionality() {
     const drawSubmenu = document.getElementById('drawSubmenu');
     const toolsDropdown = document.getElementById('toolsDropdown');
     if (drawSubmenu) drawSubmenu.style.display = 'none';
-    if (toolsDropdown) toolsDropdown.style.display = 'block';
+    if (toolsDropdown) {
+      toolsDropdown.style.display = 'block';
+      // Reposition the main tools dropdown
+      const toolsBtn = document.getElementById('toolbarToolsBtn');
+      if (toolsBtn) {
+        positionPopup(toolsDropdown, toolsBtn);
+      }
+    }
   });
   
 
@@ -2941,7 +3036,10 @@ document.addEventListener('DOMContentLoaded', function() {
     loginBtn.addEventListener('click', async function(e) {
       e.stopPropagation();
       if (await isUserLoggedIn()) {
-        showLogoutPopover(loginBtn);
+        const { data: { session } } = await window.supabaseClient.auth.getSession();
+        if (session && session.user) {
+          window.showAccountPopover?.(session.user);
+        }
       } else if (authModal) {
         authModal.style.display = 'flex';
       }

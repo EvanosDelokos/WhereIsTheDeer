@@ -1873,9 +1873,7 @@ button[data-layer].disabled:hover,
   max-height: 75vh; /* Reduced height since pin settings removed */
   overflow-y: auto;
   overflow-x: hidden;
-  left: 20px;
-  bottom: 64px; /* Match layers popup positioning */
-  transform: none;
+  /* Positioning will be handled by JavaScript */
 }
 
 .submenu-header {
@@ -2075,22 +2073,13 @@ button[data-layer].active {
   align-items: center;
 }
 
-/* Desktop positioning for larger screens */
-@media (min-width: 900px) {
-  .tool-submenu {
-    bottom: 64px; /* Match layers popup positioning */
-  }
-}
-
 /* Mobile Responsive for Submenus */
 @media (max-width: 768px) {
   .tool-submenu {
     width: 300px !important;
     min-width: 300px !important;
     max-width: 90vw;
-    left: 10px;
-    bottom: 64px; /* Match layers popup positioning */
-    transform: none;
+    /* Positioning will be handled by JavaScript */
   }
   
   .pin-styles-grid,
@@ -2110,12 +2099,8 @@ button[data-layer].active {
 
 
 
-/* Specific: position Tools popup above toolbar */
+/* Specific: position Tools popup above toolbar - positioning handled by JavaScript */
 #toolsDropdown.modern-popup {
-  position: absolute;
-  top: -120px;
-  left: 50%;
-  transform: translateX(-50%);
   width: auto;
   min-width: 200px;
   max-width: 95vw;
@@ -2151,9 +2136,6 @@ button[data-layer].active {
     min-width: 180px;
     max-width: 90vw;
     padding: 12px;
-    top: -100px;
-    left: 50%;
-    transform: translateX(-50%);
   }
   /* Layers popup mobile spacing */
   #layersDropdown.modern-popup,
@@ -2474,7 +2456,6 @@ button[data-layer].active {
     min-width: 160px;
     max-width: 85vw;
     padding: 8px;
-    top: -90px;
   }
   /* Layers popup small mobile spacing */
   #layersDropdown.modern-popup,
@@ -3244,7 +3225,9 @@ button[data-layer].active {
 /* ULTRA-HIGH SPECIFICITY: Force Account button to match other toolbar buttons */
 @media (max-width: 900px) {
   body .bottom-toolbar #toolbarLoginBtn,
-  body #bottomToolbar #toolbarLoginBtn {
+  body #bottomToolbar #toolbarLoginBtn,
+  body .bottom-toolbar #toolbarLoginBtn.toolbar-btn,
+  body #bottomToolbar #toolbarLoginBtn.toolbar-btn {
     flex: 0 0 28vw !important;
     min-width: 85px !important;
     max-width: 110px !important;
@@ -3263,13 +3246,104 @@ button[data-layer].active {
     text-align: center !important;
     font-size: 1.3em !important;
     box-sizing: border-box !important;
+    overflow: hidden !important;
+    white-space: nowrap !important;
   }
   body .bottom-toolbar #toolbarLoginBtn span,
-  body #bottomToolbar #toolbarLoginBtn span {
+  body #bottomToolbar #toolbarLoginBtn span,
+  body .bottom-toolbar #toolbarLoginBtn.toolbar-btn span,
+  body #bottomToolbar #toolbarLoginBtn.toolbar-btn span {
     font-size: 0.95em !important;
     margin-top: 2px !important;
     display: block !important;
     line-height: 1.2 !important;
+    overflow: hidden !important;
+    text-overflow: ellipsis !important;
+    white-space: nowrap !important;
+    max-width: 100% !important;
+  }
+}
+
+/* EXTREME SPECIFICITY: Override any other styles for Account button */
+@media (max-width: 900px) {
+  html body .bottom-toolbar #toolbarLoginBtn,
+  html body #bottomToolbar #toolbarLoginBtn,
+  html body .bottom-toolbar #toolbarLoginBtn.toolbar-btn,
+  html body #bottomToolbar #toolbarLoginBtn.toolbar-btn {
+    flex: 0 0 28vw !important;
+    min-width: 85px !important;
+    max-width: 110px !important;
+    width: 28vw !important;
+    height: 48px !important;
+    padding: 4px 0 !important;
+    margin: 0 6px !important;
+    border-radius: 14px !important;
+    background: #fff !important;
+    border: 1.5px solid #e0e0e0 !important;
+    box-shadow: 0 1px 4px rgba(0,0,0,0.04) !important;
+    transition: background 0.2s, border 0.2s !important;
+    display: flex !important;
+    flex-direction: column !important;
+    align-items: center !important;
+    justify-content: center !important;
+    position: relative !important;
+    text-align: center !important;
+    font-size: 1.3em !important;
+    box-sizing: border-box !important;
+    overflow: hidden !important;
+    white-space: nowrap !important;
+  }
+  
+  /* Force Account button to inherit exact same styling as other buttons */
+  html body .bottom-toolbar #toolbarLoginBtn,
+  html body #bottomToolbar #toolbarLoginBtn {
+    /* Copy exact same properties from .bottom-toolbar button rule */
+    flex: 0 0 28vw !important;
+    min-width: 85px !important;
+    max-width: 110px !important;
+    font-size: 1.3em !important;
+    padding: 4px 0 !important;
+    margin: 0 6px !important;
+    border-radius: 14px !important;
+    background: #fff !important;
+    border: 1.5px solid #e0e0e0 !important;
+    box-shadow: 0 1px 4px rgba(0,0,0,0.04) !important;
+    transition: background 0.2s, border 0.2s !important;
+    display: flex !important;
+    flex-direction: column !important;
+    align-items: center !important;
+    justify-content: center !important;
+    position: relative !important;
+  }
+}
+
+/* FINAL OVERRIDE: Ensure Account button matches other buttons exactly */
+@media (max-width: 900px) {
+  /* Target with maximum specificity possible */
+  html body div.bottom-toolbar button#toolbarLoginBtn.toolbar-btn,
+  html body div#bottomToolbar button#toolbarLoginBtn.toolbar-btn,
+  html body div.bottom-toolbar button#toolbarLoginBtn,
+  html body div#bottomToolbar button#toolbarLoginBtn {
+    flex: 0 0 28vw !important;
+    min-width: 85px !important;
+    max-width: 110px !important;
+    width: 28vw !important;
+    font-size: 1.3em !important;
+    padding: 4px 0 !important;
+    margin: 0 6px !important;
+    border-radius: 14px !important;
+    background: #fff !important;
+    border: 1.5px solid #e0e0e0 !important;
+    box-shadow: 0 1px 4px rgba(0,0,0,0.04) !important;
+    transition: background 0.2s, border 0.2s !important;
+    display: flex !important;
+    flex-direction: column !important;
+    align-items: center !important;
+    justify-content: center !important;
+    position: relative !important;
+    box-sizing: border-box !important;
+    overflow: hidden !important;
+    white-space: nowrap !important;
   }
 }
 

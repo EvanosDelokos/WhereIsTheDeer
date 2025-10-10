@@ -93,7 +93,7 @@ app.use((req, res, next) => {
 });
 
 // Supabase client setup
-const supabaseUrl = process.env.SUPABASE_URL || 'https://pdskokilsaljhagvwazn.supabase.co';
+const supabaseUrl = process.env.SUPABASE_URL || 'https://auth.whereisthedeer.com.au';
 const supabaseServiceKey = process.env.SUPABASE_SERVICE_KEY;
 const supabaseClient = createClient(supabaseUrl, supabaseServiceKey);
 

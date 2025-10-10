@@ -64,9 +64,7 @@ class AuthModal {
             options: {
               redirectTo: redirectUrl,
               queryParams: {
-                prompt: 'select_account', // Always show account selector
-                access_type: 'offline', // Force fresh token
-                include_granted_scopes: 'true' // Ensure fresh permissions
+                prompt: 'select_account' // Always show account selector
               },
               scopes: 'https://www.googleapis.com/auth/userinfo.email https://www.googleapis.com/auth/userinfo.profile'
             }
@@ -111,9 +109,7 @@ class AuthModal {
             options: {
               redirectTo: redirectUrl,
               queryParams: {
-                prompt: 'select_account', // Always show account selector
-                access_type: 'offline', // Force fresh token
-                include_granted_scopes: 'true' // Ensure fresh permissions
+                prompt: 'select_account' // Always show account selector
               },
               scopes: 'https://www.googleapis.com/auth/userinfo.email https://www.googleapis.com/auth/userinfo.profile'
             }
