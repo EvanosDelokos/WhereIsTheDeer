@@ -14,11 +14,100 @@ const trackLineId = "userTrackLine";
 const trackSourceId = "userTrack";
 const currentMarkerId = "trackingPositionMarker";
 
+// === GPS SMOOTHING VARIABLES ===
+let positionBuffer = []; // Store recent positions for smoothing
+const BUFFER_SIZE = 5; // Number of positions to average
+const MIN_ACCURACY = 50; // Reject positions worse than 50m accuracy
+const MIN_DISTANCE = 3; // Minimum distance (meters) to record a new point
+let lastRecordedPosition = null;
+let smoothedHeading = null;
+const HEADING_SMOOTHING = 0.3; // Lower = smoother (0-1)
+
 export function initTracking(map) {
   window.WITD = window.WITD || {};
   window.WITD.tracking = { startTracking, stopTracking, saveTrack, toggleFollow };
   window.WITD.tracking.map = map;
   console.log("🧭 Tracking module initialized");
+}
+
+// === GPS SMOOTHING HELPERS ===
+function smoothPosition(newPos) {
+  // Add to buffer
+  positionBuffer.push({
+    lat: newPos.latitude,
+    lng: newPos.longitude,
+    accuracy: newPos.accuracy
+  });
+  
+  // Keep buffer size limited
+  if (positionBuffer.length > BUFFER_SIZE) {
+    positionBuffer.shift();
+  }
+  
+  // Calculate weighted average (more recent = higher weight)
+  let totalWeight = 0;
+  let avgLat = 0;
+  let avgLng = 0;
+  
+  positionBuffer.forEach((pos, idx) => {
+    const weight = idx + 1; // Linear weighting: older=1, newest=BUFFER_SIZE
+    avgLat += pos.lat * weight;
+    avgLng += pos.lng * weight;
+    totalWeight += weight;
+  });
+  
+  return {
+    latitude: avgLat / totalWeight,
+    longitude: avgLng / totalWeight
+  };
+}
+
+function smoothHeading(newHeading) {
+  if (newHeading === null || isNaN(newHeading)) return smoothedHeading || 0;
+  
+  if (smoothedHeading === null) {
+    smoothedHeading = newHeading;
+    return newHeading;
+  }
+  
+  // Handle wraparound (359° -> 1° should not jump through 180°)
+  let delta = newHeading - smoothedHeading;
+  if (delta > 180) delta -= 360;
+  if (delta < -180) delta += 360;
+  
+  // Exponential moving average
+  smoothedHeading = smoothedHeading + (delta * HEADING_SMOOTHING);
+  
+  // Normalize to 0-360
+  if (smoothedHeading < 0) smoothedHeading += 360;
+  if (smoothedHeading >= 360) smoothedHeading -= 360;
+  
+  return smoothedHeading;
+}
+
+function shouldRecordPoint(lat, lng, accuracy) {
+  // Reject low accuracy positions
+  if (accuracy > MIN_ACCURACY) {
+    console.log(`⚠️ Position rejected: accuracy ${accuracy.toFixed(1)}m > ${MIN_ACCURACY}m threshold`);
+    return false;
+  }
+  
+  // Always record first point
+  if (!lastRecordedPosition) {
+    lastRecordedPosition = { lat, lng };
+    return true;
+  }
+  
+  // Calculate distance from last recorded point
+  const distance = haversine([lastRecordedPosition.lat, lastRecordedPosition.lng], [lat, lng]) * 1000; // Convert to meters
+  
+  if (distance < MIN_DISTANCE) {
+    // Too close to last point, skip to reduce jitter
+    return false;
+  }
+  
+  lastRecordedPosition = { lat, lng };
+  return true;
 }
 
 // === CORE ===
@@ -36,6 +125,11 @@ async function startTracking() {
   trackStartTime = Date.now();
   trackingActive = true;
   hasAutoZoomed = false;
+  
+  // Reset smoothing buffers
+  positionBuffer = [];
+  lastRecordedPosition = null;
+  smoothedHeading = null;
 
   // remove old
   if (map.getLayer(trackLineId)) map.removeLayer(trackLineId);
@@ -99,33 +193,46 @@ function stopTracking() {
 function updateTrack(map, pos) {
   const { longitude, latitude, altitude, heading, accuracy, speed } = pos.coords;
   
-  // Debug: Log GPS data details
-  console.log(`📍 GPS Update:`, {
+  // Debug: Log raw GPS data
+  console.log(`📍 Raw GPS:`, {
     lat: latitude.toFixed(6),
     lng: longitude.toFixed(6),
-    accuracy: `${accuracy}m`,
+    accuracy: `${accuracy.toFixed(1)}m`,
     altitude: altitude ? `${altitude.toFixed(1)}m` : 'N/A',
     heading: heading ? `${heading.toFixed(1)}°` : 'N/A',
     speed: speed ? `${(speed * 3.6).toFixed(1)} km/h` : 'N/A'
   });
   
+  // === APPLY GPS SMOOTHING ===
+  const smoothedPos = smoothPosition(pos.coords);
+  const smoothedLat = smoothedPos.latitude;
+  const smoothedLng = smoothedPos.longitude;
+  const smoothedHdg = smoothHeading(heading);
+  
+  console.log(`✨ Smoothed GPS:`, {
+    lat: smoothedLat.toFixed(6),
+    lng: smoothedLng.toFixed(6),
+    heading: `${smoothedHdg.toFixed(1)}°`,
+    buffer: `${positionBuffer.length}/${BUFFER_SIZE}`
+  });
+  
   // === Auto-zoom on first position fix ===
-  if (!hasAutoZoomed && longitude && latitude) {
+  if (!hasAutoZoomed && smoothedLng && smoothedLat) {
     hasAutoZoomed = true;
-    console.log("🔍 Auto-zooming to user position", longitude, latitude);
+    console.log("🔍 Auto-zooming to user position", smoothedLng, smoothedLat);
     
     // Try multiple zoom approaches
     try {
       // Method 1: Direct jump first
       map.jumpTo({
-        center: [longitude, latitude],
+        center: [smoothedLng, smoothedLat],
         zoom: 16
       });
       
       // Method 2: Then smooth ease
       setTimeout(() => {
         map.easeTo({
-          center: [longitude, latitude],
+          center: [smoothedLng, smoothedLat],
           zoom: 16,
           duration: 1500
         });
@@ -136,7 +243,7 @@ function updateTrack(map, pos) {
         if (map.getZoom() < 15) {
           console.log("🔄 Fallback zoom - forcing zoom level");
           map.flyTo({
-            center: [longitude, latitude],
+            center: [smoothedLng, smoothedLat],
             zoom: 16,
             duration: 2000
           });
@@ -149,13 +256,32 @@ function updateTrack(map, pos) {
     }
   }
   
-  if (trackCoords.length > 0) {
-    const [lastLon, lastLat] = trackCoords[trackCoords.length - 1];
-    distanceKm += haversine([lastLat, lastLon], [latitude, longitude]);
-  }
-  trackCoords.push([longitude, latitude]);
+  // === Check if we should record this point (reduce jitter) ===
+  const shouldRecord = shouldRecordPoint(smoothedLat, smoothedLng, accuracy);
+  
+  if (shouldRecord) {
+    // Calculate distance from last point
+    if (trackCoords.length > 0) {
+      const [lastLon, lastLat] = trackCoords[trackCoords.length - 1];
+      distanceKm += haversine([lastLat, lastLon], [smoothedLat, smoothedLng]);
+    }
+    
+    // Add smoothed position to track
+    trackCoords.push([smoothedLng, smoothedLat]);
+    
+    console.log(`✅ Point recorded: ${trackCoords.length} total points`);
 
-  // elevation gain
+    // === Update the polyline ===
+    const lineData = {
+      type: "Feature",
+      geometry: { type: "LineString", coordinates: trackCoords }
+    };
+    map.getSource(trackSourceId).setData(lineData);
+  } else {
+    console.log(`⏭️ Point skipped (too close or low accuracy)`);
+  }
+
+  // elevation gain (use raw altitude for accuracy)
   if (altitude !== null && !isNaN(altitude)) {
     if (lastElevation !== null) {
       const diff = altitude - lastElevation;
@@ -164,23 +290,11 @@ function updateTrack(map, pos) {
     lastElevation = altitude;
   }
 
-  // === Update the polyline ===
-  const lineData = {
-    type: "Feature",
-    geometry: { type: "LineString", coordinates: trackCoords }
-  };
-  map.getSource(trackSourceId).setData(lineData);
-  
-  // Debug: Log when we have enough points for a line
-  if (trackCoords.length >= 2) {
-    console.log(`📍 Track line updated: ${trackCoords.length} points, latest: [${longitude.toFixed(6)}, ${latitude.toFixed(6)}]`);
-  }
-
-  // === Update or create current position marker with direction ===
+  // === Update current position marker (always update, even if not recording) ===
   const point = { 
     type: "Feature", 
-    geometry: { type: "Point", coordinates: [longitude, latitude] },
-    properties: { heading: heading !== null && !isNaN(heading) ? heading : 0 }
+    geometry: { type: "Point", coordinates: [smoothedLng, smoothedLat] },
+    properties: { heading: smoothedHdg }
   };
 
   if (!map.getSource(currentMarkerId)) {
@@ -229,9 +343,9 @@ function updateTrack(map, pos) {
     map.getSource(currentMarkerId).setData(point);
   }
 
-  // follow-me camera (only after initial zoom is done)
+  // follow-me camera (only after initial zoom is done) - use smoothed position
   if (followMe && hasAutoZoomed) {
-    map.easeTo({ center: [longitude, latitude], duration: 1000 });
+    map.easeTo({ center: [smoothedLng, smoothedLat], duration: 1000 });
   }
 
   updateLiveStats();
