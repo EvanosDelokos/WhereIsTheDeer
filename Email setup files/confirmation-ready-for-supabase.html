@@ -1,0 +1,398 @@
+<!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Transitional//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-transitional.dtd">
+<html xmlns="http://www.w3.org/1999/xhtml">
+  <head>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <meta name="x-apple-disable-message-reformatting" />
+    <meta http-equiv="Content-Type" content="text/html; charset=UTF-8" />
+    <meta name="color-scheme" content="light dark" />
+    <meta name="supported-color-schemes" content="light dark" />
+    <title></title>
+    <style type="text/css" rel="stylesheet" media="all">
+    @import url("https://fonts.googleapis.com/css?family=Nunito+Sans:400,700&display=swap");
+    body {
+      width: 100% !important;
+      height: 100%;
+      margin: 0;
+      -webkit-text-size-adjust: none;
+    background-color: #fff7ed;
+    }
+    
+    a {
+      color: #ea580c;
+    }
+    
+    a img {
+      border: none;
+    }
+    
+    td {
+      word-break: break-word;
+    }
+    
+    body,
+    td,
+    th {
+      font-family: "Nunito Sans", Helvetica, Arial, sans-serif;
+    font-size: 16px;
+    }
+    
+    h1 {
+      margin-top: 0;
+      color: #1c1917;
+      font-size: 22px;
+      font-weight: bold;
+      text-align: left;
+    }
+    
+    h2 {
+      margin-top: 0;
+      color: #1c1917;
+      font-size: 20px;
+      font-weight: bold;
+      text-align: center;
+    }
+    
+    td,
+    th {
+      font-size: 16px;
+    }
+    
+    p {
+      margin: .4em 0 1.1875em;
+      font-size: 16px;
+      line-height: 1.625;
+      color: #44403c;
+    }
+    
+    .button {
+      background-color: #3869D4 !important;
+      border-top: 10px solid #3869D4 !important;
+      border-right: 18px solid #3869D4 !important;
+      border-bottom: 10px solid #3869D4 !important;
+      border-left: 18px solid #3869D4 !important;
+      display: inline-block;
+      color: #FFFFFF !important;
+      text-decoration: none !important;
+      border-radius: 3px;
+      box-shadow: 0 2px 3px rgba(0, 0, 0, 0.16);
+      -webkit-text-size-adjust: none;
+      box-sizing: border-box;
+      font-weight: bold;
+    }
+    
+    .button:hover,
+    .button:active,
+    .button:visited,
+    .button:focus,
+    .button:link {
+      color: #ffffff !important;
+      text-decoration: none !important;
+      background-color: #ea580c !important;
+    border-top-color: #ea580c !important;
+    border-right-color: #ea580c !important;
+    border-bottom-color: #ea580c !important;
+    border-left-color: #ea580c !important;
+    border-color: #ea580c !important;
+    }
+    
+    a.button:hover,
+    a.button:active,
+    a.button:visited,
+    a.button:focus,
+    a.button:link {
+      color: #ffffff !important;
+      text-decoration: none !important;
+    }
+    
+    .code-box {
+      background-color: #ffffff;
+      border: 1px solid #fed7aa;
+      border-radius: 3px;
+      padding: 20px;
+      text-align: center;
+      margin: 30px 0;
+    }
+    
+    .code {
+      font-size: 32px;
+      font-weight: bold;
+      letter-spacing: 8px;
+      color: #1c1917;
+      font-family: "Courier New", Courier, monospace;
+    }
+    
+    .email-wrapper {
+      width: 100%;
+      margin: 0;
+      padding: 0;
+      -premailer-width: 100%;
+      -premailer-cellpadding: 0;
+      -premailer-cellspacing: 0;
+      background-color: #fff7ed;
+    }
+    
+    .email-content {
+      width: 100%;
+      margin: 0;
+      padding: 0;
+      -premailer-width: 100%;
+      -premailer-cellpadding: 0;
+      -premailer-cellspacing: 0;
+    }
+    
+    .email-masthead {
+      padding: 25px 0;
+      text-align: center;
+    }
+    
+    .email-masthead_name {
+      font-size: 16px;
+      font-weight: bold;
+      color: #ea580c;
+      text-decoration: none;
+      text-shadow: 0 1px 0 white;
+    }
+    
+    .email-body {
+      width: 100%;
+      margin: 0;
+      padding: 0;
+      -premailer-width: 100%;
+      -premailer-cellpadding: 0;
+      -premailer-cellspacing: 0;
+    }
+    
+    .email-body_inner {
+      width: 570px;
+      margin: 0 auto;
+      padding: 24px !important;
+      -premailer-width: 570px;
+      -premailer-cellpadding: 0;
+      -premailer-cellspacing: 0;
+      background-color: #ffffff;
+    }
+    
+    .email-footer {
+      width: 570px;
+      margin: 0 auto;
+      padding: 0;
+      -premailer-width: 570px;
+      -premailer-cellpadding: 0;
+      -premailer-cellspacing: 0;
+      text-align: center;
+    }
+    
+    .email-footer p {
+      color: #78716c;
+    font-size: 12px !important;
+    }
+    
+    .body-action {
+      width: auto !important;
+      margin: 30px auto;
+      padding: 0;
+      -premailer-width: 100%;
+      -premailer-cellpadding: 0;
+      -premailer-cellspacing: 0;
+      text-align: center;
+    }
+    
+    .content-cell {
+      padding: 24px !important;
+    }
+    
+    .sub {
+      font-size: 12px !important;
+    color: #78716c;
+    }
+    
+    .align-center {
+      text-align: center;
+    }
+    
+    /* Fallback section spacer and divider before footer */
+    .body-sub {
+      width: 100%;
+      margin: 40px 0 0;
+      padding-top: 20px;
+      border-top: 1px solid #ECEDEE;
+    border-top-color: #ECEDEE !important;
+    }
+    
+    @media only screen and (max-width: 600px) {
+      .email-body_inner,
+      .email-footer {
+        width: 100% !important;
+      }
+    }
+    
+
+/* Mobile padding overrides (generated by SupaTools) */
+@media only screen and (max-width: 600px) {
+  .content-cell {
+    padding: 12px !important;
+  }
+}
+/* End mobile padding overrides (generated by SupaTools) */
+    @media (prefers-color-scheme: dark) {
+      body,
+      .email-wrapper,
+      .email-body,
+      .email-content,
+      .email-masthead,
+      .email-footer {
+        background-color: #1c1917 !important;
+      }
+      .email-footer .content-cell,
+      .email-footer td {
+        background-color: #1c1917 !important;
+      }
+      .email-body_inner {
+        background-color: #292524 !important;
+      }
+      p, td, span, ul, ol, blockquote {
+        color: #e7e5e4 !important;
+      }
+      h1, h2, h3, .code {
+        color: #f5f5f4 !important;
+      }
+      a {
+        color: #fb923c !important;
+      }
+      .button,
+      a.button {
+        background-color: #fb923c !important;
+        border-top-color: #fb923c !important;
+        border-right-color: #fb923c !important;
+        border-bottom-color: #fb923c !important;
+        border-left-color: #fb923c !important;
+        border-color: #fb923c !important;
+        color: #ffffff !important;
+      }
+      .button:hover,
+      .button:active,
+      .button:visited,
+      .button:focus,
+      .button:link,
+      a.button:hover,
+      a.button:active,
+      a.button:visited,
+      a.button:focus,
+      a.button:link {
+        background-color: #fb923c !important;
+        border-color: #fb923c !important;
+        color: #ffffff !important;
+      }
+      .email-masthead_name {
+        color: #fb923c !important;
+      }
+      .email-footer p,
+      .sub,
+      .sub p {
+        color: #a8a29e !important;
+        font-size: 12px !important;
+      }
+      .email-footer a {
+        color: #CCCCCC !important;
+        font-size: 12px !important;
+        text-decoration: underline !important;
+      }
+      .code-box {
+        background-color: #292524 !important;
+        border-color: #9a3412 !important;
+      }
+      .body-sub,
+      .fallback-text {
+        border-top-color: #555555 !important;
+      }
+      .fallback-text p {
+        color: #CCCCCC !important;
+      }
+      .fallback-text .fallback-link {
+        color: #CCCCCC !important;
+      }
+    }
+
+    </style>
+  </head>
+  <body>
+    <table class="email-wrapper" width="100%" cellpadding="0" cellspacing="0" role="presentation">
+      <tr>
+        <td align="center">
+          <table class="email-content" width="100%" cellpadding="0" cellspacing="0" role="presentation">
+            <tr>
+              <td class="email-masthead">
+                <a href="#" class="f-fallback email-masthead_name">
+                  Kardoe
+                </a>
+              </td>
+            </tr>
+            <!-- Email Body -->
+            <tr>
+              <td class="email-body" width="570" cellpadding="0" cellspacing="0">
+                <table class="email-body_inner" align="center" width="570" cellpadding="0" cellspacing="0" role="presentation">
+                  <!-- Body content -->
+                  <tr>
+                    <td class="content-cell">
+                      <div class="f-fallback">
+                        <p>Hi John,</p>
+<p>There's just one more step to get you into your Kardoe account. Please click the button below to verify your email address:</p>
+<!-- Action -->
+                        <table class="body-action" align="center" width="100%" cellpadding="0" cellspacing="0" role="presentation">
+                          <tr>
+                            <td align="center">
+                              <!-- [if mso]>
+                              <v:roundrect xmlns:v="urn:schemas-microsoft-com:vml" xmlns:w="urn:schemas-microsoft-com:office:word" href="https://yourapp.com/account/confirm?token_hash=abc123xyz789&type=signup&next=/dashboard" style="height:48px;v-text-anchor:middle;width:200px;" arcsize="6.25%" stroke="f" fillcolor="#ea580c">
+                                <w:anchorlock/>
+                                <center style="color: #ffffff;font-family:sans-serif;font-size: 16px;font-weight:bold;">Activate Kardoe Account</center>
+                              </v:roundrect>
+                              <![endif]-->
+                              <!--[if !mso]><!-- -->
+                                                             <table style="max-width: none !important; margin: 0 auto !important; width: auto !important;" border="0" cellspacing="0" cellpadding="0" role="presentation">
+                                 <tr>
+                                   <td align="center" bgcolor="#ea580c" style="border-radius: 3px; background-color: #ea580c;">
+                                     <a class="button" href="https://yourapp.com/account/confirm?token_hash=abc123xyz789&type=signup&next=/dashboard" target="_blank" style="background-color: #ea580c; border: solid 1px #ea580c; border-radius: 3px; box-sizing: border-box; color: #ffffff; cursor: pointer; display: inline-block !important; font-size: 16px; font-weight: bold; margin: 0; padding: 12px 25px; text-decoration: none; text-transform: capitalize; border-color: #ea580c; text-align: center !important;">
+                                       <font color="#ffffff">Activate Kardoe Account</font>
+                                     </a>
+                                   </td>
+                                 </tr>
+                               </table>
+                              <!--<![endif]-->
+                            </td>
+                          </tr>
+                        </table>
+<p>If you didn't create an account, you can safely ignore this email.</p>
+<p>If you run into any issues, feel free to email <a href="mailto:support@kardoe.com">support@kardoe.com</a></p>
+<p>Thanks,<br>The Kardoe Team</p>
+<!-- Sub copy -->
+                        <table class="body-sub" role="presentation">
+                          <tr>
+                            <td>
+                              <p class="f-fallback sub">If you're having trouble with the button above, copy and paste the URL below into your web browser.</p>
+                              <p class="f-fallback sub">https://yourapp.com/account/confirm?token_hash=abc123xyz789&type=signup&next=/dashboard</p>
+                            </td>
+                          </tr>
+                        </table>
+                      </div>
+                    </td>
+                  </tr>
+                </table>
+              </td>
+            </tr>
+            <tr>
+              <td>
+                <table class="email-footer" align="center" width="570" cellpadding="0" cellspacing="0" role="presentation">
+                  <tr>
+                    <td class="content-cell" align="center">
+                      <p class="f-fallback sub align-center">&copy; 2025 Kardoe Incorporated. All rights reserved.</p>
+                    </td>
+                  </tr>
+                </table>
+              </td>
+            </tr>
+          </table>
+        </td>
+      </tr>
+    </table>
+  </body>
+</html>

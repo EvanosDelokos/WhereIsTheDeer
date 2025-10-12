@@ -267,11 +267,12 @@ if (speciesFilter) {
 </script>
 
 <!-- === Bottom Toolbar Modals & Dropdowns === -->
-<!-- Tools Popup (modern style) - 1x4 horizontal layout -->
+<!-- Tools Popup (modern style) - 1x3 horizontal layout -->
 <div id="toolsDropdown" class="modern-popup" style="display:none;">
   <div class="popup-grid-horizontal">
     <button id="toolbarPins" class="popup-btn disabled">📍<br><span>Pins</span></button>
     <button id="toolbarDraw" class="popup-btn disabled">✏️<br><span>Draw</span></button>
+    <button id="toolbarTrack" class="popup-btn disabled">🚶‍♂️<br><span>Track</span></button>
   </div>
   <div class="modern-popup-arrow">
     <svg width="28" height="14" viewBox="0 0 28 14">
@@ -366,6 +367,28 @@ if (speciesFilter) {
       <div class="action-buttons">
         <button id="startDrawBtn" class="action-btn">✏️ Start Drawing</button>
         <button id="clearAllDrawingsBtn" class="action-btn">🗑️ Clear All</button>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- Track Submenu -->
+<div id="trackSubmenu" class="tool-submenu" style="display:none;">
+  <div class="submenu-header">
+    <button id="trackBackBtn" class="back-btn">← Back</button>
+    <h3>GPS Tracking</h3>
+  </div>
+  <div class="submenu-content">
+    <div id="trackingStats" style="text-align:center;font-size:1em;margin-bottom:10px;color:#333;">
+      <em>Tracking not started.</em>
+    </div>
+    <div class="submenu-section">
+      <h4>Actions</h4>
+      <div class="action-buttons">
+        <button id="startTrackingBtn" class="action-btn">▶️ Start</button>
+        <button id="stopTrackingBtn" class="action-btn">⏹️ Stop</button>
+        <button id="saveTrackBtn" class="action-btn">💾 Save</button>
+        <button id="toggleFollowBtn" class="action-btn">📍 Follow Me</button>
       </div>
     </div>
   </div>
@@ -1828,6 +1851,20 @@ function restoreOriginalButtonFunctionality() {
       positionToolSubmenu(drawSubmenu);
     }
   });
+  replaceButtonHandler('toolbarTrack', () => {
+    console.log("🚶‍♂️ Track clicked - Opening track submenu");
+    // Close all other submenus first
+    closeAllToolSubmenus();
+    // Close the tools popup and open track submenu
+    const toolsDropdown = document.getElementById('toolsDropdown');
+    const trackSubmenu = document.getElementById('trackSubmenu');
+    if (toolsDropdown) toolsDropdown.style.display = 'none';
+    if (trackSubmenu) {
+      trackSubmenu.style.display = 'block';
+      // Position the submenu properly
+      positionToolSubmenu(trackSubmenu);
+    }
+  });
 
   // === Submenu Navigation Logic ===
   
@@ -1862,6 +1899,20 @@ function restoreOriginalButtonFunctionality() {
     }
   });
   
+  replaceButtonHandler('trackBackBtn', () => {
+    console.log("← Back to main tools");
+    const trackSubmenu = document.getElementById('trackSubmenu');
+    const toolsDropdown = document.getElementById('toolsDropdown');
+    if (trackSubmenu) trackSubmenu.style.display = 'none';
+    if (toolsDropdown) {
+      toolsDropdown.style.display = 'block';
+      // Reposition the main tools dropdown
+      const toolsBtn = document.getElementById('toolbarToolsBtn');
+      if (toolsBtn) {
+        positionPopup(toolsDropdown, toolsBtn);
+      }
+    }
+  });
 
   // === Pins Submenu Functionality ===
   
@@ -2036,7 +2087,7 @@ function restoreOriginalButtonFunctionality() {
   
   // Function to close all tool submenus
   function closeAllToolSubmenus() {
-    const submenus = ['pinsSubmenu', 'drawSubmenu'];
+    const submenus = ['pinsSubmenu', 'drawSubmenu', 'trackSubmenu'];
     submenus.forEach(submenuId => {
       const submenu = document.getElementById(submenuId);
       if (submenu) submenu.style.display = 'none';
@@ -3104,6 +3155,56 @@ document.addEventListener('DOMContentLoaded', function() {
   if (loginCloseBtn && authModal) {
     loginCloseBtn.addEventListener('click', function() {
       authModal.style.display = 'none';
+    });
+  }
+});
+</script>
+
+<script type="module">
+import { initTracking } from './JS/trackingModule.js';
+document.addEventListener('DOMContentLoaded', () => {
+  if (!window.WITD?.map) return;
+  initTracking(window.WITD.map);
+
+  const show = (idHide, idShow) => {
+    document.getElementById(idHide).style.display = 'none';
+    document.getElementById(idShow).style.display = 'block';
+  };
+
+  // Track action button handlers
+  const startTrackingBtn = document.getElementById('startTrackingBtn');
+  if (startTrackingBtn) {
+    startTrackingBtn.addEventListener('click', () => {
+      if (window.WITD?.tracking?.startTracking) {
+        window.WITD.tracking.startTracking();
+      }
+    });
+  }
+
+  const stopTrackingBtn = document.getElementById('stopTrackingBtn');
+  if (stopTrackingBtn) {
+    stopTrackingBtn.addEventListener('click', () => {
+      if (window.WITD?.tracking?.stopTracking) {
+        window.WITD.tracking.stopTracking();
+      }
+    });
+  }
+
+  const saveTrackBtn = document.getElementById('saveTrackBtn');
+  if (saveTrackBtn) {
+    saveTrackBtn.addEventListener('click', () => {
+      if (window.WITD?.tracking?.saveTrack) {
+        window.WITD.tracking.saveTrack();
+      }
+    });
+  }
+
+  const toggleFollowBtn = document.getElementById('toggleFollowBtn');
+  if (toggleFollowBtn) {
+    toggleFollowBtn.addEventListener('click', () => {
+      if (window.WITD?.tracking?.toggleFollow) {
+        window.WITD.tracking.toggleFollow();
+      }
     });
   }
 });

@@ -1759,17 +1759,31 @@ body, html {
   margin: 0 auto;
 }
 
-/* Horizontal 1x2 layout for tools popup */
+/* Horizontal 1x3 layout for tools popup */
 .modern-popup .popup-grid-horizontal {
   display: flex;
   justify-content: center;
   align-items: center;
-  gap: 12px;
+  gap: 8px;
   width: 100%;
-  max-width: 200px;
+  max-width: 260px;
   margin: 0 auto;
   padding: 4px;
   box-sizing: border-box;
+}
+
+/* Ensure buttons in tools popup are uniform */
+.modern-popup .popup-grid-horizontal .popup-btn {
+  flex: 1;
+  min-width: 0;
+  text-align: center;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  padding: 12px 8px;
+  font-size: 0.9em;
+  line-height: 1.2;
 }
 
 /* GPX Modal specific grid styling - 1x2 layout */
@@ -2104,7 +2118,7 @@ button[data-layer].active {
   width: auto;
   min-width: 200px;
   max-width: 95vw;
-  padding: 16px;
+  padding: 8px;
   display: flex;
   align-items: center;
   justify-content: center;
@@ -2135,7 +2149,7 @@ button[data-layer].active {
   #toolsDropdown.modern-popup {
     min-width: 180px;
     max-width: 90vw;
-    padding: 12px;
+    padding: 6px;
   }
   /* Layers popup mobile spacing */
   #layersDropdown.modern-popup,
@@ -2153,8 +2167,8 @@ button[data-layer].active {
     gap: 10px 8px;
   }
   .modern-popup .popup-grid-horizontal {
-    gap: 8px;
-    max-width: 160px;
+    gap: 6px;
+    max-width: 240px;
   }
   .modern-popup .popup-btn {
     min-width: 70px;
@@ -2455,7 +2469,7 @@ button[data-layer].active {
   #toolsDropdown.modern-popup {
     min-width: 160px;
     max-width: 85vw;
-    padding: 8px;
+    padding: 4px;
   }
   /* Layers popup small mobile spacing */
   #layersDropdown.modern-popup,
@@ -2470,8 +2484,8 @@ button[data-layer].active {
     gap: 8px !important;
   }
   .modern-popup .popup-grid-horizontal {
-    gap: 6px;
-    max-width: 140px;
+    gap: 4px;
+    max-width: 200px;
   }
   .modern-popup .popup-btn {
     min-width: 60px;
