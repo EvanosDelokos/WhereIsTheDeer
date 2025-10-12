@@ -16,12 +16,13 @@ const currentMarkerId = "trackingPositionMarker";
 
 // === GPS SMOOTHING VARIABLES ===
 let positionBuffer = []; // Store recent positions for smoothing
-const BUFFER_SIZE = 5; // Number of positions to average
-const MIN_ACCURACY = 50; // Reject positions worse than 50m accuracy
-const MIN_DISTANCE = 3; // Minimum distance (meters) to record a new point
+const BUFFER_SIZE = 3; // Reduced for faster response (was 5)
+const MIN_ACCURACY = 100; // Increased - phones often report 20-80m accuracy (was 50)
+const MIN_DISTANCE = 2; // Reduced to capture more detail (was 3)
 let lastRecordedPosition = null;
 let smoothedHeading = null;
-const HEADING_SMOOTHING = 0.3; // Lower = smoother (0-1)
+const HEADING_SMOOTHING = 0.5; // Increased for faster heading response (was 0.3)
+let lastSpeed = 0;
 
 export function initTracking(map) {
   window.WITD = window.WITD || {};
@@ -31,7 +32,7 @@ export function initTracking(map) {
 }
 
 // === GPS SMOOTHING HELPERS ===
-function smoothPosition(newPos) {
+function smoothPosition(newPos, speed) {
   // Add to buffer
   positionBuffer.push({
     lat: newPos.latitude,
@@ -44,13 +45,35 @@ function smoothPosition(newPos) {
     positionBuffer.shift();
   }
   
-  // Calculate weighted average (more recent = higher weight)
+  // If we only have 1 position, return it directly (no smoothing needed)
+  if (positionBuffer.length === 1) {
+    return {
+      latitude: newPos.latitude,
+      longitude: newPos.longitude
+    };
+  }
+  
+  // Calculate accuracy-weighted average
+  // Better accuracy (lower number) = higher weight
+  // Recent positions also get higher weight
   let totalWeight = 0;
   let avgLat = 0;
   let avgLng = 0;
   
   positionBuffer.forEach((pos, idx) => {
-    const weight = idx + 1; // Linear weighting: older=1, newest=BUFFER_SIZE
+    // Accuracy weight: inverse of accuracy (better accuracy = higher weight)
+    const accuracyWeight = 1 / Math.max(pos.accuracy, 5); // Prevent division by zero
+    
+    // Recency weight: more recent = higher
+    const recencyWeight = (idx + 1) / positionBuffer.length;
+    
+    // Speed weight: if moving fast, prioritize recent positions more
+    const speedFactor = Math.min(speed / 2, 1); // Normalize to 0-1 (2 m/s = full weight)
+    const finalRecencyWeight = 1 + (speedFactor * 2 * recencyWeight); // 1-3x multiplier
+    
+    // Combined weight
+    const weight = accuracyWeight * finalRecencyWeight;
+    
     avgLat += pos.lat * weight;
     avgLng += pos.lng * weight;
     totalWeight += weight;
@@ -85,8 +108,8 @@ function smoothHeading(newHeading) {
   return smoothedHeading;
 }
 
-function shouldRecordPoint(lat, lng, accuracy) {
-  // Reject low accuracy positions
+function shouldRecordPoint(lat, lng, accuracy, speed) {
+  // Reject VERY low accuracy positions (but be more lenient)
   if (accuracy > MIN_ACCURACY) {
     console.log(`⚠️ Position rejected: accuracy ${accuracy.toFixed(1)}m > ${MIN_ACCURACY}m threshold`);
     return false;
@@ -101,7 +124,12 @@ function shouldRecordPoint(lat, lng, accuracy) {
   // Calculate distance from last recorded point
   const distance = haversine([lastRecordedPosition.lat, lastRecordedPosition.lng], [lat, lng]) * 1000; // Convert to meters
   
-  if (distance < MIN_DISTANCE) {
+  // Adaptive distance threshold based on speed
+  // When moving fast, require larger distance to avoid over-sampling
+  // When stationary/slow, use smaller distance to capture detail
+  const adaptiveDistance = Math.max(MIN_DISTANCE, speed * 0.5); // At least MIN_DISTANCE meters
+  
+  if (distance < adaptiveDistance) {
     // Too close to last point, skip to reduce jitter
     return false;
   }
@@ -130,6 +158,7 @@ async function startTracking() {
   positionBuffer = [];
   lastRecordedPosition = null;
   smoothedHeading = null;
+  lastSpeed = 0;
 
   // remove old
   if (map.getLayer(trackLineId)) map.removeLayer(trackLineId);
@@ -204,7 +233,11 @@ function updateTrack(map, pos) {
   });
   
   // === APPLY GPS SMOOTHING ===
-  const smoothedPos = smoothPosition(pos.coords);
+  // Use speed for adaptive smoothing (default to 0 if not available)
+  const currentSpeed = speed !== null && !isNaN(speed) ? speed : 0;
+  lastSpeed = currentSpeed;
+  
+  const smoothedPos = smoothPosition(pos.coords, currentSpeed);
   const smoothedLat = smoothedPos.latitude;
   const smoothedLng = smoothedPos.longitude;
   const smoothedHdg = smoothHeading(heading);
@@ -213,6 +246,7 @@ function updateTrack(map, pos) {
     lat: smoothedLat.toFixed(6),
     lng: smoothedLng.toFixed(6),
     heading: `${smoothedHdg.toFixed(1)}°`,
+    speed: `${(currentSpeed * 3.6).toFixed(1)} km/h`,
     buffer: `${positionBuffer.length}/${BUFFER_SIZE}`
   });
   
@@ -257,7 +291,7 @@ function updateTrack(map, pos) {
   }
   
   // === Check if we should record this point (reduce jitter) ===
-  const shouldRecord = shouldRecordPoint(smoothedLat, smoothedLng, accuracy);
+  const shouldRecord = shouldRecordPoint(smoothedLat, smoothedLng, accuracy, currentSpeed);
   
   if (shouldRecord) {
     // Calculate distance from last point
