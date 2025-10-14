@@ -18,7 +18,7 @@ const currentMarkerId = "trackingPositionMarker";
 let positionBuffer = []; // Store recent positions for smoothing
 const BUFFER_SIZE = 3; // Reduced for faster response (was 5)
 const MIN_ACCURACY = 100; // Increased - phones often report 20-80m accuracy (was 50)
-const MIN_DISTANCE = 2; // Reduced to capture more detail (was 3)
+const MIN_DISTANCE = 1; // Further reduced to ensure line drawing (was 2)
 let lastRecordedPosition = null;
 let smoothedHeading = null;
 const HEADING_SMOOTHING = 0.5; // Increased for faster heading response (was 0.3)
@@ -423,6 +423,23 @@ function updateTrack(map, pos) {
     map.getSource(trackSourceId).setData(lineData);
   } else {
     console.log(`⏭️ Point skipped (too close or low accuracy)`);
+  }
+
+  // === ALWAYS update the polyline for live tracking (even if point not recorded) ===
+  // This ensures the line is visible even with strict filtering
+  if (trackCoords.length >= 2) {
+    const lineData = {
+      type: "Feature",
+      geometry: { type: "LineString", coordinates: trackCoords }
+    };
+    if (map.getSource(trackSourceId)) {
+      map.getSource(trackSourceId).setData(lineData);
+      console.log(`📍 Live track line updated: ${trackCoords.length} points`);
+    } else {
+      console.log(`❌ Track source not found: ${trackSourceId}`);
+    }
+  } else {
+    console.log(`⏳ Not enough points for line yet: ${trackCoords.length}/2`);
   }
 
   // elevation gain (use raw altitude for accuracy)
