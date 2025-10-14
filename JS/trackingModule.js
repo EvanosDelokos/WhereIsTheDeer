@@ -305,17 +305,42 @@ function stopTracking() {
         const saved = addSavedTrackToMap(map, name, trackCoords.slice(), color, distanceKm, trackStartTime, Date.now());
         window.WITD.tracking.savedTracks.push(saved);
         console.log(`💾 Saved track '${name}' with ${trackCoords.length} points`);
+        
+        // Clean up live tracking layers AFTER saving
+        if (map.getLayer(currentMarkerId)) map.removeLayer(currentMarkerId);
+        if (map.getSource(currentMarkerId)) map.removeSource(currentMarkerId);
+        if (map.getLayer(trackLineId)) map.removeLayer(trackLineId);
+        if (map.getSource(trackSourceId)) map.removeSource(trackSourceId);
+        
+        // Ensure the saved track is visible by forcing a map update
+        setTimeout(() => {
+          map.triggerRepaint();
+        }, 100);
+        
+        // Show success message on mobile
+        showMsg(
+          `✅ Track "${name}" saved successfully!<br><br>
+           <strong>Distance:</strong> ${distanceKm.toFixed(2)} km<br>
+           <strong>Points:</strong> ${trackCoords.length}<br><br>
+           <em>Click the track label to delete it.</em>`,
+          "Track Saved"
+        );
       });
+    } else {
+      // No track to save, just clean up
+      if (map.getLayer(currentMarkerId)) map.removeLayer(currentMarkerId);
+      if (map.getSource(currentMarkerId)) map.removeSource(currentMarkerId);
+      if (map.getLayer(trackLineId)) map.removeLayer(trackLineId);
+      if (map.getSource(trackSourceId)) map.removeSource(trackSourceId);
     }
   } catch (e) {
     console.error('Failed to save persistent track:', e);
+    // Clean up on error too
+    if (map.getLayer(currentMarkerId)) map.removeLayer(currentMarkerId);
+    if (map.getSource(currentMarkerId)) map.removeSource(currentMarkerId);
+    if (map.getLayer(trackLineId)) map.removeLayer(trackLineId);
+    if (map.getSource(trackSourceId)) map.removeSource(trackSourceId);
   }
-
-  // Clean up live position marker and live tracking line
-  if (map.getLayer(currentMarkerId)) map.removeLayer(currentMarkerId);
-  if (map.getSource(currentMarkerId)) map.removeSource(currentMarkerId);
-  if (map.getLayer(trackLineId)) map.removeLayer(trackLineId);
-  if (map.getSource(trackSourceId)) map.removeSource(trackSourceId);
 
   // Hide floating stop button
   removeFloatingStopButton();
@@ -716,6 +741,8 @@ function addSavedTrackToMap(map, name, coords, color, distanceKmValue, startMs, 
     layout: { 'line-join': 'round', 'line-cap': 'round' },
     paint: { 'line-color': color, 'line-width': 3 }
   });
+  
+  console.log(`📍 Added saved track line: ${lineLayerId} with color ${color}`);
 
   // Add label at the last coordinate with delete button
   const last = coords[coords.length - 1];
@@ -744,6 +771,8 @@ function addSavedTrackToMap(map, name, coords, color, distanceKmValue, startMs, 
       'text-halo-width': 1
     }
   });
+  
+  console.log(`🏷️ Added saved track label: ${labelLayerId} for "${name}"`);
 
   // Add click handler for delete functionality
   map.on('click', labelLayerId, (e) => {
