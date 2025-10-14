@@ -300,11 +300,12 @@ function stopTracking() {
   try {
     if (trackCoords && trackCoords.length >= 2) {
       const defaultName = `Track ${new Date().toLocaleString()}`;
-      const name = (typeof window.prompt === 'function') ? (window.prompt('Name this track:', defaultName) || defaultName) : defaultName;
-      const color = pickTrackColor();
-      const saved = addSavedTrackToMap(map, name, trackCoords.slice(), color, distanceKm, trackStartTime, Date.now());
-      window.WITD.tracking.savedTracks.push(saved);
-      console.log(`💾 Saved track '${name}' with ${trackCoords.length} points`);
+      showTrackNameModal(defaultName, (name) => {
+        const color = pickTrackColor();
+        const saved = addSavedTrackToMap(map, name, trackCoords.slice(), color, distanceKm, trackStartTime, Date.now());
+        window.WITD.tracking.savedTracks.push(saved);
+        console.log(`💾 Saved track '${name}' with ${trackCoords.length} points`);
+      });
     }
   } catch (e) {
     console.error('Failed to save persistent track:', e);
@@ -318,6 +319,17 @@ function stopTracking() {
 
   // Hide floating stop button
   removeFloatingStopButton();
+
+  // Reset tracking state to allow new tracks
+  trackCoords = [];
+  distanceKm = 0;
+  elevationGain = 0;
+  lastElevation = null;
+  hasAutoZoomed = false;
+  positionBuffer = [];
+  lastRecordedPosition = null;
+  smoothedHeading = null;
+  lastSpeed = 0;
 
   const duration = fmtDuration((Date.now() - trackStartTime) / 1000);
   showMsg(
@@ -576,6 +588,110 @@ function updateLiveStats() {
   `;
 }
 
+// === CUSTOM TRACK NAMING MODAL ===
+function showTrackNameModal(defaultName, onSave) {
+  // Remove any existing modal
+  const existing = document.getElementById('trackNameModal');
+  if (existing) existing.remove();
+
+  // Create modal overlay
+  const overlay = document.createElement('div');
+  overlay.id = 'trackNameModal';
+  overlay.style.cssText = `
+    position: fixed;
+    top: 0;
+    left: 0;
+    width: 100vw;
+    height: 100vh;
+    background: rgba(0,0,0,0.5);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    z-index: 10000;
+  `;
+
+  // Create modal content
+  const modal = document.createElement('div');
+  modal.style.cssText = `
+    background: white;
+    border-radius: 12px;
+    padding: 24px;
+    max-width: 400px;
+    width: 90vw;
+    box-shadow: 0 10px 30px rgba(0,0,0,0.3);
+    position: relative;
+  `;
+
+  modal.innerHTML = `
+    <div style="text-align: center; margin-bottom: 20px;">
+      <div style="font-size: 24px; margin-bottom: 8px;">🏃‍♂️</div>
+      <h3 style="margin: 0; color: #333; font-size: 18px;">Name Your Track</h3>
+      <p style="margin: 8px 0 0 0; color: #666; font-size: 14px;">Give your GPS track a memorable name</p>
+    </div>
+    
+    <div style="margin-bottom: 20px;">
+      <input type="text" id="trackNameInput" value="${defaultName}" 
+             style="width: 100%; padding: 12px; border: 2px solid #e0e0e0; border-radius: 8px; font-size: 16px; box-sizing: border-box;"
+             placeholder="Enter track name...">
+    </div>
+    
+    <div style="display: flex; gap: 12px; justify-content: flex-end;">
+      <button id="trackNameCancel" style="
+        background: #f5f5f5; color: #666; border: none; padding: 10px 20px; 
+        border-radius: 6px; cursor: pointer; font-size: 14px;
+      ">Cancel</button>
+      <button id="trackNameSave" style="
+        background: #007bff; color: white; border: none; padding: 10px 20px; 
+        border-radius: 6px; cursor: pointer; font-size: 14px; font-weight: 600;
+      ">Save Track</button>
+    </div>
+  `;
+
+  overlay.appendChild(modal);
+  document.body.appendChild(overlay);
+
+  // Focus input
+  const input = document.getElementById('trackNameInput');
+  input.focus();
+  input.select();
+
+  // Event handlers
+  const saveBtn = document.getElementById('trackNameSave');
+  const cancelBtn = document.getElementById('trackNameCancel');
+
+  const save = () => {
+    const name = input.value.trim();
+    if (name) {
+      onSave(name);
+      overlay.remove();
+    }
+  };
+
+  const cancel = () => {
+    overlay.remove();
+  };
+
+  saveBtn.addEventListener('click', save);
+  cancelBtn.addEventListener('click', cancel);
+
+  // Enter key to save
+  input.addEventListener('keydown', (e) => {
+    if (e.key === 'Enter') {
+      e.preventDefault();
+      save();
+    } else if (e.key === 'Escape') {
+      cancel();
+    }
+  });
+
+  // Click outside to cancel
+  overlay.addEventListener('click', (e) => {
+    if (e.target === overlay) {
+      cancel();
+    }
+  });
+}
+
 // === PERSISTENT SAVED TRACKS ===
 function addSavedTrackToMap(map, name, coords, color, distanceKmValue, startMs, endMs) {
   // Build a unique id for this saved track
@@ -601,7 +717,7 @@ function addSavedTrackToMap(map, name, coords, color, distanceKmValue, startMs, 
     paint: { 'line-color': color, 'line-width': 3 }
   });
 
-  // Add label at the last coordinate
+  // Add label at the last coordinate with delete button
   const last = coords[coords.length - 1];
   const labelSourceId = `${uid}_label_source`;
   map.addSource(labelSourceId, {
@@ -609,7 +725,7 @@ function addSavedTrackToMap(map, name, coords, color, distanceKmValue, startMs, 
     data: {
       type: 'Feature',
       geometry: { type: 'Point', coordinates: last },
-      properties: { title: name }
+      properties: { title: name, trackId: uid }
     }
   });
   map.addLayer({
@@ -629,6 +745,20 @@ function addSavedTrackToMap(map, name, coords, color, distanceKmValue, startMs, 
     }
   });
 
+  // Add click handler for delete functionality
+  map.on('click', labelLayerId, (e) => {
+    const trackId = e.features[0].properties.trackId;
+    showDeleteTrackModal(trackId, map);
+  });
+
+  // Change cursor on hover
+  map.on('mouseenter', labelLayerId, () => {
+    map.getCanvas().style.cursor = 'pointer';
+  });
+  map.on('mouseleave', labelLayerId, () => {
+    map.getCanvas().style.cursor = '';
+  });
+
   return {
     id: uid,
     name,
@@ -642,6 +772,107 @@ function addSavedTrackToMap(map, name, coords, color, distanceKmValue, startMs, 
     labelLayerId,
     coords
   };
+}
+
+// === DELETE TRACK MODAL ===
+function showDeleteTrackModal(trackId, map) {
+  // Find the track
+  const track = window.WITD.tracking.savedTracks.find(t => t.id === trackId);
+  if (!track) return;
+
+  // Remove any existing modal
+  const existing = document.getElementById('deleteTrackModal');
+  if (existing) existing.remove();
+
+  // Create modal overlay
+  const overlay = document.createElement('div');
+  overlay.id = 'deleteTrackModal';
+  overlay.style.cssText = `
+    position: fixed;
+    top: 0;
+    left: 0;
+    width: 100vw;
+    height: 100vh;
+    background: rgba(0,0,0,0.5);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    z-index: 10000;
+  `;
+
+  // Create modal content
+  const modal = document.createElement('div');
+  modal.style.cssText = `
+    background: white;
+    border-radius: 12px;
+    padding: 24px;
+    max-width: 400px;
+    width: 90vw;
+    box-shadow: 0 10px 30px rgba(0,0,0,0.3);
+    text-align: center;
+  `;
+
+  modal.innerHTML = `
+    <div style="font-size: 48px; margin-bottom: 16px;">🗑️</div>
+    <h3 style="margin: 0 0 8px 0; color: #333; font-size: 18px;">Delete Track</h3>
+    <p style="margin: 0 0 20px 0; color: #666; font-size: 14px;">
+      Are you sure you want to delete "${track.name}"?
+    </p>
+    <div style="display: flex; gap: 12px; justify-content: center;">
+      <button id="deleteTrackCancel" style="
+        background: #f5f5f5; color: #666; border: none; padding: 10px 20px; 
+        border-radius: 6px; cursor: pointer; font-size: 14px;
+      ">Cancel</button>
+      <button id="deleteTrackConfirm" style="
+        background: #dc2626; color: white; border: none; padding: 10px 20px; 
+        border-radius: 6px; cursor: pointer; font-size: 14px; font-weight: 600;
+      ">Delete</button>
+    </div>
+  `;
+
+  overlay.appendChild(modal);
+  document.body.appendChild(overlay);
+
+  // Event handlers
+  const cancelBtn = document.getElementById('deleteTrackCancel');
+  const confirmBtn = document.getElementById('deleteTrackConfirm');
+
+  const cancel = () => overlay.remove();
+  const confirm = () => {
+    // Remove from map
+    if (map.getLayer(track.lineLayerId)) map.removeLayer(track.lineLayerId);
+    if (map.getSource(track.sourceId)) map.removeSource(track.sourceId);
+    if (map.getLayer(track.labelLayerId)) map.removeLayer(track.labelLayerId);
+    if (map.getSource(track.labelSourceId)) map.removeSource(track.labelSourceId);
+
+    // Remove from saved tracks array
+    const index = window.WITD.tracking.savedTracks.findIndex(t => t.id === trackId);
+    if (index > -1) {
+      window.WITD.tracking.savedTracks.splice(index, 1);
+    }
+
+    console.log(`🗑️ Deleted track: ${track.name}`);
+    overlay.remove();
+  };
+
+  cancelBtn.addEventListener('click', cancel);
+  confirmBtn.addEventListener('click', confirm);
+
+  // Click outside to cancel
+  overlay.addEventListener('click', (e) => {
+    if (e.target === overlay) {
+      cancel();
+    }
+  });
+
+  // Escape key to cancel
+  const handleEscape = (e) => {
+    if (e.key === 'Escape') {
+      cancel();
+      document.removeEventListener('keydown', handleEscape);
+    }
+  };
+  document.addEventListener('keydown', handleEscape);
 }
 
 function pickTrackColor() {
