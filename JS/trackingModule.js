@@ -24,10 +24,87 @@ let smoothedHeading = null;
 const HEADING_SMOOTHING = 0.5; // Increased for faster heading response (was 0.3)
 let lastSpeed = 0;
 
+// === FLOATING STOP BUTTON ===
+let floatingStopBtn = null;
+
+function createFloatingStopButton() {
+  if (floatingStopBtn) return; // Already exists
+  
+  floatingStopBtn = document.createElement('button');
+  floatingStopBtn.id = 'floatingStopBtn';
+  floatingStopBtn.innerHTML = '⏹️ Stop Tracking';
+  floatingStopBtn.style.cssText = `
+    position: fixed !important;
+    bottom: 100px !important;
+    right: 20px !important;
+    z-index: 9999 !important;
+    background: #dc2626 !important;
+    color: white !important;
+    border: none !important;
+    border-radius: 8px !important;
+    padding: 12px 16px !important;
+    font-size: 14px !important;
+    font-weight: 600 !important;
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.3) !important;
+    cursor: pointer !important;
+    transition: all 0.2s ease !important;
+    display: flex !important;
+    align-items: center !important;
+    gap: 6px !important;
+    user-select: none !important;
+    -webkit-user-select: none !important;
+    -webkit-tap-highlight-color: transparent !important;
+    visibility: visible !important;
+    opacity: 1 !important;
+  `;
+  
+  // Mobile responsiveness - position above mobile toolbar
+  if (window.innerWidth <= 768) {
+    floatingStopBtn.style.bottom = '90px';
+    floatingStopBtn.style.right = '10px';
+    floatingStopBtn.style.padding = '10px 14px';
+    floatingStopBtn.style.fontSize = '13px';
+  }
+  
+  // Hover effects
+  floatingStopBtn.addEventListener('mouseenter', () => {
+    floatingStopBtn.style.background = '#b91c1c';
+    floatingStopBtn.style.transform = 'translateY(-2px)';
+    floatingStopBtn.style.boxShadow = '0 6px 16px rgba(0, 0, 0, 0.4)';
+  });
+  
+  floatingStopBtn.addEventListener('mouseleave', () => {
+    floatingStopBtn.style.background = '#dc2626';
+    floatingStopBtn.style.transform = 'translateY(0)';
+    floatingStopBtn.style.boxShadow = '0 4px 12px rgba(0, 0, 0, 0.3)';
+  });
+  
+  // Click handler
+  floatingStopBtn.addEventListener('click', () => {
+    stopTracking();
+  });
+  
+  document.body.appendChild(floatingStopBtn);
+  console.log('🛑 Floating stop button created');
+  console.log('🛑 Button element:', floatingStopBtn);
+  console.log('🛑 Button position:', floatingStopBtn.style.position);
+  console.log('🛑 Button z-index:', floatingStopBtn.style.zIndex);
+  console.log('🛑 Button visible:', floatingStopBtn.offsetParent !== null);
+}
+
+function removeFloatingStopButton() {
+  if (floatingStopBtn) {
+    floatingStopBtn.remove();
+    floatingStopBtn = null;
+    console.log('🛑 Floating stop button removed');
+  }
+}
+
 export function initTracking(map) {
   window.WITD = window.WITD || {};
   window.WITD.tracking = { startTracking, stopTracking, saveTrack, toggleFollow };
   window.WITD.tracking.map = map;
+  window.WITD.tracking.savedTracks = window.WITD.tracking.savedTracks || [];
   console.log("🧭 Tracking module initialized");
 }
 
@@ -196,6 +273,20 @@ async function startTracking() {
     },
     { enableHighAccuracy: true, maximumAge: 1000, timeout: 10000 }
   );
+  
+  // Show floating stop button
+  createFloatingStopButton();
+  
+  // Fallback: ensure button is visible after a short delay
+  setTimeout(() => {
+    if (floatingStopBtn && !floatingStopBtn.offsetParent) {
+      console.log('🛑 Button not visible, forcing visibility...');
+      floatingStopBtn.style.display = 'flex';
+      floatingStopBtn.style.visibility = 'visible';
+      floatingStopBtn.style.opacity = '1';
+    }
+  }, 500);
+  
   console.log("📍 Tracking started");
 }
 
@@ -203,12 +294,31 @@ function stopTracking() {
   if (!trackingActive) return;
   navigator.geolocation.clearWatch(watchId);
   trackingActive = false;
-  
-  // Clean up position marker
   const map = window.WITD.tracking.map;
+
+  // Save current live track as a persistent, labeled layer (if we have points)
+  try {
+    if (trackCoords && trackCoords.length >= 2) {
+      const defaultName = `Track ${new Date().toLocaleString()}`;
+      const name = (typeof window.prompt === 'function') ? (window.prompt('Name this track:', defaultName) || defaultName) : defaultName;
+      const color = pickTrackColor();
+      const saved = addSavedTrackToMap(map, name, trackCoords.slice(), color, distanceKm, trackStartTime, Date.now());
+      window.WITD.tracking.savedTracks.push(saved);
+      console.log(`💾 Saved track '${name}' with ${trackCoords.length} points`);
+    }
+  } catch (e) {
+    console.error('Failed to save persistent track:', e);
+  }
+
+  // Clean up live position marker and live tracking line
   if (map.getLayer(currentMarkerId)) map.removeLayer(currentMarkerId);
   if (map.getSource(currentMarkerId)) map.removeSource(currentMarkerId);
-  
+  if (map.getLayer(trackLineId)) map.removeLayer(trackLineId);
+  if (map.getSource(trackSourceId)) map.removeSource(trackSourceId);
+
+  // Hide floating stop button
+  removeFloatingStopButton();
+
   const duration = fmtDuration((Date.now() - trackStartTime) / 1000);
   showMsg(
     `<strong>Distance:</strong> ${distanceKm.toFixed(2)} km<br>
@@ -447,6 +557,82 @@ function updateLiveStats() {
     <strong>Duration:</strong> ${dur}<br>
     <strong>Follow-Me:</strong> ${followMe ? "On" : "Off"}
   `;
+}
+
+// === PERSISTENT SAVED TRACKS ===
+function addSavedTrackToMap(map, name, coords, color, distanceKmValue, startMs, endMs) {
+  // Build a unique id for this saved track
+  const uid = `savedTrack_${Date.now()}_${Math.floor(Math.random() * 1e6)}`;
+  const sourceId = `${uid}_source`;
+  const lineLayerId = `${uid}_line`;
+  const labelLayerId = `${uid}_label`;
+
+  // Create source
+  const feature = {
+    type: 'Feature',
+    geometry: { type: 'LineString', coordinates: coords },
+    properties: { name }
+  };
+  map.addSource(sourceId, { type: 'geojson', data: feature });
+
+  // Add line layer
+  map.addLayer({
+    id: lineLayerId,
+    type: 'line',
+    source: sourceId,
+    layout: { 'line-join': 'round', 'line-cap': 'round' },
+    paint: { 'line-color': color, 'line-width': 3 }
+  });
+
+  // Add label at the last coordinate
+  const last = coords[coords.length - 1];
+  const labelSourceId = `${uid}_label_source`;
+  map.addSource(labelSourceId, {
+    type: 'geojson',
+    data: {
+      type: 'Feature',
+      geometry: { type: 'Point', coordinates: last },
+      properties: { title: name }
+    }
+  });
+  map.addLayer({
+    id: labelLayerId,
+    type: 'symbol',
+    source: labelSourceId,
+    layout: {
+      'text-field': ['get', 'title'],
+      'text-size': 12,
+      'text-offset': [0, 1.2],
+      'text-anchor': 'top'
+    },
+    paint: {
+      'text-color': '#1f2937',
+      'text-halo-color': '#ffffff',
+      'text-halo-width': 1
+    }
+  });
+
+  return {
+    id: uid,
+    name,
+    color,
+    distanceKm: distanceKmValue,
+    startedAt: new Date(startMs).toISOString(),
+    endedAt: new Date(endMs).toISOString(),
+    sourceId,
+    lineLayerId,
+    labelSourceId,
+    labelLayerId,
+    coords
+  };
+}
+
+function pickTrackColor() {
+  const palette = ['#ff6600', '#10b981', '#3b82f6', '#ef4444', '#a855f7', '#f59e0b'];
+  const used = (window.WITD.tracking.savedTracks || []).map(t => t.color);
+  for (const c of palette) if (!used.includes(c)) return c;
+  // Fallback: cycle palette
+  return palette[(used.length) % palette.length];
 }
 
 // === ARROW ICON CREATION ===
