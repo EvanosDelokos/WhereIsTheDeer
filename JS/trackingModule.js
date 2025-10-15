@@ -302,6 +302,9 @@ function stopTracking() {
       const defaultName = `Track ${new Date().toLocaleString()}`;
       showTrackNameModal(defaultName, (name) => {
         const color = pickTrackColor();
+        console.log(`🎨 Using color: ${color} for track "${name}"`);
+        console.log(`📍 Track coordinates:`, trackCoords.slice(0, 3), '...', trackCoords.slice(-3));
+        
         const saved = addSavedTrackToMap(map, name, trackCoords.slice(), color, distanceKm, trackStartTime, Date.now());
         window.WITD.tracking.savedTracks.push(saved);
         console.log(`💾 Saved track '${name}' with ${trackCoords.length} points`);
@@ -312,10 +315,28 @@ function stopTracking() {
         if (map.getLayer(trackLineId)) map.removeLayer(trackLineId);
         if (map.getSource(trackSourceId)) map.removeSource(trackSourceId);
         
-        // Ensure the saved track is visible by forcing a map update
+        // Ensure the saved track is visible by fitting map to track bounds
         setTimeout(() => {
+          if (trackCoords.length >= 2) {
+            // Calculate bounds of the track
+            const lons = trackCoords.map(coord => coord[0]);
+            const lats = trackCoords.map(coord => coord[1]);
+            const bounds = [
+              [Math.min(...lons), Math.min(...lats)], // Southwest
+              [Math.max(...lons), Math.max(...lats)]  // Northeast
+            ];
+            
+            // Fit map to track bounds with padding
+            map.fitBounds(bounds, {
+              padding: 50,
+              maxZoom: 16
+            });
+            
+            console.log(`🗺️ Fitted map to track bounds:`, bounds);
+          }
+          
           map.triggerRepaint();
-        }, 100);
+        }, 200);
         
         // Show success message on mobile
         showMsg(
@@ -739,10 +760,12 @@ function addSavedTrackToMap(map, name, coords, color, distanceKmValue, startMs, 
     type: 'line',
     source: sourceId,
     layout: { 'line-join': 'round', 'line-cap': 'round' },
-    paint: { 'line-color': color, 'line-width': 3 }
+    paint: { 'line-color': color, 'line-width': 4 } // Increased width for visibility
   });
   
   console.log(`📍 Added saved track line: ${lineLayerId} with color ${color}`);
+  console.log(`📍 Line layer exists:`, map.getLayer(lineLayerId) ? 'YES' : 'NO');
+  console.log(`📍 Source exists:`, map.getSource(sourceId) ? 'YES' : 'NO');
 
   // Add label at the last coordinate with delete button
   const last = coords[coords.length - 1];
@@ -761,18 +784,43 @@ function addSavedTrackToMap(map, name, coords, color, distanceKmValue, startMs, 
     source: labelSourceId,
     layout: {
       'text-field': ['get', 'title'],
-      'text-size': 12,
-      'text-offset': [0, 1.2],
+      'text-size': 14, // Increased size
+      'text-offset': [0, 1.5], // Increased offset
       'text-anchor': 'top'
     },
     paint: {
       'text-color': '#1f2937',
       'text-halo-color': '#ffffff',
-      'text-halo-width': 1
+      'text-halo-width': 2 // Increased halo width
     }
   });
   
   console.log(`🏷️ Added saved track label: ${labelLayerId} for "${name}"`);
+  console.log(`🏷️ Label layer exists:`, map.getLayer(labelLayerId) ? 'YES' : 'NO');
+  console.log(`🏷️ Label source exists:`, map.getSource(labelSourceId) ? 'YES' : 'NO');
+  
+  // Add a start marker for debugging
+  const startMarkerId = `${uid}_start_marker`;
+  const startSourceId = `${uid}_start_source`;
+  map.addSource(startSourceId, {
+    type: 'geojson',
+    data: {
+      type: 'Feature',
+      geometry: { type: 'Point', coordinates: coords[0] },
+      properties: { title: 'START' }
+    }
+  });
+  map.addLayer({
+    id: startMarkerId,
+    type: 'symbol',
+    source: startSourceId,
+    layout: {
+      'text-field': '🚩',
+      'text-size': 20,
+      'text-anchor': 'center'
+    }
+  });
+  console.log(`🚩 Added start marker: ${startMarkerId}`);
 
   // Add click handler for delete functionality
   map.on('click', labelLayerId, (e) => {
@@ -867,12 +915,17 @@ function showDeleteTrackModal(trackId, map) {
   const confirmBtn = document.getElementById('deleteTrackConfirm');
 
   const cancel = () => overlay.remove();
-  const confirm = () => {
-    // Remove from map
-    if (map.getLayer(track.lineLayerId)) map.removeLayer(track.lineLayerId);
-    if (map.getSource(track.sourceId)) map.removeSource(track.sourceId);
-    if (map.getLayer(track.labelLayerId)) map.removeLayer(track.labelLayerId);
-    if (map.getSource(track.labelSourceId)) map.removeSource(track.labelSourceId);
+          const confirm = () => {
+            // Remove from map
+            if (map.getLayer(track.lineLayerId)) map.removeLayer(track.lineLayerId);
+            if (map.getSource(track.sourceId)) map.removeSource(track.sourceId);
+            if (map.getLayer(track.labelLayerId)) map.removeLayer(track.labelLayerId);
+            if (map.getSource(track.labelSourceId)) map.removeSource(track.labelSourceId);
+            // Remove start marker if it exists
+            const startMarkerId = `${track.id}_start_marker`;
+            const startSourceId = `${track.id}_start_source`;
+            if (map.getLayer(startMarkerId)) map.removeLayer(startMarkerId);
+            if (map.getSource(startSourceId)) map.removeSource(startSourceId);
 
     // Remove from saved tracks array
     const index = window.WITD.tracking.savedTracks.findIndex(t => t.id === trackId);
