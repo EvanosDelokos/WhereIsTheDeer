@@ -237,11 +237,13 @@ async function startTracking() {
   smoothedHeading = null;
   lastSpeed = 0;
 
-  // remove old live tracking layers
+  // remove old live tracking layers (but keep saved tracks)
   if (map.getLayer(trackLineId)) map.removeLayer(trackLineId);
   if (map.getSource(trackSourceId)) map.removeSource(trackSourceId);
   if (map.getLayer(currentMarkerId)) map.removeLayer(currentMarkerId);
   if (map.getSource(currentMarkerId)) map.removeSource(currentMarkerId);
+  
+  console.log(`🧹 Cleaned up live tracking layers, keeping ${window.WITD.tracking.savedTracks.length} saved tracks`);
 
   map.addSource(trackSourceId, {
     type: "geojson",
@@ -341,13 +343,10 @@ function stopTracking() {
           `✅ Track "${name}" saved successfully!<br><br>
            <strong>Distance:</strong> ${distanceKm.toFixed(2)} km<br>
            <strong>Points:</strong> ${trackCoords.length}<br><br>
-           <em>Look for: 🚩 (start), 🔥 (test), colored line, and label</em><br>
-           <em>Click the track label to delete it.</em>`,
+           <em>Click the 🚶‍♂️ walking man to see track info</em><br>
+           <em>Click the track label to delete it</em>`,
           "Track Saved"
         );
-        
-        // Also show a simple alert for debugging
-        alert(`Track saved! Look for 🚩 and 🔥 markers on the map.`);
       });
     } else {
       // No track to save, just clean up
@@ -824,28 +823,44 @@ function addSavedTrackToMap(map, name, coords, color, distanceKmValue, startMs, 
   });
   console.log(`🚩 Added start marker: ${startMarkerId}`);
   
-  // Add a very obvious test marker to verify the track is being added
-  const testMarkerId = `${uid}_test_marker`;
-  const testSourceId = `${uid}_test_source`;
-  map.addSource(testSourceId, {
+  // Add a walking man emoji marker for the track (like pins)
+  const walkMarkerId = `${uid}_walk_marker`;
+  const walkSourceId = `${uid}_walk_source`;
+  map.addSource(walkSourceId, {
     type: 'geojson',
     data: {
       type: 'Feature',
       geometry: { type: 'Point', coordinates: coords[Math.floor(coords.length / 2)] },
-      properties: { title: 'TEST' }
+      properties: { title: name, trackId: uid }
     }
   });
   map.addLayer({
-    id: testMarkerId,
+    id: walkMarkerId,
     type: 'symbol',
-    source: testSourceId,
+    source: walkSourceId,
     layout: {
-      'text-field': '🔥',
-      'text-size': 30,
+      'text-field': '🚶‍♂️',
+      'text-size': 24,
       'text-anchor': 'center'
     }
   });
-  console.log(`🔥 Added test marker: ${testMarkerId}`);
+  console.log(`🚶‍♂️ Added walk marker: ${walkMarkerId}`);
+
+  // Add click handler for walking man marker to show track info
+  map.on('click', walkMarkerId, (e) => {
+    const trackId = e.features[0].properties.trackId;
+    const track = window.WITD.tracking.savedTracks.find(t => t.id === trackId);
+    if (track) {
+      showMsg(
+        `🏃‍♂️ <strong>${track.name}</strong><br><br>
+         <strong>Distance:</strong> ${track.distanceKm.toFixed(2)} km<br>
+         <strong>Started:</strong> ${new Date(track.startedAt).toLocaleString()}<br>
+         <strong>Duration:</strong> ${fmtDuration((new Date(track.endedAt) - new Date(track.startedAt)) / 1000)}<br><br>
+         <em>Click the track label to delete it.</em>`,
+        "Track Info"
+      );
+    }
+  });
 
   // Add click handler for delete functionality
   map.on('click', labelLayerId, (e) => {
@@ -853,7 +868,15 @@ function addSavedTrackToMap(map, name, coords, color, distanceKmValue, startMs, 
     showDeleteTrackModal(trackId, map);
   });
 
-  // Change cursor on hover
+  // Change cursor on hover for walking man
+  map.on('mouseenter', walkMarkerId, () => {
+    map.getCanvas().style.cursor = 'pointer';
+  });
+  map.on('mouseleave', walkMarkerId, () => {
+    map.getCanvas().style.cursor = '';
+  });
+
+  // Change cursor on hover for label
   map.on('mouseenter', labelLayerId, () => {
     map.getCanvas().style.cursor = 'pointer';
   });
@@ -951,11 +974,11 @@ function showDeleteTrackModal(trackId, map) {
             const startSourceId = `${track.id}_start_source`;
             if (map.getLayer(startMarkerId)) map.removeLayer(startMarkerId);
             if (map.getSource(startSourceId)) map.removeSource(startSourceId);
-            // Remove test marker if it exists
-            const testMarkerId = `${track.id}_test_marker`;
-            const testSourceId = `${track.id}_test_source`;
-            if (map.getLayer(testMarkerId)) map.removeLayer(testMarkerId);
-            if (map.getSource(testSourceId)) map.removeSource(testSourceId);
+            // Remove walking man marker if it exists
+            const walkMarkerId = `${track.id}_walk_marker`;
+            const walkSourceId = `${track.id}_walk_source`;
+            if (map.getLayer(walkMarkerId)) map.removeLayer(walkMarkerId);
+            if (map.getSource(walkSourceId)) map.removeSource(walkSourceId);
 
     // Remove from saved tracks array
     const index = window.WITD.tracking.savedTracks.findIndex(t => t.id === trackId);
