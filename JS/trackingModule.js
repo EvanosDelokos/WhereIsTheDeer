@@ -237,7 +237,7 @@ async function startTracking() {
   smoothedHeading = null;
   lastSpeed = 0;
 
-  // remove old
+  // remove old live tracking layers
   if (map.getLayer(trackLineId)) map.removeLayer(trackLineId);
   if (map.getSource(trackSourceId)) map.removeSource(trackSourceId);
   if (map.getLayer(currentMarkerId)) map.removeLayer(currentMarkerId);
@@ -309,11 +309,9 @@ function stopTracking() {
         window.WITD.tracking.savedTracks.push(saved);
         console.log(`💾 Saved track '${name}' with ${trackCoords.length} points`);
         
-        // Clean up live tracking layers AFTER saving
-        if (map.getLayer(currentMarkerId)) map.removeLayer(currentMarkerId);
-        if (map.getSource(currentMarkerId)) map.removeSource(currentMarkerId);
-        if (map.getLayer(trackLineId)) map.removeLayer(trackLineId);
-        if (map.getSource(trackSourceId)) map.removeSource(trackSourceId);
+        // DON'T clean up live tracking layers yet - keep them visible
+        // We'll clean them up when starting a new track
+        console.log(`🔄 Keeping live track visible while saved track is added`);
         
         // Ensure the saved track is visible by fitting map to track bounds
         setTimeout(() => {
@@ -343,9 +341,13 @@ function stopTracking() {
           `✅ Track "${name}" saved successfully!<br><br>
            <strong>Distance:</strong> ${distanceKm.toFixed(2)} km<br>
            <strong>Points:</strong> ${trackCoords.length}<br><br>
+           <em>Look for: 🚩 (start), 🔥 (test), colored line, and label</em><br>
            <em>Click the track label to delete it.</em>`,
           "Track Saved"
         );
+        
+        // Also show a simple alert for debugging
+        alert(`Track saved! Look for 🚩 and 🔥 markers on the map.`);
       });
     } else {
       // No track to save, just clean up
@@ -821,6 +823,29 @@ function addSavedTrackToMap(map, name, coords, color, distanceKmValue, startMs, 
     }
   });
   console.log(`🚩 Added start marker: ${startMarkerId}`);
+  
+  // Add a very obvious test marker to verify the track is being added
+  const testMarkerId = `${uid}_test_marker`;
+  const testSourceId = `${uid}_test_source`;
+  map.addSource(testSourceId, {
+    type: 'geojson',
+    data: {
+      type: 'Feature',
+      geometry: { type: 'Point', coordinates: coords[Math.floor(coords.length / 2)] },
+      properties: { title: 'TEST' }
+    }
+  });
+  map.addLayer({
+    id: testMarkerId,
+    type: 'symbol',
+    source: testSourceId,
+    layout: {
+      'text-field': '🔥',
+      'text-size': 30,
+      'text-anchor': 'center'
+    }
+  });
+  console.log(`🔥 Added test marker: ${testMarkerId}`);
 
   // Add click handler for delete functionality
   map.on('click', labelLayerId, (e) => {
@@ -926,6 +951,11 @@ function showDeleteTrackModal(trackId, map) {
             const startSourceId = `${track.id}_start_source`;
             if (map.getLayer(startMarkerId)) map.removeLayer(startMarkerId);
             if (map.getSource(startSourceId)) map.removeSource(startSourceId);
+            // Remove test marker if it exists
+            const testMarkerId = `${track.id}_test_marker`;
+            const testSourceId = `${track.id}_test_source`;
+            if (map.getLayer(testMarkerId)) map.removeLayer(testMarkerId);
+            if (map.getSource(testSourceId)) map.removeSource(testSourceId);
 
     // Remove from saved tracks array
     const index = window.WITD.tracking.savedTracks.findIndex(t => t.id === trackId);
