@@ -877,7 +877,7 @@ function addSavedTrackToMap(map, name, coords, color, distanceKmValue, startMs, 
   });
   console.log(`🚩 Added start marker: ${startMarkerId}`);
   
-  // Add a walking man emoji marker for the track (like pins)
+  // Add a walking man icon marker for the track (like pins)
   const walkMarkerId = `${uid}_walk_marker`;
   const walkSourceId = `${uid}_walk_source`;
   const endPoint = trackCoords[trackCoords.length - 1]; // Use end point instead of midpoint
@@ -892,24 +892,68 @@ function addSavedTrackToMap(map, name, coords, color, distanceKmValue, startMs, 
     }
   });
   
+  // Load the WalkingMan.svg icon
+  const loadWalkingManIcon = () => {
+    return new Promise((resolve, reject) => {
+      if (map.hasImage('walking-man-icon')) {
+        resolve();
+        return;
+      }
+      
+      const img = new Image();
+      img.onload = () => {
+        try {
+          map.addImage('walking-man-icon', img);
+          console.log(`🚶‍♂️ WalkingMan.svg icon loaded successfully`);
+          resolve();
+        } catch (error) {
+          console.error(`❌ Failed to add walking man icon:`, error);
+          reject(error);
+        }
+      };
+      img.onerror = () => {
+        console.error(`❌ Failed to load WalkingMan.svg`);
+        reject(new Error('Failed to load WalkingMan.svg'));
+      };
+      img.src = 'Images/Pins/WalkingMan.svg';
+    });
+  };
+  
   try {
-     map.addLayer({
-       id: walkMarkerId,
-       type: 'symbol',
-       source: walkSourceId,
-       layout: {
-         'text-field': '🚶',
-         'text-size': 28,
-         'text-anchor': 'center',
-         'text-allow-overlap': true,
-         'text-ignore-placement': true
-       },
-       paint: {
-         'text-halo-color': '#ffffff',
-         'text-halo-width': 3
-       }
-     });
-    console.log(`🚶‍♂️ Successfully added walk marker: ${walkMarkerId}`);
+    loadWalkingManIcon().then(() => {
+      map.addLayer({
+        id: walkMarkerId,
+        type: 'symbol',
+        source: walkSourceId,
+        layout: {
+          'icon-image': 'walking-man-icon',
+          'icon-size': 0.8,
+          'icon-anchor': 'bottom',
+          'icon-allow-overlap': true,
+          'icon-ignore-placement': true
+        }
+      });
+      console.log(`🚶‍♂️ Successfully added walk marker: ${walkMarkerId}`);
+    }).catch(() => {
+      // Fallback to emoji if icon loading fails
+      map.addLayer({
+        id: walkMarkerId,
+        type: 'symbol',
+        source: walkSourceId,
+        layout: {
+          'text-field': '🚶',
+          'text-size': 28,
+          'text-anchor': 'center',
+          'text-allow-overlap': true,
+          'text-ignore-placement': true
+        },
+        paint: {
+          'text-halo-color': '#ffffff',
+          'text-halo-width': 3
+        }
+      });
+      console.log(`🚶‍♂️ Fallback emoji marker added: ${walkMarkerId}`);
+    });
   } catch (error) {
     console.error(`❌ Failed to add walk marker:`, error);
   }
