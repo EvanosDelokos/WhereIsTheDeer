@@ -3210,5 +3210,52 @@ document.addEventListener('DOMContentLoaded', () => {
 });
 </script>
 
+<script>
+// ======= MOBILE DEBUG CONSOLE OVERLAY =======
+(function() {
+  const debugContainer = document.createElement('div');
+  debugContainer.id = 'debugConsole';
+  debugContainer.style.cssText = `
+    position: fixed;
+    bottom: 0;
+    left: 0;
+    width: 100%;
+    max-height: 40vh;
+    overflow-y: auto;
+    background: rgba(0,0,0,0.85);
+    color: #00ff88;
+    font-family: monospace;
+    font-size: 12px;
+    padding: 8px;
+    z-index: 99999;
+    white-space: pre-wrap;
+  `;
+  document.body.appendChild(debugContainer);
+
+  function logToScreen(type, ...args) {
+    const msg = args.map(a => 
+      typeof a === 'object' ? JSON.stringify(a, null, 2) : String(a)
+    ).join(' ');
+    const line = document.createElement('div');
+    line.textContent = `[${type.toUpperCase()}] ${msg}`;
+    if (type === 'error') line.style.color = '#ff6b6b';
+    if (type === 'warn') line.style.color = '#ffd166';
+    debugContainer.appendChild(line);
+    debugContainer.scrollTop = debugContainer.scrollHeight;
+  }
+
+  // Intercept all console logs
+  ['log', 'warn', 'error', 'info'].forEach(type => {
+    const original = console[type];
+    console[type] = function(...args) {
+      original.apply(console, args);
+      logToScreen(type, ...args);
+    };
+  });
+
+  console.log('🟢 On-screen debug console active');
+})();
+</script>
+
 </body>
 </html>
