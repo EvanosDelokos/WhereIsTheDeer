@@ -17,8 +17,8 @@ const currentMarkerId = "trackingPositionMarker";
 // === GPS SMOOTHING VARIABLES ===
 let positionBuffer = []; // Store recent positions for smoothing
 const BUFFER_SIZE = 3; // Reduced for faster response (was 5)
-const MIN_ACCURACY = 100; // Increased - phones often report 20-80m accuracy (was 50)
-const MIN_DISTANCE = 1; // Further reduced to ensure line drawing (was 2)
+const MIN_ACCURACY = 200; // Further increased for mobile devices - phones often report 100-200m accuracy
+const MIN_DISTANCE = 0.5; // Very reduced for mobile devices to ensure line drawing
 let lastRecordedPosition = null;
 let smoothedHeading = null;
 const HEADING_SMOOTHING = 0.5; // Increased for faster heading response (was 0.3)
@@ -106,6 +106,7 @@ export function initTracking(map) {
   window.WITD.tracking.map = map;
   window.WITD.tracking.savedTracks = window.WITD.tracking.savedTracks || [];
   console.log("🧭 Tracking module initialized");
+  console.log("🧭 Saved tracks count:", window.WITD.tracking.savedTracks.length);
 }
 
 // === GPS SMOOTHING HELPERS ===
@@ -189,12 +190,18 @@ function shouldRecordPoint(lat, lng, accuracy, speed) {
   // Reject VERY low accuracy positions (but be more lenient)
   if (accuracy > MIN_ACCURACY) {
     console.log(`⚠️ Position rejected: accuracy ${accuracy.toFixed(1)}m > ${MIN_ACCURACY}m threshold`);
+    // But if we have no points yet, record anyway for mobile devices
+    if (trackCoords.length === 0) {
+      console.log(`📍 Recording anyway - no points yet (mobile fallback)`);
+      return true;
+    }
     return false;
   }
   
   // Always record first point
   if (!lastRecordedPosition) {
     lastRecordedPosition = { lat, lng };
+    console.log(`📍 Recording first point (accuracy: ${accuracy.toFixed(1)}m)`);
     return true;
   }
   
@@ -244,6 +251,13 @@ async function startTracking() {
   if (map.getSource(currentMarkerId)) map.removeSource(currentMarkerId);
   
   console.log(`🧹 Cleaned up live tracking layers, keeping ${window.WITD.tracking.savedTracks ? window.WITD.tracking.savedTracks.length : 0} saved tracks`);
+  console.log(`🧹 Saved tracks before starting new track:`, window.WITD.tracking.savedTracks);
+  
+  // Ensure saved tracks are preserved
+  if (!window.WITD.tracking.savedTracks) {
+    window.WITD.tracking.savedTracks = [];
+    console.log(`🧹 Initialized empty saved tracks array`);
+  }
 
   map.addSource(trackSourceId, {
     type: "geojson",
@@ -310,10 +324,15 @@ function stopTracking() {
         const saved = addSavedTrackToMap(map, name, trackCoords.slice(), color, distanceKm, trackStartTime, Date.now());
         window.WITD.tracking.savedTracks.push(saved);
         console.log(`💾 Saved track '${name}' with ${trackCoords.length} points`);
+        console.log(`💾 Total saved tracks now:`, window.WITD.tracking.savedTracks.length);
+        console.log(`💾 Saved tracks array:`, window.WITD.tracking.savedTracks);
         
-        // DON'T clean up live tracking layers yet - keep them visible
-        // We'll clean them up when starting a new track
-        console.log(`🔄 Keeping live track visible while saved track is added`);
+        // Clean up live tracking layers after saving
+        if (map.getLayer(currentMarkerId)) map.removeLayer(currentMarkerId);
+        if (map.getSource(currentMarkerId)) map.removeSource(currentMarkerId);
+        if (map.getLayer(trackLineId)) map.removeLayer(trackLineId);
+        if (map.getSource(trackSourceId)) map.removeSource(trackSourceId);
+        console.log(`🧹 Cleaned up live tracking layers after saving`);
         
         // Ensure the saved track is visible by fitting map to track bounds
         setTimeout(() => {
@@ -382,6 +401,7 @@ function stopTracking() {
   if (!window.WITD.tracking.savedTracks) {
     window.WITD.tracking.savedTracks = [];
   }
+  console.log(`🔄 Saved tracks after stop tracking:`, window.WITD.tracking.savedTracks.length);
 
   const duration = fmtDuration((Date.now() - trackStartTime) / 1000);
   showMsg(
@@ -477,7 +497,7 @@ function updateTrack(map, pos) {
     // Add smoothed position to track
     trackCoords.push([smoothedLng, smoothedLat]);
     
-    console.log(`✅ Point recorded: ${trackCoords.length} total points`);
+    console.log(`✅ Point recorded: ${trackCoords.length} total points, accuracy: ${accuracy.toFixed(1)}m`);
 
     // === Update the polyline ===
     const lineData = {
@@ -831,31 +851,39 @@ function addSavedTrackToMap(map, name, coords, color, distanceKmValue, startMs, 
   // Add a walking man emoji marker for the track (like pins)
   const walkMarkerId = `${uid}_walk_marker`;
   const walkSourceId = `${uid}_walk_source`;
+  const endPoint = coords[coords.length - 1]; // Use end point instead of midpoint
+  console.log(`🚶‍♂️ Creating walk marker at end point:`, endPoint);
+  
   map.addSource(walkSourceId, {
     type: 'geojson',
     data: {
       type: 'Feature',
-      geometry: { type: 'Point', coordinates: coords[Math.floor(coords.length / 2)] },
+      geometry: { type: 'Point', coordinates: endPoint },
       properties: { title: name, trackId: uid }
     }
   });
-  map.addLayer({
-    id: walkMarkerId,
-    type: 'symbol',
-    source: walkSourceId,
-    layout: {
-      'text-field': '🚶‍♂️',
-      'text-size': 24,
-      'text-anchor': 'center',
-      'text-allow-overlap': true,
-      'text-ignore-placement': true
-    },
-    paint: {
-      'text-halo-color': '#ffffff',
-      'text-halo-width': 2
-    }
-  });
-  console.log(`🚶‍♂️ Added walk marker: ${walkMarkerId}`);
+  
+  try {
+    map.addLayer({
+      id: walkMarkerId,
+      type: 'symbol',
+      source: walkSourceId,
+      layout: {
+        'text-field': '🚶‍♂️',
+        'text-size': 32,
+        'text-anchor': 'center',
+        'text-allow-overlap': true,
+        'text-ignore-placement': true
+      },
+      paint: {
+        'text-halo-color': '#ffffff',
+        'text-halo-width': 3
+      }
+    });
+    console.log(`🚶‍♂️ Successfully added walk marker: ${walkMarkerId}`);
+  } catch (error) {
+    console.error(`❌ Failed to add walk marker:`, error);
+  }
 
   // Add click handler for walking man marker to show track info
   map.on('click', walkMarkerId, (e) => {
