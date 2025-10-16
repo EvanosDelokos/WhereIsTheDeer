@@ -367,15 +367,15 @@ function stopTracking() {
           map.triggerRepaint();
         }, 200);
         
-        // Show success message on mobile
-        showMsg(
-          `✅ Track "${name}" saved successfully!<br><br>
-           <strong>Distance:</strong> ${distanceKm.toFixed(2)} km<br>
-           <strong>Points:</strong> ${trackCoords.length}<br><br>
-           <em>Click the 🚶‍♂️ walking man to see track info</em><br>
-           <em>Click the track label to delete it</em>`,
-          "Track Saved"
-        );
+         // Show success message on mobile
+         showMsg(
+           `✅ Track "${name}" saved successfully!<br><br>
+            <strong>Distance:</strong> ${distanceKm.toFixed(2)} km<br>
+            <strong>Points:</strong> ${trackCoords.length}<br><br>
+            <em>Click the 🚶 walking man to see track info</em><br>
+            <em>Click the track label to delete it</em>`,
+           "Track Saved"
+         );
       });
     } else {
       // No track to save, just clean up
@@ -789,6 +789,12 @@ function addSavedTrackToMap(map, name, coords, color, distanceKmValue, startMs, 
     trackCoords = [[mapCenter.lng, mapCenter.lat]];
     console.log(`📍 No track points, using map center as placeholder:`, trackCoords[0]);
   }
+  
+  // For single points, duplicate the point to create a visible line
+  if (trackCoords.length === 1) {
+    trackCoords = [trackCoords[0], trackCoords[0]];
+    console.log(`📍 Single point track, duplicating for visibility:`, trackCoords);
+  }
 
   // Create source
   const feature = {
@@ -799,17 +805,22 @@ function addSavedTrackToMap(map, name, coords, color, distanceKmValue, startMs, 
   map.addSource(sourceId, { type: 'geojson', data: feature });
 
   // Add line layer
-  map.addLayer({
-    id: lineLayerId,
-    type: 'line',
-    source: sourceId,
-    layout: { 'line-join': 'round', 'line-cap': 'round' },
-    paint: { 'line-color': color, 'line-width': 4 } // Increased width for visibility
-  });
+  try {
+    map.addLayer({
+      id: lineLayerId,
+      type: 'line',
+      source: sourceId,
+      layout: { 'line-join': 'round', 'line-cap': 'round' },
+      paint: { 'line-color': color, 'line-width': 4 } // Increased width for visibility
+    });
+    console.log(`📍 Successfully added saved track line: ${lineLayerId} with color ${color}`);
+  } catch (error) {
+    console.error(`❌ Failed to add line layer:`, error);
+  }
   
-  console.log(`📍 Added saved track line: ${lineLayerId} with color ${color}`);
   console.log(`📍 Line layer exists:`, map.getLayer(lineLayerId) ? 'YES' : 'NO');
   console.log(`📍 Source exists:`, map.getSource(sourceId) ? 'YES' : 'NO');
+  console.log(`📍 Track coordinates:`, trackCoords);
 
   // Add label at the last coordinate with delete button
   const last = trackCoords[trackCoords.length - 1];
@@ -882,22 +893,22 @@ function addSavedTrackToMap(map, name, coords, color, distanceKmValue, startMs, 
   });
   
   try {
-    map.addLayer({
-      id: walkMarkerId,
-      type: 'symbol',
-      source: walkSourceId,
-      layout: {
-        'text-field': '🚶‍♂️',
-        'text-size': 32,
-        'text-anchor': 'center',
-        'text-allow-overlap': true,
-        'text-ignore-placement': true
-      },
-      paint: {
-        'text-halo-color': '#ffffff',
-        'text-halo-width': 3
-      }
-    });
+     map.addLayer({
+       id: walkMarkerId,
+       type: 'symbol',
+       source: walkSourceId,
+       layout: {
+         'text-field': '🚶',
+         'text-size': 28,
+         'text-anchor': 'center',
+         'text-allow-overlap': true,
+         'text-ignore-placement': true
+       },
+       paint: {
+         'text-halo-color': '#ffffff',
+         'text-halo-width': 3
+       }
+     });
     console.log(`🚶‍♂️ Successfully added walk marker: ${walkMarkerId}`);
   } catch (error) {
     console.error(`❌ Failed to add walk marker:`, error);
@@ -908,14 +919,14 @@ function addSavedTrackToMap(map, name, coords, color, distanceKmValue, startMs, 
     const trackId = e.features[0].properties.trackId;
     const track = window.WITD.tracking.savedTracks.find(t => t.id === trackId);
     if (track) {
-      showMsg(
-        `🏃‍♂️ <strong>${track.name}</strong><br><br>
-         <strong>Distance:</strong> ${track.distanceKm.toFixed(2)} km<br>
-         <strong>Started:</strong> ${new Date(track.startedAt).toLocaleString()}<br>
-         <strong>Duration:</strong> ${fmtDuration((new Date(track.endedAt) - new Date(track.startedAt)) / 1000)}<br><br>
-         <em>Click the track label to delete it.</em>`,
-        "Track Info"
-      );
+       showMsg(
+         `🚶 <strong>${track.name}</strong><br><br>
+          <strong>Distance:</strong> ${track.distanceKm.toFixed(2)} km<br>
+          <strong>Started:</strong> ${new Date(track.startedAt).toLocaleString()}<br>
+          <strong>Duration:</strong> ${fmtDuration((new Date(track.endedAt) - new Date(track.startedAt)) / 1000)}<br><br>
+          <em>Click the track label to delete it.</em>`,
+         "Track Info"
+       );
     }
   });
 
