@@ -312,9 +312,16 @@ function stopTracking() {
   trackingActive = false;
   const map = window.WITD.tracking.map;
 
-  // Save current live track as a persistent, labeled layer (if we have points)
+  // Clean up live tracking layers immediately
+  if (map.getLayer(currentMarkerId)) map.removeLayer(currentMarkerId);
+  if (map.getSource(currentMarkerId)) map.removeSource(currentMarkerId);
+  if (map.getLayer(trackLineId)) map.removeLayer(trackLineId);
+  if (map.getSource(trackSourceId)) map.removeSource(trackSourceId);
+  console.log(`🧹 Cleaned up live tracking layers immediately`);
+
+  // Save current live track as a persistent, labeled layer (even with 0 points)
   try {
-    if (trackCoords && trackCoords.length >= 2) {
+    if (trackCoords && trackCoords.length >= 0) {
       const defaultName = `Track ${new Date().toLocaleString()}`;
       showTrackNameModal(defaultName, (name) => {
         const color = pickTrackColor();
@@ -327,31 +334,34 @@ function stopTracking() {
         console.log(`💾 Total saved tracks now:`, window.WITD.tracking.savedTracks.length);
         console.log(`💾 Saved tracks array:`, window.WITD.tracking.savedTracks);
         
-        // Clean up live tracking layers after saving
-        if (map.getLayer(currentMarkerId)) map.removeLayer(currentMarkerId);
-        if (map.getSource(currentMarkerId)) map.removeSource(currentMarkerId);
-        if (map.getLayer(trackLineId)) map.removeLayer(trackLineId);
-        if (map.getSource(trackSourceId)) map.removeSource(trackSourceId);
-        console.log(`🧹 Cleaned up live tracking layers after saving`);
-        
         // Ensure the saved track is visible by fitting map to track bounds
         setTimeout(() => {
-          if (trackCoords.length >= 2) {
-            // Calculate bounds of the track
-            const lons = trackCoords.map(coord => coord[0]);
-            const lats = trackCoords.map(coord => coord[1]);
-            const bounds = [
-              [Math.min(...lons), Math.min(...lats)], // Southwest
-              [Math.max(...lons), Math.max(...lats)]  // Northeast
-            ];
-            
-            // Fit map to track bounds with padding
-            map.fitBounds(bounds, {
-              padding: 50,
-              maxZoom: 16
-            });
-            
-            console.log(`🗺️ Fitted map to track bounds:`, bounds);
+          if (trackCoords.length >= 1) {
+            if (trackCoords.length >= 2) {
+              // Calculate bounds of the track
+              const lons = trackCoords.map(coord => coord[0]);
+              const lats = trackCoords.map(coord => coord[1]);
+              const bounds = [
+                [Math.min(...lons), Math.min(...lats)], // Southwest
+                [Math.max(...lons), Math.max(...lats)]  // Northeast
+              ];
+              
+              // Fit map to track bounds with padding
+              map.fitBounds(bounds, {
+                padding: 50,
+                maxZoom: 16
+              });
+              
+              console.log(`🗺️ Fitted map to track bounds:`, bounds);
+            } else {
+              // Single point - just center on it
+              map.flyTo({
+                center: trackCoords[0],
+                zoom: 16,
+                duration: 1000
+              });
+              console.log(`🗺️ Centered map on single track point:`, trackCoords[0]);
+            }
           }
           
           map.triggerRepaint();
@@ -772,10 +782,18 @@ function addSavedTrackToMap(map, name, coords, color, distanceKmValue, startMs, 
   const lineLayerId = `${uid}_line`;
   const labelLayerId = `${uid}_label`;
 
+  // Handle tracks with no points by creating a placeholder at map center
+  let trackCoords = coords;
+  if (!trackCoords || trackCoords.length === 0) {
+    const mapCenter = map.getCenter();
+    trackCoords = [[mapCenter.lng, mapCenter.lat]];
+    console.log(`📍 No track points, using map center as placeholder:`, trackCoords[0]);
+  }
+
   // Create source
   const feature = {
     type: 'Feature',
-    geometry: { type: 'LineString', coordinates: coords },
+    geometry: { type: 'LineString', coordinates: trackCoords },
     properties: { name }
   };
   map.addSource(sourceId, { type: 'geojson', data: feature });
@@ -794,7 +812,7 @@ function addSavedTrackToMap(map, name, coords, color, distanceKmValue, startMs, 
   console.log(`📍 Source exists:`, map.getSource(sourceId) ? 'YES' : 'NO');
 
   // Add label at the last coordinate with delete button
-  const last = coords[coords.length - 1];
+  const last = trackCoords[trackCoords.length - 1];
   const labelSourceId = `${uid}_label_source`;
   map.addSource(labelSourceId, {
     type: 'geojson',
@@ -832,7 +850,7 @@ function addSavedTrackToMap(map, name, coords, color, distanceKmValue, startMs, 
     type: 'geojson',
     data: {
       type: 'Feature',
-      geometry: { type: 'Point', coordinates: coords[0] },
+      geometry: { type: 'Point', coordinates: trackCoords[0] },
       properties: { title: 'START' }
     }
   });
@@ -851,7 +869,7 @@ function addSavedTrackToMap(map, name, coords, color, distanceKmValue, startMs, 
   // Add a walking man emoji marker for the track (like pins)
   const walkMarkerId = `${uid}_walk_marker`;
   const walkSourceId = `${uid}_walk_source`;
-  const endPoint = coords[coords.length - 1]; // Use end point instead of midpoint
+  const endPoint = trackCoords[trackCoords.length - 1]; // Use end point instead of midpoint
   console.log(`🚶‍♂️ Creating walk marker at end point:`, endPoint);
   
   map.addSource(walkSourceId, {
@@ -938,7 +956,7 @@ function addSavedTrackToMap(map, name, coords, color, distanceKmValue, startMs, 
     walkSourceId,
     startMarkerId,
     startSourceId,
-    coords
+    coords: trackCoords
   };
 }
 
