@@ -3213,6 +3213,8 @@ document.addEventListener('DOMContentLoaded', () => {
 <script>
 // ======= MOBILE DEBUG CONSOLE OVERLAY =======
 (function() {
+  let isMinimized = false;
+  
   const debugContainer = document.createElement('div');
   debugContainer.id = 'debugConsole';
   debugContainer.style.cssText = `
@@ -3229,8 +3231,58 @@ document.addEventListener('DOMContentLoaded', () => {
     padding: 8px;
     z-index: 99999;
     white-space: pre-wrap;
+    transition: all 0.3s ease;
   `;
+  
+  // Create toggle button
+  const toggleBtn = document.createElement('button');
+  toggleBtn.id = 'debugToggle';
+  toggleBtn.innerHTML = '📱';
+  toggleBtn.style.cssText = `
+    position: fixed;
+    bottom: 10px;
+    right: 10px;
+    width: 50px;
+    height: 50px;
+    border-radius: 50%;
+    background: #007bff;
+    color: white;
+    border: none;
+    font-size: 20px;
+    cursor: pointer;
+    z-index: 100000;
+    box-shadow: 0 4px 12px rgba(0,0,0,0.3);
+    transition: all 0.3s ease;
+  `;
+  
+  // Add hover effect
+  toggleBtn.addEventListener('mouseenter', () => {
+    toggleBtn.style.transform = 'scale(1.1)';
+    toggleBtn.style.background = '#0056b3';
+  });
+  toggleBtn.addEventListener('mouseleave', () => {
+    toggleBtn.style.transform = 'scale(1)';
+    toggleBtn.style.background = '#007bff';
+  });
+  
+  // Toggle functionality
+  toggleBtn.addEventListener('click', () => {
+    isMinimized = !isMinimized;
+    if (isMinimized) {
+      debugContainer.style.maxHeight = '0px';
+      debugContainer.style.padding = '0px 8px';
+      toggleBtn.innerHTML = '📱';
+      toggleBtn.style.background = '#28a745';
+    } else {
+      debugContainer.style.maxHeight = '40vh';
+      debugContainer.style.padding = '8px';
+      toggleBtn.innerHTML = '📱';
+      toggleBtn.style.background = '#007bff';
+    }
+  });
+  
   document.body.appendChild(debugContainer);
+  document.body.appendChild(toggleBtn);
 
   function logToScreen(type, ...args) {
     const msg = args.map(a => 
