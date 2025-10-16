@@ -102,9 +102,37 @@ function removeFloatingStopButton() {
 
 export function initTracking(map) {
   window.WITD = window.WITD || {};
-  window.WITD.tracking = { startTracking, stopTracking, saveTrack, toggleFollow };
+  window.WITD.tracking = { 
+    startTracking, 
+    stopTracking, 
+    saveTrack, 
+    toggleFollow,
+    saveTracksToSupabase,
+    loadTracksFromSupabase,
+    deleteTrackFromSupabase
+  };
   window.WITD.tracking.map = map;
-  window.WITD.tracking.savedTracks = window.WITD.tracking.savedTracks || [];
+  
+  // Load saved tracks from localStorage first
+  try {
+    const saved = localStorage.getItem('witd_saved_tracks');
+    if (saved) {
+      window.WITD.tracking.savedTracks = JSON.parse(saved);
+      console.log(`💾 Loaded ${window.WITD.tracking.savedTracks.length} saved tracks from localStorage`);
+    } else {
+      window.WITD.tracking.savedTracks = [];
+      console.log(`💾 No saved tracks found in localStorage, initializing empty array`);
+    }
+  } catch (error) {
+    console.error(`❌ Failed to load saved tracks from localStorage:`, error);
+    window.WITD.tracking.savedTracks = [];
+  }
+  
+  // Then try to load from Supabase (for cross-device sync)
+  setTimeout(() => {
+    loadTracksFromSupabase();
+  }, 1000);
+  
   console.log("🧭 Tracking module initialized");
   console.log("🧭 Saved tracks count:", window.WITD.tracking.savedTracks.length);
 }
@@ -322,25 +350,42 @@ function stopTracking() {
   // Save current live track as a persistent, labeled layer (even with 0 points)
   try {
     if (trackCoords && trackCoords.length >= 0) {
+      // Preserve coordinates before they get reset
+      const preservedCoords = trackCoords.slice();
+      const preservedDistance = distanceKm;
+      const preservedStartTime = trackStartTime;
+      
       const defaultName = `Track ${new Date().toLocaleString()}`;
       showTrackNameModal(defaultName, (name) => {
         const color = pickTrackColor();
         console.log(`🎨 Using color: ${color} for track "${name}"`);
-        console.log(`📍 Track coordinates:`, trackCoords.slice(0, 3), '...', trackCoords.slice(-3));
+        console.log(`📍 Track coordinates:`, preservedCoords.slice(0, 3), '...', preservedCoords.slice(-3));
         
-        const saved = addSavedTrackToMap(map, name, trackCoords.slice(), color, distanceKm, trackStartTime, Date.now());
+        const saved = addSavedTrackToMap(map, name, preservedCoords.slice(), color, preservedDistance, preservedStartTime, Date.now());
         window.WITD.tracking.savedTracks.push(saved);
-        console.log(`💾 Saved track '${name}' with ${trackCoords.length} points`);
+        
+        // Persist to localStorage
+        try {
+          localStorage.setItem('witd_saved_tracks', JSON.stringify(window.WITD.tracking.savedTracks));
+          console.log(`💾 Saved tracks persisted to localStorage`);
+        } catch (error) {
+          console.error(`❌ Failed to persist tracks to localStorage:`, error);
+        }
+        
+        // Also save to Supabase
+        saveTracksToSupabase();
+        
+        console.log(`💾 Saved track '${name}' with ${preservedCoords.length} points`);
         console.log(`💾 Total saved tracks now:`, window.WITD.tracking.savedTracks.length);
         console.log(`💾 Saved tracks array:`, window.WITD.tracking.savedTracks);
         
         // Ensure the saved track is visible by fitting map to track bounds
         setTimeout(() => {
-          if (trackCoords.length >= 1) {
-            if (trackCoords.length >= 2) {
+          if (preservedCoords.length >= 1) {
+            if (preservedCoords.length >= 2) {
               // Calculate bounds of the track
-              const lons = trackCoords.map(coord => coord[0]);
-              const lats = trackCoords.map(coord => coord[1]);
+              const lons = preservedCoords.map(coord => coord[0]);
+              const lats = preservedCoords.map(coord => coord[1]);
               const bounds = [
                 [Math.min(...lons), Math.min(...lats)], // Southwest
                 [Math.max(...lons), Math.max(...lats)]  // Northeast
@@ -356,11 +401,11 @@ function stopTracking() {
             } else {
               // Single point - just center on it
               map.flyTo({
-                center: trackCoords[0],
+                center: preservedCoords[0],
                 zoom: 16,
                 duration: 1000
               });
-              console.log(`🗺️ Centered map on single track point:`, trackCoords[0]);
+              console.log(`🗺️ Centered map on single track point:`, preservedCoords[0]);
             }
           }
           
@@ -370,8 +415,8 @@ function stopTracking() {
          // Show success message on mobile
          showMsg(
            `✅ Track "${name}" saved successfully!<br><br>
-            <strong>Distance:</strong> ${distanceKm.toFixed(2)} km<br>
-            <strong>Points:</strong> ${trackCoords.length}<br><br>
+            <strong>Distance:</strong> ${preservedDistance.toFixed(2)} km<br>
+            <strong>Points:</strong> ${preservedCoords.length}<br><br>
             <em>Click the 🚶 walking man to see track info</em><br>
             <em>Click the track label to delete it</em>`,
            "Track Saved"
@@ -903,6 +948,7 @@ function addSavedTrackToMap(map, name, coords, color, distanceKmValue, startMs, 
       const img = new Image();
       img.onload = () => {
         try {
+          console.log(`🚶‍♂️ Image loaded, dimensions: ${img.width}x${img.height}`);
           map.addImage('walking-man-icon', img);
           console.log(`🚶‍♂️ WalkingMan.svg icon loaded successfully`);
           resolve();
@@ -921,20 +967,21 @@ function addSavedTrackToMap(map, name, coords, color, distanceKmValue, startMs, 
   
   try {
     loadWalkingManIcon().then(() => {
+      console.log(`🚶‍♂️ About to add layer with icon: walking-man-icon`);
       map.addLayer({
         id: walkMarkerId,
         type: 'symbol',
         source: walkSourceId,
         layout: {
           'icon-image': 'walking-man-icon',
-          'icon-size': 0.8,
+          'icon-size': 0.05,
           'icon-anchor': 'bottom',
           'icon-allow-overlap': true,
           'icon-ignore-placement': true
         }
       });
       console.log(`🚶‍♂️ Successfully added walk marker: ${walkMarkerId}`);
-    }).catch(() => {
+    }).catch((error) => {
       // Fallback to emoji if icon loading fails
       map.addLayer({
         id: walkMarkerId,
@@ -1096,6 +1143,17 @@ function showDeleteTrackModal(trackId, map) {
     const index = window.WITD.tracking.savedTracks.findIndex(t => t.id === trackId);
     if (index > -1) {
       window.WITD.tracking.savedTracks.splice(index, 1);
+      
+      // Persist to localStorage
+      try {
+        localStorage.setItem('witd_saved_tracks', JSON.stringify(window.WITD.tracking.savedTracks));
+        console.log(`💾 Updated saved tracks in localStorage after deletion`);
+      } catch (error) {
+        console.error(`❌ Failed to update localStorage after deletion:`, error);
+      }
+      
+      // Also delete from Supabase
+      deleteTrackFromSupabase(trackId);
     }
 
     console.log(`🗑️ Deleted track: ${track.name}`);
@@ -1191,5 +1249,199 @@ function showMsg(msg, title = "Info") {
     </div>`;
   document.body.appendChild(wrap);
   document.getElementById("msgOk").onclick = () => wrap.remove();
+}
+
+// === SUPABASE INTEGRATION ===
+
+// Save all tracks to Supabase
+async function saveTracksToSupabase() {
+  try {
+    // Check if Supabase client is available
+    if (!window.supabaseClient) {
+      console.log('[tracking] Supabase client not ready, skipping save');
+      return;
+    }
+
+    // Check if user is authenticated
+    const { data: { user }, error: authError } = await window.supabaseClient.auth.getUser();
+    if (authError || !user) {
+      console.log('[tracking] No authenticated user, skipping Supabase save');
+      return;
+    }
+
+    console.log('[tracking] Saving tracks to Supabase for user:', user.id);
+
+    // First, clear existing tracks for this user
+    const { error: deleteError } = await window.supabaseClient
+      .from('walkingtrack')
+      .delete()
+      .eq('user_id', user.id);
+
+    if (deleteError) {
+      console.error('[tracking] Error clearing existing tracks:', deleteError);
+    } else {
+      console.log('[tracking] Cleared existing tracks from Supabase');
+    }
+
+    // Then insert all current tracks
+    if (window.WITD.tracking.savedTracks.length > 0) {
+      const tracksToSave = window.WITD.tracking.savedTracks.map(track => ({
+        user_id: user.id,
+        track_id: track.id,
+        name: track.name,
+        color: track.color,
+        distance_km: track.distanceKm,
+        started_at: track.startedAt,
+        ended_at: track.endedAt,
+        coordinates: JSON.stringify(track.coords),
+        created_at: new Date().toISOString()
+      }));
+
+      const { error: insertError } = await window.supabaseClient
+        .from('walkingtrack')
+        .insert(tracksToSave);
+
+      if (insertError) {
+        console.error('[tracking] Error saving tracks to Supabase:', insertError);
+      } else {
+        console.log('[tracking] Successfully saved', tracksToSave.length, 'tracks to Supabase');
+      }
+    } else {
+      console.log('[tracking] No tracks to save to Supabase');
+    }
+
+  } catch (error) {
+    console.error('[tracking] Error in saveTracksToSupabase:', error);
+  }
+}
+
+// Load tracks from Supabase
+async function loadTracksFromSupabase() {
+  try {
+    console.log('[tracking] Loading tracks from Supabase...');
+
+    // Check if Supabase client is available
+    if (!window.supabaseClient) {
+      console.log('[tracking] Supabase client not ready, skipping load');
+      return;
+    }
+
+    // Check if user is authenticated
+    const { data: { user }, error: authError } = await window.supabaseClient.auth.getUser();
+    if (authError || !user) {
+      console.log('[tracking] No authenticated user, skipping Supabase load');
+      return;
+    }
+
+    // Fetch tracks from Supabase
+    const { data: tracks, error } = await window.supabaseClient
+      .from('walkingtrack')
+      .select('*')
+      .eq('user_id', user.id)
+      .order('created_at', { ascending: false });
+
+    if (error) {
+      console.error('[tracking] Error loading tracks from Supabase:', error);
+      return;
+    }
+
+    console.log('[tracking] Raw tracks from Supabase:', tracks);
+
+    if (tracks && tracks.length > 0) {
+      console.log('[tracking] Loading', tracks.length, 'tracks from Supabase');
+      
+      // Convert Supabase format back to our internal format
+      const loadedTracks = tracks.map(dbTrack => ({
+        id: dbTrack.track_id,
+        name: dbTrack.name,
+        color: dbTrack.color,
+        distanceKm: dbTrack.distance_km,
+        startedAt: dbTrack.started_at,
+        endedAt: dbTrack.ended_at,
+        coords: JSON.parse(dbTrack.coordinates),
+        // These will be set when we add the track to the map
+        sourceId: '',
+        lineLayerId: '',
+        labelSourceId: '',
+        labelLayerId: '',
+        walkMarkerId: '',
+        walkSourceId: '',
+        startMarkerId: '',
+        startSourceId: ''
+      }));
+
+      // Add tracks to map and update our saved tracks array
+      const map = window.WITD.tracking.map;
+      window.WITD.tracking.savedTracks = [];
+      
+      for (const track of loadedTracks) {
+        const mapTrack = addSavedTrackToMap(
+          map, 
+          track.name, 
+          track.coords, 
+          track.color, 
+          track.distanceKm, 
+          new Date(track.startedAt).getTime(), 
+          new Date(track.endedAt).getTime()
+        );
+        
+        // Update the track with the map IDs
+        Object.assign(track, mapTrack);
+        window.WITD.tracking.savedTracks.push(track);
+      }
+
+      console.log('[tracking] Successfully loaded', loadedTracks.length, 'tracks from Supabase');
+      
+      // Update localStorage with loaded tracks
+      try {
+        localStorage.setItem('witd_saved_tracks', JSON.stringify(window.WITD.tracking.savedTracks));
+        console.log('[tracking] Updated localStorage with Supabase tracks');
+      } catch (error) {
+        console.error('[tracking] Failed to update localStorage:', error);
+      }
+      
+    } else {
+      console.log('[tracking] No tracks found in Supabase');
+    }
+
+  } catch (error) {
+    console.error('[tracking] Error in loadTracksFromSupabase:', error);
+  }
+}
+
+// Delete a track from Supabase
+async function deleteTrackFromSupabase(trackId) {
+  try {
+    // Check if Supabase client is available
+    if (!window.supabaseClient) {
+      console.log('[tracking] Supabase client not ready, skipping delete');
+      return;
+    }
+
+    // Check if user is authenticated
+    const { data: { user }, error: authError } = await window.supabaseClient.auth.getUser();
+    if (authError || !user) {
+      console.log('[tracking] No authenticated user, skipping Supabase delete');
+      return;
+    }
+
+    console.log('[tracking] Deleting track from Supabase:', trackId);
+
+    // Delete from Supabase
+    const { error } = await window.supabaseClient
+      .from('walkingtrack')
+      .delete()
+      .eq('user_id', user.id)
+      .eq('track_id', trackId);
+
+    if (error) {
+      console.error('[tracking] Error deleting track from Supabase:', error);
+    } else {
+      console.log('[tracking] Successfully deleted track from Supabase');
+    }
+
+  } catch (error) {
+    console.error('[tracking] Error in deleteTrackFromSupabase:', error);
+  }
 }
 
