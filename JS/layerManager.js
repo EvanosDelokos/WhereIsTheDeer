@@ -344,6 +344,15 @@ function restoreUserTracksAfterStyleSwitch() {
     }
   }, 500);
   
+  // Wait a bit longer before restoring walking tracks to prevent conflicts
+  setTimeout(() => {
+    // Restore walking tracks if tracking module is available
+    if (window.WITD && window.WITD.tracking && typeof window.WITD.tracking.restoreTracksAfterStyleSwitch === 'function') {
+      console.log('[LayerManager] Restoring walking tracks...');
+      window.WITD.tracking.restoreTracksAfterStyleSwitch();
+    }
+  }, 1000);
+  
   // Note: Saved tracks are handled by the draw module's restore function
   // since they are part of the drawn tracks feature collection
   

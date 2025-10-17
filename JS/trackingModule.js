@@ -109,7 +109,8 @@ export function initTracking(map) {
     toggleFollow,
     saveTracksToSupabase,
     loadTracksFromSupabase,
-    deleteTrackFromSupabase
+    deleteTrackFromSupabase,
+    restoreTracksAfterStyleSwitch
   };
   window.WITD.tracking.map = map;
   
@@ -1442,6 +1443,64 @@ async function deleteTrackFromSupabase(trackId) {
 
   } catch (error) {
     console.error('[tracking] Error in deleteTrackFromSupabase:', error);
+  }
+}
+
+// Restore walking tracks after map style switch
+function restoreTracksAfterStyleSwitch() {
+  try {
+    console.log('[tracking] Restoring walking tracks after style switch...');
+    
+    const map = window.WITD.tracking.map;
+    if (!map) {
+      console.log('[tracking] Map not available for track restoration');
+      return;
+    }
+
+    // Wait for style to be fully loaded
+    if (!map.isStyleLoaded()) {
+      console.log('[tracking] Style not loaded yet, waiting...');
+      map.once('style.load', () => {
+        setTimeout(restoreTracksAfterStyleSwitch, 100);
+      });
+      return;
+    }
+
+    // Clear existing saved tracks from the map (but keep the data)
+    const savedTracks = window.WITD.tracking.savedTracks || [];
+    console.log(`[tracking] Found ${savedTracks.length} saved tracks to restore`);
+
+    // Clear the saved tracks array but preserve the data
+    const tracksToRestore = [...savedTracks];
+    window.WITD.tracking.savedTracks = [];
+
+    // Re-add each track to the map
+    for (const track of tracksToRestore) {
+      try {
+        const mapTrack = addSavedTrackToMap(
+          map,
+          track.name,
+          track.coords,
+          track.color,
+          track.distanceKm,
+          new Date(track.startedAt).getTime(),
+          new Date(track.endedAt).getTime()
+        );
+        
+        // Update the track with the new map IDs
+        Object.assign(track, mapTrack);
+        window.WITD.tracking.savedTracks.push(track);
+        
+        console.log(`[tracking] Restored track: ${track.name}`);
+      } catch (error) {
+        console.error(`[tracking] Failed to restore track ${track.name}:`, error);
+      }
+    }
+
+    console.log(`[tracking] Successfully restored ${tracksToRestore.length} walking tracks`);
+    
+  } catch (error) {
+    console.error('[tracking] Error in restoreTracksAfterStyleSwitch:', error);
   }
 }
 
