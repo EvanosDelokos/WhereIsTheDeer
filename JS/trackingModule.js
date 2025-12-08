@@ -821,9 +821,9 @@ function showTrackNameModal(defaultName, onSave) {
 }
 
 // === PERSISTENT SAVED TRACKS ===
-function addSavedTrackToMap(map, name, coords, color, distanceKmValue, startMs, endMs) {
-  // Build a unique id for this saved track
-  const uid = `savedTrack_${Date.now()}_${Math.floor(Math.random() * 1e6)}`;
+function addSavedTrackToMap(map, name, coords, color, distanceKmValue, startMs, endMs, existingTrackId = null) {
+  // Use existing track ID if provided (when loading from Supabase), otherwise generate a new one
+  const uid = existingTrackId || `savedTrack_${Date.now()}_${Math.floor(Math.random() * 1e6)}`;
   const sourceId = `${uid}_source`;
   const lineLayerId = `${uid}_line`;
   const labelLayerId = `${uid}_label`;
@@ -1127,18 +1127,76 @@ function showDeleteTrackModal(trackId, map) {
   const confirmBtn = document.getElementById('deleteTrackConfirm');
 
   const cancel = () => overlay.remove();
-          const confirm = () => {
+          const confirm = async () => {
             // Remove from map
-            if (map.getLayer(track.lineLayerId)) map.removeLayer(track.lineLayerId);
-            if (map.getSource(track.sourceId)) map.removeSource(track.sourceId);
-            if (map.getLayer(track.labelLayerId)) map.removeLayer(track.labelLayerId);
-            if (map.getSource(track.labelSourceId)) map.removeSource(track.labelSourceId);
-            // Remove start marker if it exists
-            if (track.startMarkerId && map.getLayer(track.startMarkerId)) map.removeLayer(track.startMarkerId);
-            if (track.startSourceId && map.getSource(track.startSourceId)) map.removeSource(track.startSourceId);
-            // Remove walking man marker if it exists
-            if (track.walkMarkerId && map.getLayer(track.walkMarkerId)) map.removeLayer(track.walkMarkerId);
-            if (track.walkSourceId && map.getSource(track.walkSourceId)) map.removeSource(track.walkSourceId);
+            try {
+              if (track.lineLayerId && map.getLayer(track.lineLayerId)) {
+                map.removeLayer(track.lineLayerId);
+              }
+              if (track.sourceId && map.getSource(track.sourceId)) {
+                map.removeSource(track.sourceId);
+              }
+              if (track.labelLayerId && map.getLayer(track.labelLayerId)) {
+                map.removeLayer(track.labelLayerId);
+              }
+              if (track.labelSourceId && map.getSource(track.labelSourceId)) {
+                map.removeSource(track.labelSourceId);
+              }
+              
+              // Remove start marker if it exists
+              if (track.startMarkerId && map.getLayer(track.startMarkerId)) {
+                map.removeLayer(track.startMarkerId);
+              }
+              if (track.startSourceId && map.getSource(track.startSourceId)) {
+                map.removeSource(track.startSourceId);
+              }
+              
+              // Remove walking man marker if it exists - try multiple approaches
+              // First, try using stored IDs
+              if (track.walkMarkerId && map.getLayer(track.walkMarkerId)) {
+                map.removeLayer(track.walkMarkerId);
+                console.log(`🗑️ Removed walk marker layer: ${track.walkMarkerId}`);
+              }
+              if (track.walkSourceId && map.getSource(track.walkSourceId)) {
+                map.removeSource(track.walkSourceId);
+                console.log(`🗑️ Removed walk marker source: ${track.walkSourceId}`);
+              }
+              
+              // Also try to find and remove by pattern matching (in case IDs weren't stored)
+              const walkMarkerPattern = `${track.id}_walk_marker`;
+              const walkSourcePattern = `${track.id}_walk_source`;
+              
+              try {
+                if (map.getLayer(walkMarkerPattern)) {
+                  map.removeLayer(walkMarkerPattern);
+                  console.log(`🗑️ Removed walk marker by pattern: ${walkMarkerPattern}`);
+                }
+              } catch (e) {
+                // Layer might not exist, that's okay
+              }
+              
+              try {
+                if (map.getSource(walkSourcePattern)) {
+                  map.removeSource(walkSourcePattern);
+                  console.log(`🗑️ Removed walk source by pattern: ${walkSourcePattern}`);
+                }
+              } catch (e) {
+                // Source might not exist, that's okay
+              }
+              
+              // Also try to remove any event listeners that might be attached to the walk marker
+              // Mapbox doesn't expose a direct way to list listeners, but we can try to remove common ones
+              try {
+                map.off('click', walkMarkerPattern);
+                map.off('mouseenter', walkMarkerPattern);
+                map.off('mouseleave', walkMarkerPattern);
+              } catch (e) {
+                // Listeners might not exist, that's okay
+              }
+              
+            } catch (error) {
+              console.error(`❌ Error removing track layers/sources:`, error);
+            }
 
     // Remove from saved tracks array
     const index = window.WITD.tracking.savedTracks.findIndex(t => t.id === trackId);
@@ -1153,8 +1211,19 @@ function showDeleteTrackModal(trackId, map) {
         console.error(`❌ Failed to update localStorage after deletion:`, error);
       }
       
-      // Also delete from Supabase
-      deleteTrackFromSupabase(trackId);
+      // Also delete from Supabase - wait for it to complete
+      const deleteResult = await deleteTrackFromSupabase(trackId);
+      if (deleteResult && deleteResult.success) {
+        console.log(`✅ Successfully deleted track from Supabase: ${track.name}`);
+      } else {
+        console.error(`❌ Failed to delete track from Supabase:`, deleteResult?.error || 'Unknown error');
+        // Show a warning but don't block the UI
+        console.warn(`⚠️ Track deleted locally but may reappear on refresh if Supabase deletion failed`);
+        console.warn(`⚠️ Track ID used for deletion: ${trackId}`);
+        console.warn(`⚠️ If this keeps happening, the track_id in Supabase may not match the local track ID`);
+      }
+    } else {
+      console.warn(`⚠️ Track with ID ${trackId} not found in savedTracks array`);
     }
 
     console.log(`🗑️ Deleted track: ${track.name}`);
@@ -1376,6 +1445,9 @@ async function loadTracksFromSupabase() {
       window.WITD.tracking.savedTracks = [];
       
       for (const track of loadedTracks) {
+        // Preserve the original track ID from Supabase
+        const originalTrackId = track.id;
+        
         const mapTrack = addSavedTrackToMap(
           map, 
           track.name, 
@@ -1383,11 +1455,13 @@ async function loadTracksFromSupabase() {
           track.color, 
           track.distanceKm, 
           new Date(track.startedAt).getTime(), 
-          new Date(track.endedAt).getTime()
+          new Date(track.endedAt).getTime(),
+          originalTrackId // Pass the original ID to preserve it
         );
         
-        // Update the track with the map IDs
+        // Update the track with the map IDs, but preserve the original ID
         Object.assign(track, mapTrack);
+        track.id = originalTrackId; // Ensure we keep the original ID from Supabase
         window.WITD.tracking.savedTracks.push(track);
       }
 
@@ -1416,33 +1490,80 @@ async function deleteTrackFromSupabase(trackId) {
     // Check if Supabase client is available
     if (!window.supabaseClient) {
       console.log('[tracking] Supabase client not ready, skipping delete');
-      return;
+      return { success: false, error: 'Supabase client not available' };
     }
 
     // Check if user is authenticated
     const { data: { user }, error: authError } = await window.supabaseClient.auth.getUser();
     if (authError || !user) {
       console.log('[tracking] No authenticated user, skipping Supabase delete');
-      return;
+      return { success: false, error: 'User not authenticated' };
     }
 
-    console.log('[tracking] Deleting track from Supabase:', trackId);
+    console.log('[tracking] Deleting track from Supabase:', trackId, 'for user:', user.id);
 
-    // Delete from Supabase
-    const { error } = await window.supabaseClient
+    // First, get all tracks for this user to debug ID matching
+    const { data: allTracks, error: listError } = await window.supabaseClient
       .from('walkingtrack')
-      .delete()
+      .select('track_id, name')
+      .eq('user_id', user.id);
+    
+    if (listError) {
+      console.error('[tracking] Error listing tracks:', listError);
+    } else {
+      console.log('[tracking] All tracks in Supabase for this user:', allTracks);
+      console.log('[tracking] Looking for track_id:', trackId);
+      const matchingTrack = allTracks?.find(t => t.track_id === trackId);
+      if (!matchingTrack) {
+        console.warn('[tracking] Track ID mismatch! Available track_ids:', allTracks?.map(t => t.track_id));
+      }
+    }
+
+    // First, verify the track exists
+    const { data: existingTracks, error: fetchError } = await window.supabaseClient
+      .from('walkingtrack')
+      .select('track_id, name')
       .eq('user_id', user.id)
       .eq('track_id', trackId);
 
+    if (fetchError) {
+      console.error('[tracking] Error fetching track before deletion:', fetchError);
+      return { success: false, error: fetchError };
+    }
+
+    if (!existingTracks || existingTracks.length === 0) {
+      console.warn('[tracking] Track not found in Supabase (may have already been deleted):', trackId);
+      // This is okay - track might have been deleted already
+      return { success: true, message: 'Track not found (already deleted?)' };
+    }
+
+    console.log('[tracking] Found track to delete:', existingTracks[0]);
+
+    // Delete from Supabase
+    const { data, error } = await window.supabaseClient
+      .from('walkingtrack')
+      .delete()
+      .eq('user_id', user.id)
+      .eq('track_id', trackId)
+      .select(); // Return deleted rows to verify
+
     if (error) {
       console.error('[tracking] Error deleting track from Supabase:', error);
+      return { success: false, error: error };
+    }
+
+    // Verify deletion
+    if (data && data.length > 0) {
+      console.log('[tracking] Successfully deleted track from Supabase:', data[0]);
+      return { success: true, deleted: data[0] };
     } else {
-      console.log('[tracking] Successfully deleted track from Supabase');
+      console.warn('[tracking] Delete query executed but no rows were deleted. Track ID:', trackId);
+      return { success: false, error: 'No rows deleted' };
     }
 
   } catch (error) {
     console.error('[tracking] Error in deleteTrackFromSupabase:', error);
+    return { success: false, error: error.message || error };
   }
 }
 

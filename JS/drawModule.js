@@ -1290,19 +1290,43 @@
     if (!map) return;
     
     const coordinates = feature.geometry.coordinates;
-    if (coordinates.length === 0) return;
+    if (!coordinates || coordinates.length === 0) {
+      console.warn('[draw] Cannot add label: coordinates are empty or invalid');
+      return;
+    }
+    
+    // Validate coordinates - filter out invalid entries
+    const validCoordinates = coordinates.filter(coord => {
+      if (!Array.isArray(coord) || coord.length < 2) return false;
+      const [lng, lat] = coord;
+      return typeof lng === 'number' && typeof lat === 'number' && 
+             !isNaN(lng) && !isNaN(lat) &&
+             isFinite(lng) && isFinite(lat) &&
+             Math.abs(lng) <= 180 && Math.abs(lat) <= 90;
+    });
+    
+    if (validCoordinates.length === 0) {
+      console.warn('[draw] Cannot add label: no valid coordinates found');
+      return;
+    }
     
     // Calculate the geometric center of the track (not just middle index)
     // Calculate the actual center point along the track path
-    const totalDistance = calculateTrackDistance(coordinates);
+    const totalDistance = calculateTrackDistance(validCoordinates);
     const centerDistance = totalDistance / 2;
     
     let accumulatedDistance = 0;
-    let middleCoord = coordinates[0]; // fallback to first point
+    let middleCoord = validCoordinates[0]; // fallback to first valid point
     
-    for (let i = 0; i < coordinates.length - 1; i++) {
-      const currentPoint = coordinates[i];
-      const nextPoint = coordinates[i + 1];
+    for (let i = 0; i < validCoordinates.length - 1; i++) {
+      const currentPoint = validCoordinates[i];
+      const nextPoint = validCoordinates[i + 1];
+      
+      // Validate points before calculating distance
+      if (!Array.isArray(currentPoint) || !Array.isArray(nextPoint) ||
+          currentPoint.length < 2 || nextPoint.length < 2) {
+        continue;
+      }
       
       // Calculate distance between current and next point
       const segmentDistance = calculateDistance(currentPoint, nextPoint);
@@ -1315,11 +1339,24 @@
         const lng = currentPoint[0] + (nextPoint[0] - currentPoint[0]) * ratio;
         const lat = currentPoint[1] + (nextPoint[1] - currentPoint[1]) * ratio;
         
-        middleCoord = [lng, lat];
+        // Validate the calculated coordinates
+        if (typeof lng === 'number' && typeof lat === 'number' && 
+            !isNaN(lng) && !isNaN(lat) && isFinite(lng) && isFinite(lat)) {
+          middleCoord = [lng, lat];
+        }
         break;
       }
       
       accumulatedDistance += segmentDistance;
+    }
+    
+    // Final validation of middleCoord
+    if (!Array.isArray(middleCoord) || middleCoord.length < 2 ||
+        typeof middleCoord[0] !== 'number' || typeof middleCoord[1] !== 'number' ||
+        isNaN(middleCoord[0]) || isNaN(middleCoord[1]) ||
+        !isFinite(middleCoord[0]) || !isFinite(middleCoord[1])) {
+      console.error('[draw] Invalid middleCoord calculated, using first valid coordinate:', middleCoord);
+      middleCoord = validCoordinates[0];
     }
     
     // Get the track color
@@ -1464,13 +1501,40 @@
     
     // Position the element using CSS transforms
     const updateMarkerPosition = () => {
-      const pixelCoords = map.project(middleCoord);
-      trackLabelEl.style.position = 'absolute';
-      trackLabelEl.style.left = pixelCoords.x + 'px';
-      trackLabelEl.style.top = pixelCoords.y + 'px';
-      trackLabelEl.style.transform = 'translate(-50%, -50%)'; // Center the element
-      trackLabelEl.style.zIndex = '1000';
-      trackLabelEl.style.pointerEvents = 'auto';
+      try {
+        // Validate middleCoord before projecting
+        if (!Array.isArray(middleCoord) || middleCoord.length < 2 ||
+            typeof middleCoord[0] !== 'number' || typeof middleCoord[1] !== 'number' ||
+            isNaN(middleCoord[0]) || isNaN(middleCoord[1]) ||
+            !isFinite(middleCoord[0]) || !isFinite(middleCoord[1])) {
+          console.error('[draw] Invalid middleCoord in updateMarkerPosition:', middleCoord);
+          // Hide the label if coordinates are invalid
+          trackLabelEl.style.display = 'none';
+          return;
+        }
+        
+        const pixelCoords = map.project(middleCoord);
+        
+        // Validate pixel coordinates
+        if (!pixelCoords || typeof pixelCoords.x !== 'number' || typeof pixelCoords.y !== 'number' ||
+            isNaN(pixelCoords.x) || isNaN(pixelCoords.y)) {
+          console.error('[draw] Invalid pixel coordinates from map.project:', pixelCoords);
+          trackLabelEl.style.display = 'none';
+          return;
+        }
+        
+        trackLabelEl.style.position = 'absolute';
+        trackLabelEl.style.left = pixelCoords.x + 'px';
+        trackLabelEl.style.top = pixelCoords.y + 'px';
+        trackLabelEl.style.transform = 'translate(-50%, -50%)'; // Center the element
+        trackLabelEl.style.zIndex = '1000';
+        trackLabelEl.style.pointerEvents = 'auto';
+        trackLabelEl.style.display = 'block'; // Ensure it's visible if coordinates are valid
+      } catch (error) {
+        console.error('[draw] Error updating marker position:', error, 'middleCoord:', middleCoord);
+        // Hide the label on error
+        trackLabelEl.style.display = 'none';
+      }
     };
     
     // Add the element to the map container
