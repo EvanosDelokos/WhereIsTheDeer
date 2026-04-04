@@ -57,7 +57,7 @@
                 
                 console.log("🌐 Using redirect URL:", redirectUrl);
                 
-                const { data, error } = await supabase.auth.signInWithOAuth({
+                const { data, error } = await window.supabaseClient.auth.signInWithOAuth({
                     provider: 'google',
                     options: {
                         redirectTo: redirectUrl,
@@ -88,7 +88,7 @@
             try {
                 console.log("🔓 Force logout initiated...");
                 
-                const { error } = await supabase.auth.signOut();
+                const { error } = await window.supabaseClient.auth.signOut();
                 if (error) {
                     console.error("❌ Logout error:", error.message);
                 } else {
@@ -114,7 +114,7 @@
         
         // Check current status
         async function checkStatus() {
-            const { data: { session } } = await supabase.auth.getSession();
+            const { data: { session } } = await window.supabaseClient.auth.getSession();
             const statusEl = document.getElementById('status');
             
             if (session && session.user) {

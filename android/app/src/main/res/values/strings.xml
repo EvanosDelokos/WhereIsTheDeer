@@ -1,0 +1,7 @@
+<?xml version='1.0' encoding='utf-8'?>
+<resources>
+    <string name="app_name">whereisthedeer</string>
+    <string name="title_activity_main">whereisthedeer</string>
+    <string name="package_name">com.whereisthedeer.app</string>
+    <string name="custom_url_scheme">com.whereisthedeer.app</string>
+</resources>

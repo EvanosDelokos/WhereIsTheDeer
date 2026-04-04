@@ -1,4 +1,49 @@
 // Auth modal module loaded
+console.log("📦 authModal.js script loading...");
+
+/**
+ * Google OAuth: native app uses deep-link redirect; web uses current site origin (PKCE callback on map).
+ */
+async function startGoogleOAuthFlow(mode) {
+  const isNativeApp = !!window.Capacitor;
+  const redirectTo = isNativeApp ? 'capacitor://localhost' : `${window.location.origin}/map.html`;
+  console.log('OAuth environment:', isNativeApp ? 'Capacitor App' : 'Web Browser');
+  console.log('Using redirect:', redirectTo);
+
+  const { data, error } = await window.supabaseClient.auth.signInWithOAuth({
+    provider: 'google',
+    options: { redirectTo }
+  });
+
+  if (error) {
+    console.error('Google login error:', error);
+    const prefix = mode === 'register' ? 'Registration failed: ' : 'Login failed: ';
+    alert(prefix + error.message);
+    return;
+  }
+
+  if (!data?.url) return;
+
+  console.log('🟢 OAuth URL received:', data.url);
+
+  if (isNativeApp) {
+    const Browser = window.Capacitor?.Plugins?.Browser;
+    if (!Browser || typeof Browser.open !== 'function') {
+      console.error('❌ Browser plugin not available:', {
+        capacitor: !!window.Capacitor,
+        plugins: window.Capacitor?.Plugins,
+        browser: Browser
+      });
+      alert("ERROR: Browser plugin not available. Please ensure:\n1. You ran 'npx cap sync android'\n2. You rebuilt the app\n3. You're testing on an Android device");
+      return;
+    }
+    console.log('✅ Browser plugin found, opening URL...');
+    await Browser.open({ url: data.url });
+    console.log('✅ Browser.open() completed');
+  } else {
+    window.location.href = data.url;
+  }
+}
 
 // Auth Modal Management
 class AuthModal {
@@ -47,37 +92,7 @@ class AuthModal {
 
         try {
           console.log("🔹 Google login initiated...");
-
-          // Detect environment automatically
-          const origin = window.location.origin;
-          const isLocal = origin.includes('localhost') || origin.includes('127.0.0.1');
-
-          // Pick redirect based on environment
-          const redirectUrl = isLocal
-            ? `${origin}/map.html`                     // Local dev
-            : `https://www.whereisthedeer.com.au/map.html`; // Live site
-
-          console.log("🌐 Using redirect URL:", redirectUrl);
-
-          const { data, error } = await window.supabaseClient.auth.signInWithOAuth({
-            provider: 'google',
-            options: {
-              redirectTo: redirectUrl,
-              queryParams: {
-                prompt: 'select_account' // Always show account selector
-              },
-              scopes: 'https://www.googleapis.com/auth/userinfo.email https://www.googleapis.com/auth/userinfo.profile'
-            }
-          });
-
-          if (error) {
-            console.error("❌ Google OAuth error:", error.message);
-            alert("Login failed: " + error.message);
-          } else if (data?.url) {
-            console.log("🟢 Redirecting to:", data.url);
-            window.location.href = data.url;
-          }
-
+          await startGoogleOAuthFlow('login');
         } catch (err) {
           console.error("🚨 Unexpected login error:", err);
           alert('Google login failed: ' + (err?.message || JSON.stringify(err)));
@@ -92,37 +107,7 @@ class AuthModal {
 
         try {
           console.log("🔹 Google register initiated...");
-
-          // Detect environment automatically
-          const origin = window.location.origin;
-          const isLocal = origin.includes('localhost') || origin.includes('127.0.0.1');
-
-          // Pick redirect based on environment
-          const redirectUrl = isLocal
-            ? `${origin}/map.html`                     // Local dev
-            : `https://www.whereisthedeer.com.au/map.html`; // Live site
-
-          console.log("🌐 Using redirect URL:", redirectUrl);
-
-          const { data, error } = await window.supabaseClient.auth.signInWithOAuth({
-            provider: 'google',
-            options: {
-              redirectTo: redirectUrl,
-              queryParams: {
-                prompt: 'select_account' // Always show account selector
-              },
-              scopes: 'https://www.googleapis.com/auth/userinfo.email https://www.googleapis.com/auth/userinfo.profile'
-            }
-          });
-
-          if (error) {
-            console.error("❌ Google OAuth error:", error.message);
-            alert("Registration failed: " + error.message);
-          } else if (data?.url) {
-            console.log("🟢 Redirecting to:", data.url);
-            window.location.href = data.url;
-          }
-
+          await startGoogleOAuthFlow('register');
         } catch (err) {
           console.error("🚨 Unexpected register error:", err);
           alert('Google registration failed: ' + (err?.message || JSON.stringify(err)));
@@ -320,6 +305,7 @@ class AuthModal {
   }
 
   async openLoginModal() {
+    console.log('🔓 AuthModal.openLoginModal() called');
     const { data: { session } } = await window.supabaseClient.auth.getSession();
     if (session && session.user) {
       console.log('🚫 Attempted to open login modal while logged in - aborting');
@@ -327,10 +313,18 @@ class AuthModal {
       return;
     }
     if (this.loginModal) {
+      console.log('  - Removing "hidden" class...');
       this.loginModal.classList.remove('hidden');
+      console.log('  - Setting display to flex...');
       this.loginModal.style.display = 'flex';
-      this.emailInput.focus();
-      console.log('🔓 Login modal opened');
+      console.log('  - Modal classes:', this.loginModal.className);
+      console.log('  - Modal style.display:', this.loginModal.style.display);
+      if (this.emailInput) {
+        this.emailInput.focus();
+      }
+      console.log('✅ Login modal opened successfully');
+    } else {
+      console.error('❌ ERROR: this.loginModal is null!');
     }
   }
 
@@ -401,14 +395,144 @@ class AuthModal {
 }
 
 // Initialize auth modal when DOM is ready
-document.addEventListener('DOMContentLoaded', () => {
-  // Create global instance
-  window.authModal = new AuthModal();
+function initializeAuthModal() {
+  console.log("🔧 Initializing AuthModal...");
+  try {
+    // Create global instance
+    window.authModal = new AuthModal();
+    console.log("✅ AuthModal instance created");
+  } catch (err) {
+    console.error("❌ Error creating AuthModal:", err);
+    return;
+  }
   
+  // DIAGNOSTIC: Check Capacitor and Browser plugin availability
+  console.log("🔍 DIAGNOSTIC: Checking Capacitor environment...");
+  console.log("  - window.Capacitor exists:", !!window.Capacitor);
+  console.log("  - window.Capacitor.Plugins:", window.Capacitor?.Plugins);
+  console.log("  - window.Capacitor.isNativePlatform:", window.Capacitor?.isNativePlatform?.());
+  
+  // Listen for Browser finished event - when OAuth completes and browser closes
+  if (window.Capacitor?.Plugins?.Browser) {
+    const Browser = window.Capacitor.Plugins.Browser;
+    console.log("✅ Browser plugin found via Capacitor.Plugins");
+    console.log("  - Browser object:", Browser);
+    console.log("  - Browser.open exists:", typeof Browser.open === 'function');
+    
+    Browser.addListener('browserFinished', async () => {
+      const { data, error } = await window.supabaseClient.auth.getSession();
+      console.log("OAuth returned to app, session:", data?.session, "error:", error);
+      if (data?.session) {
+        // Close login modals
+        const loginModal = document.getElementById('loginModal');
+        const registerModal = document.getElementById('registerModal');
+        if (loginModal) {
+          loginModal.classList.add('hidden');
+          loginModal.style.display = 'none';
+        }
+        if (registerModal) {
+          registerModal.style.display = 'none';
+        }
+        // Update login button text
+        const btn = document.getElementById('toolbarLoginBtn');
+        if (btn) {
+          btn.innerHTML = '👤 <span>Account</span>';
+          if (typeof forceAccountButtonSizing === 'function') {
+            forceAccountButtonSizing();
+          }
+        }
+      }
+    });
+  } else {
+    console.error("❌ Browser plugin not available via window.Capacitor.Plugins");
+    console.error("  SOLUTION: Run 'npx cap sync android' and rebuild the app.");
+  }
+  
+  // Handle OAuth deep link callback in Capacitor
+  if (window.Capacitor?.Plugins?.App) {
+    const App = window.Capacitor.Plugins.App;
+    
+    // Listen for app opening from deep link (OAuth callback)
+    App.addListener('appUrlOpen', async (data) => {
+        console.log("🔗 App opened from deep link:", data.url);
+        
+        // Check if this is our OAuth callback
+        if (data.url && data.url.startsWith('capacitor://localhost')) {
+          try {
+            // Parse URL to get query parameters
+            const url = new URL(data.url);
+            const code = url.searchParams.get('code');
+            const state = url.searchParams.get('state');
+            const error = url.searchParams.get('error');
+            
+            if (error) {
+              console.error("❌ OAuth error from callback:", error);
+              alert('Login failed: ' + error);
+              return;
+            }
+            
+            if (code && state) {
+              console.log("🔄 Processing OAuth callback from deep link...");
+              // Exchange code for session
+              const { data: sessionData, error: sessionError } = await window.supabaseClient.auth.exchangeCodeForSession({
+                code: code
+              });
+              
+              if (sessionError) {
+                console.error("❌ Session exchange error:", sessionError);
+                alert('Session exchange failed: ' + sessionError.message);
+                return;
+              }
+              
+              if (sessionData?.session) {
+                console.log("✅ OAuth completed, session:", sessionData.session.user.email);
+                // Close login modals
+                const loginModal = document.getElementById('loginModal');
+                const registerModal = document.getElementById('registerModal');
+                if (loginModal) {
+                  loginModal.classList.add('hidden');
+                  loginModal.style.display = 'none';
+                }
+                if (registerModal) {
+                  registerModal.style.display = 'none';
+                }
+                // Update login button text
+                const btn = document.getElementById('toolbarLoginBtn');
+                if (btn) {
+                  btn.innerHTML = '👤 <span>Account</span>';
+                  if (typeof forceAccountButtonSizing === 'function') {
+                    forceAccountButtonSizing();
+                  }
+                }
+              }
+            }
+          } catch (err) {
+            console.error("🚨 Error processing OAuth callback:", err);
+          }
+        }
+      });
+  } else {
+    console.log("⚠️ App plugin not available via window.Capacitor.Plugins");
+  }
+
   // Add global functions for external access
   window.openLoginModal = () => {
+    console.log("🔓 window.openLoginModal() called");
+    console.log("  - window.authModal exists:", !!window.authModal);
     if (window.authModal) {
+      console.log("  - Calling authModal.openLoginModal()...");
       window.authModal.openLoginModal();
+    } else {
+      console.error("❌ ERROR: window.authModal is not initialized!");
+      console.error("  - Attempting to find loginModal element directly...");
+      const loginModal = document.getElementById('loginModal');
+      if (loginModal) {
+        console.log("  - Found loginModal element, showing it directly...");
+        loginModal.classList.remove('hidden');
+        loginModal.style.display = 'flex';
+      } else {
+        console.error("  - loginModal element not found!");
+      }
     }
   };
   
@@ -437,7 +561,15 @@ document.addEventListener('DOMContentLoaded', () => {
   };
   
   console.log('✅ Auth modal initialized');
-});
+}
+
+// Try multiple initialization strategies
+if (document.readyState === 'loading') {
+  document.addEventListener('DOMContentLoaded', initializeAuthModal);
+} else {
+  // DOM already loaded
+  initializeAuthModal();
+}
 
 // Export for module usage
 if (typeof module !== 'undefined' && module.exports) {

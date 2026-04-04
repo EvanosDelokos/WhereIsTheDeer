@@ -32,10 +32,10 @@
     // ✅ Attach to window for global access (required by authModal.js)
     window.supabaseClient = supabase;
 
-    // 🗺️ Mapbox Configuration
-    // Mapbox token configured
-    const MAPBOX_TOKEN = 'pk.eyJ1IjoiZXZhbmtva2EiLCJhIjoiY21lNWJmY3F2MHJzOTJrb2h1MWl4eDZpMCJ9.5ZEQqD207yalsIQLX5tpdg';
-    
+    // 🗺️ Mapbox Configuration — set your public token locally (do not commit real tokens)
+    const MAPBOX_TOKEN = 'YOUR_MAPBOX_TOKEN_HERE';
+    window.MAPBOX_TOKEN = MAPBOX_TOKEN;
+
     // Default map center and zoom (Victoria, Australia)
     const DEFAULT_CENTER = [-37.81, 144.95];
     const DEFAULT_ZOOM = 7;
@@ -68,7 +68,7 @@
       console.log("🔍 OAuth code:", urlParams.get('code'));
       console.log("🔍 OAuth state:", urlParams.get('state'));
       
-      supabase.auth.exchangeCodeForSession().then(({ data, error }) => {
+      window.supabaseClient.auth.exchangeCodeForSession().then(({ data, error }) => {
         if (error) {
           console.error("🔴 Session exchange error:", error);
           console.error("🔴 Full error details:", JSON.stringify(error, null, 2));
@@ -88,7 +88,7 @@
     }
 
     // Then try to restore any saved session
-    supabase.auth.getSession().then(({ data: { session } }) => {
+    window.supabaseClient.auth.getSession().then(({ data: { session } }) => {
       console.log("🔹 getSession() called");
       if (session) {
         loggedInUser = session.user;
@@ -100,6 +100,7 @@
         }
       }
     });
+
   </script>
 
 
@@ -635,7 +636,7 @@ if (speciesFilter) {
 function closeAllDropdownsAndModals() {
   const ids = [
     'toolsDropdown', 'layersDropdown', 'gpxModal', 'journalModal', /* 'sssModal', */ // SSS not in use currently
-    'authModal', 'loginModal', 'registerModal', 'weatherWrapper', 'weatherTail'
+    'loginModal', 'registerModal', 'weatherWrapper', 'weatherTail'
   ];
   ids.forEach(id => {
     const el = document.getElementById(id);
@@ -1110,24 +1111,8 @@ if (journalBtn && journalModal) {
 //   openAlignRight = false; 
 // };
 
-// --- Login Modal Logic ---
-document.addEventListener('DOMContentLoaded', () => {
-  const loginBtn = document.getElementById('toolbarLoginBtn');
-  const loginModal = document.getElementById('loginModal');
-  const loginPopupClose = loginModal.querySelector('.close-modal');
-  console.log('🔍 loginPopupClosefound:', !!loginPopupClose);
-  const googleLoginBtn = document.getElementById('googleLoginBtn');
-
-  
-  if (loginPopupClose) {
-    loginPopupClose.addEventListener('click', () => {
-      console.log('🔘 Old login popup close button clicked');
-      loginModal.style.display = 'none';
-    });
-  } else {
-    console.log('❌ loginPopupClose not found');
-  }
-});
+// NOTE: Login modal logic removed - now handled by authModal.js
+// The login modal uses 'loginModal' ID and close button uses 'loginCloseBtn' ID
 
 // Update login modal content based on user status
 function updateLoginModalContent() {
@@ -1179,35 +1164,8 @@ if (logoutBtn) {
   });
 }
 
-document.addEventListener('DOMContentLoaded', () => {
-  const googleLoginBtn = document.getElementById('googleLoginBtn');
-  if (!googleLoginBtn) {
-    console.warn("⚠️ googleLoginBtn not found");
-    return;
-  }
-
-  googleLoginBtn.addEventListener('click', async () => {
-    console.log("🔹 Login button clicked");
-
-    const redirectUrl = window.location.origin + window.location.pathname;
-    console.log("🔹 Starting OAuth flow with redirectTo:", redirectUrl);
-    
-    const { data, error } = await supabase.auth.signInWithOAuth({
-      provider: 'google',
-      options: {
-        redirectTo: redirelctUr
-      }
-    });
-
-    console.log("🔹 Supabase OAuth response:", data, error);
-
-    if (error) {
-      console.error("🔴 Login error:", error.message);
-    } else if (data?.url) {
-      console.log("🟢 OAuth URL generated, redirecting to:", data.url);
-    }
-  });
-});
+// NOTE: Google login button handler removed - now handled by authModal.js
+// The button ID is 'googleLoginBtnNew', not 'googleLoginBtn'
 
 // 🔐 Step 1: Set the plan access levels
 const accessMap = true;
@@ -1225,7 +1183,7 @@ function requirePlan(minPlan, callback) {
   const rank = { free: 0, basic: 1, premium: 2 };
   if (!loggedInUser) {
     showUpgradeMessage();
-    document.getElementById("authModal").style.display = "block";
+    document.getElementById("loginModal").style.display = "block";
     return;
   }
   if (rank[currentUserPlan] < rank[minPlan]) {
@@ -1492,7 +1450,7 @@ async function fetchUserPlan() {
   planLoaded = true; // Set flag immediately to prevent concurrent calls
   
   try {
-    const { data: { user } } = await supabase.auth.getUser();
+    const { data: { user } } = await window.supabaseClient.auth.getUser();
     if (!user) {
       console.log("❌ No user found in fetchUserPlan");
       planLoaded = false; // Reset flag on error
@@ -1563,6 +1521,11 @@ async function fetchUserPlan() {
         // applyModalProtection('sssModal'); // SSS not in use currently
       }
     }
+
+    if (currentUserPlan !== 'premium') {
+      const hidden = document.getElementById('uiHidden');
+      if (hidden) hidden.remove();
+    }
   } catch (error) {
     console.error("❌ Error in fetchUserPlan:", error);
     // Set to free as fallback
@@ -1574,6 +1537,10 @@ async function fetchUserPlan() {
     applyModalProtection('journalModal');
     // applyModalProtection('sssModal'); // SSS not in use currently
     planLoaded = false; // Reset flag on error
+    if (currentUserPlan !== 'premium') {
+      const hidden = document.getElementById('uiHidden');
+      if (hidden) hidden.remove();
+    }
   }
 }
 
@@ -2388,7 +2355,7 @@ window.debugButtonListeners = function() {
   });
 };
 
-supabase.auth.getUser().then(({ data: { user } }) => {
+window.supabaseClient.auth.getUser().then(({ data: { user } }) => {
   if (user) {
     loggedInUser = user;
     fetchUserPlan();
@@ -2404,7 +2371,7 @@ supabase.auth.getUser().then(({ data: { user } }) => {
 
 
 // Listen for auth state changes
-supabase.auth.onAuthStateChange((event, session) => {
+window.supabaseClient.auth.onAuthStateChange((event, session) => {
   console.log("🔄 Auth state change:", event, session);
   if (event === 'SIGNED_IN' && session?.user) {
     loggedInUser = session.user;
@@ -2479,7 +2446,7 @@ window.addEventListener('DOMContentLoaded', function() {
     if (window.location.hash.includes('access_token')) {
       console.log("🎉 OAuth login detected, showing confirmation");
       setTimeout(() => {
-        document.getElementById('authModal').style.display = 'block';
+        document.getElementById('loginModal').style.display = 'block';
         updateLoginModalContent();
       }, 500); // Small delay to ensure everything is ready
     }
@@ -2502,14 +2469,6 @@ window.addEventListener('DOMContentLoaded', function() {
   console.log("[Init] Modal protection will be applied after user plan is fetched");
   
   console.debug("[Init] Gating and popup logic initialized");
-
-  // 🔧 Optional: Remove entire container if user is free
-  if (currentUserPlan !== 'premium') {
-    const hidden = document.getElementById('uiHidden');
-    if (hidden) hidden.remove();
-  }
-
-
 
   // 🎯 Add a plan badge in the bottom right corner
   const planIndicator = document.getElementById('planIndicator');
@@ -2537,7 +2496,7 @@ function setPremiumStatus(isPremium) {
 // Function to manually set user as premium in database
 async function setUserPremiumInDatabase(isPremium) {
   try {
-    const { data: { user } } = await supabase.auth.getUser();
+    const { data: { user } } = await window.supabaseClient.auth.getUser();
     if (!user) {
       console.log("❌ No user found for database update");
       return;
@@ -2565,7 +2524,7 @@ async function setUserPremiumInDatabase(isPremium) {
 // Function to check current user plan status
 async function checkUserPlanStatus() {
   try {
-    const { data: { user } } = await supabase.auth.getUser();
+    const { data: { user } } = await window.supabaseClient.auth.getUser();
     if (!user) {
       console.log("❌ No user logged in");
       return;
@@ -2877,25 +2836,12 @@ function clearGpxFiles() {
     console.log('[GPX] Cleared GPX files from localStorage');
   }
   
-  // Remove cluster group from map
-  if (gpxClusterGroup) {
-    const map = window.WITD?.map;
-    if (map) {
-      map.removeLayer(gpxClusterGroup);
-    }
-    gpxClusterGroup = null;
-  }
-  
-  // Remove all GPX track layers from the map
+  gpxClusterGroup = null;
+
+  // Clear Mapbox GPX tracks, pins, and labels (uses layer/source ids internally)
   const map = window.WITD?.map;
-  if (map) {
-    // Find and remove all GPX layers
-    map.eachLayer((layer) => {
-      if (layer._gpx) {
-        console.log('[GPX] Removing GPX layer:', layer);
-        map.removeLayer(layer);
-      }
-    });
+  if (map && typeof window.clearAllGpxTracks === 'function') {
+    window.clearAllGpxTracks();
   }
   
   // Clear any existing GPX list in the UI
@@ -2927,14 +2873,17 @@ function clearGpxFiles() {
   setTimeout(() => {
     const map = window.WITD?.map;
     if (map) {
-      let gpxLayerCount = 0;
-      map.eachLayer((layer) => {
-        if (layer._gpx) {
-          gpxLayerCount++;
-          console.log('[GPX] Found GPX layer after clearing:', layer);
+      try {
+        const src = map.getSource('gpx-tracks');
+        let featureCount = 0;
+        if (src && typeof src.serialize === 'function') {
+          const data = src.serialize().data;
+          featureCount = data && data.features ? data.features.length : 0;
         }
-      });
-      console.log('[GPX] GPX layers on map after clearing:', gpxLayerCount);
+        console.log('[GPX] GPX track features in source after clearing:', featureCount);
+      } catch (err) {
+        console.log('[GPX] Could not read gpx-tracks source after clearing:', err);
+      }
     }
     
     // Reset the gpxCleared flag after 2 seconds to allow new uploads
@@ -3060,105 +3009,62 @@ async function isUserLoggedIn() {
   return false;
 }
 
-// Helper: Google login for modal button
+// Helper: Google login for modal button (same redirect rules as authModal.js startGoogleOAuthFlow)
 async function loginWithGoogle() {
   if (!window.supabaseClient || !window.supabaseClient.auth) return;
   try {
-    await window.supabaseClient.auth.signInWithOAuth({
+    const isNativeApp = !!window.Capacitor;
+    const redirectTo = isNativeApp ? 'capacitor://localhost' : `${window.location.origin}/map.html`;
+    console.log('OAuth environment:', isNativeApp ? 'Capacitor App' : 'Web Browser');
+    console.log('Using redirect:', redirectTo);
+
+    const { data, error } = await window.supabaseClient.auth.signInWithOAuth({
       provider: 'google',
-      options: {
-        redirectTo: window.location.origin + window.location.pathname,
-        prompt: 'select_account',
-        scopes: 'https://www.googleapis.com/auth/userinfo.email https://www.googleapis.com/auth/userinfo.profile'
-      }
+      options: { redirectTo }
     });
+
+    if (error) {
+      console.error('Google login error:', error);
+      alert('Google login failed: ' + error.message);
+      return;
+    }
+
+    if (!data?.url) return;
+
+    console.log('🟢 OAuth URL received:', data.url);
+
+    if (isNativeApp) {
+      const Browser = window.Capacitor?.Plugins?.Browser;
+      if (!Browser || typeof Browser.open !== 'function') {
+        console.error('❌ Browser plugin not available:', {
+          capacitor: !!window.Capacitor,
+          plugins: window.Capacitor?.Plugins,
+          browser: Browser
+        });
+        alert("ERROR: Browser plugin not available. Please ensure:\n1. You ran 'npx cap sync android'\n2. You rebuilt the app\n3. You're testing on an Android device");
+        return;
+      }
+      await Browser.open({ url: data.url });
+      console.log('✅ Browser.open() completed');
+    } else {
+      window.location.href = data.url;
+    }
   } catch (err) {
     alert('Google login failed: ' + (err?.message || JSON.stringify(err)));
   }
 }
 
 document.addEventListener('DOMContentLoaded', function() {
-  var loginBtn = document.getElementById('toolbarLoginBtn');
-  var authModal = document.getElementById('authModal');
-  var loginModal = document.getElementById('loginModal');
-
-  // --- Toolbar Login Button Logic ---
-  if (loginBtn) {
-    loginBtn.addEventListener('click', async function(e) {
-      e.stopPropagation();
-      if (await isUserLoggedIn()) {
-        const { data: { session } } = await window.supabaseClient.auth.getSession();
-        if (session && session.user) {
-          window.showAccountPopover?.(session.user);
-        }
-      } else if (authModal) {
-        authModal.style.display = 'flex';
-      }
-    });
-  }
-
-  // --- Google login only from modal button ---
-  var googleLoginBtn = document.getElementById('googleLoginBtn');
-  if (googleLoginBtn) {
-    googleLoginBtn.addEventListener('click', function(e) {
-      e.preventDefault();
-      loginWithGoogle();
-    });
-  }
-
-  // --- Login modal close logic ---
-  var loginCloseBtn = document.getElementById('loginCloseBtn');
-  if (loginCloseBtn && loginModal) {
-    loginCloseBtn.addEventListener('click', function() {
-      loginModal.style.display = 'none';
-    });
-  }
+  // NOTE: Toolbar login button is handled by main.js
+  // NOTE: Google login button (googleLoginBtnNew) is handled by authModal.js
+  // NOTE: Modal close buttons are handled by authModal.js
+  // This block intentionally left minimal to avoid conflicts
+  
+  console.log('✅ map.html DOMContentLoaded - login handlers are in main.js and authModal.js');
 });
 </script>
 
-<script>
-document.addEventListener('DOMContentLoaded', function() {
-  const toolbarLoginBtn = document.getElementById('toolbarLoginBtn');
-  const authModal = document.getElementById('authModal');
-
-  toolbarLoginBtn?.addEventListener('click', async () => {
-    if (!window.supabaseClient || !window.supabaseClient.auth) return;
-    const { data: { session } } = await window.supabaseClient.auth.getSession();
-    if (session && session.user) {
-      window.showAccountPopover(session.user);
-    } else {
-      if (authModal) {
-        authModal.style.display = 'flex';
-      }
-    }
-  });
-
-  // Google login only from modal button
-  var googleLoginBtn = document.getElementById('googleLoginBtn');
-  if (googleLoginBtn) {
-    googleLoginBtn.addEventListener('click', function(e) {
-      e.preventDefault();
-      if (!window.supabaseClient || !window.supabaseClient.auth) return;
-      window.supabaseClient.auth.signInWithOAuth({
-        provider: 'google',
-        options: {
-          redirectTo: window.location.origin + window.location.pathname,
-          prompt: 'select_account',
-          scopes: 'https://www.googleapis.com/auth/userinfo.email https://www.googleapis.com/auth/userinfo.profile'
-        }
-      });
-    });
-  }
-
-  // Login modal close logic
-  var loginCloseBtn = document.getElementById('loginCloseBtn');
-  if (loginCloseBtn && authModal) {
-    loginCloseBtn.addEventListener('click', function() {
-      authModal.style.display = 'none';
-    });
-  }
-});
-</script>
+<!-- NOTE: Login handlers removed - now handled by main.js (toolbar button) and authModal.js (modal buttons) -->
 
 <script type="module">
 import { initTracking } from './JS/trackingModule.js';
@@ -3284,10 +3190,18 @@ document.addEventListener('DOMContentLoaded', () => {
   document.body.appendChild(debugContainer);
   document.body.appendChild(toggleBtn);
 
+  function safeSerialize(a) {
+    if (a === null || a === undefined) return String(a);
+    if (typeof a !== 'object') return String(a);
+    try {
+      return JSON.stringify(a, null, 2);
+    } catch (e) {
+      return '[Object — cannot serialize (e.g. Mapbox map with circular refs)]';
+    }
+  }
+
   function logToScreen(type, ...args) {
-    const msg = args.map(a => 
-      typeof a === 'object' ? JSON.stringify(a, null, 2) : String(a)
-    ).join(' ');
+    const msg = args.map(a => safeSerialize(a)).join(' ');
     const line = document.createElement('div');
     line.textContent = `[${type.toUpperCase()}] ${msg}`;
     if (type === 'error') line.style.color = '#ff6b6b';

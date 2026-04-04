@@ -1,0 +1,3237 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <title>WhereIsTheDeer Map</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+
+  <!-- Favicon -->
+  <link rel="icon" href="Images/Logos/WhereIsTheDeerLogo.png" type="image/png">
+  <link rel="shortcut icon" href="Images/Logos/WhereIsTheDeerLogo.png" type="image/png">
+
+  <!-- Mapbox GL JS -->
+  <script src='https://api.mapbox.com/mapbox-gl-js/v3.14.0/mapbox-gl.js'></script>
+  <link href='https://api.mapbox.com/mapbox-gl-js/v3.14.0/mapbox-gl.css' rel='stylesheet' />
+
+  <!-- Supabase -->
+  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.39.4/dist/umd/supabase.min.js"></script>
+  <script>
+    // 🎯 Global variables - declare at the top to avoid ReferenceError
+    let loggedInUser = null;
+    let currentUserPlan = 'free';
+    let planLoaded = false; // Flag to prevent multiple plan fetches
+    
+    // Initialize global window variables
+    window.currentUserPlan = currentUserPlan;
+
+    const supabase = window.supabase.createClient(
+      'https://auth.whereisthedeer.com.au',
+      'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InBkc2tva2lsc2FsamhhZ3Z3YXpuIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NTM2MTQwOTUsImV4cCI6MjA2OTE5MDA5NX0.ekpHjsXv55MgOvAVJNYdp4wNuGkGhZghMt8DWfzZikE'
+    );
+    
+    // ✅ Attach to window for global access (required by authModal.js)
+    window.supabaseClient = supabase;
+
+    // 🗺️ Mapbox Configuration — set your public token locally (do not commit real tokens)
+    const MAPBOX_TOKEN = 'YOUR_MAPBOX_TOKEN_HERE';
+    window.MAPBOX_TOKEN = MAPBOX_TOKEN;
+
+    // Default map center and zoom (Victoria, Australia)
+    const DEFAULT_CENTER = [-37.81, 144.95];
+    const DEFAULT_ZOOM = 7;
+
+    // Only run exchangeCodeForSession() if URL contains ?code=
+    const urlParams = new URLSearchParams(window.location.search);
+    const hasOAuthCode = urlParams.has('code') && urlParams.has('state');
+    const hasOAuthError = urlParams.has('error');
+
+    // Handle OAuth errors from Supabase callback
+    if (hasOAuthError) {
+      const error = urlParams.get('error');
+      const errorCode = urlParams.get('error_code');
+      const errorDesc = urlParams.get('error_description');
+      console.error("🔴 OAuth Error:", error, errorCode, errorDesc);
+      
+      // Show user-friendly error message
+      if (errorDesc && errorDesc.includes('Unable to exchange external code')) {
+        alert('Google login failed: Please ensure your Google OAuth is properly configured in Google Cloud Console.\n\nThe redirect URI must include:\nhttps://auth.whereisthedeer.com.au/auth/v1/callback');
+      } else {
+        alert('Login failed: ' + (errorDesc || error));
+      }
+      
+      // Clean up URL
+      window.history.replaceState({}, document.title, window.location.pathname);
+    }
+
+    if (hasOAuthCode) {
+      console.log("🔄 Attempting to exchange OAuth code for session...");
+      console.log("🔍 OAuth code:", urlParams.get('code'));
+      console.log("🔍 OAuth state:", urlParams.get('state'));
+      
+      window.supabaseClient.auth.exchangeCodeForSession().then(({ data, error }) => {
+        if (error) {
+          console.error("🔴 Session exchange error:", error);
+          console.error("🔴 Full error details:", JSON.stringify(error, null, 2));
+          alert('Session exchange failed: ' + error.message + '\n\nCheck browser console for full error details.');
+        } else if (data?.session) {
+          console.log("🟢 Session restored from URL:", data.session.user.email);
+          loggedInUser = data.session.user;
+          currentUserPlan = 'free'; // fallback
+          // Fetch user plan and apply styling
+          if (typeof fetchUserPlan === 'function') {
+            fetchUserPlan();
+          }
+          // Optional: redirect to clean URL
+          window.history.replaceState({}, document.title, window.location.pathname);
+        }
+      });
+    }
+
+    // Then try to restore any saved session
+    window.supabaseClient.auth.getSession().then(({ data: { session } }) => {
+      console.log("🔹 getSession() called");
+      if (session) {
+        loggedInUser = session.user;
+        currentUserPlan = 'free'; // fallback
+        console.log("✅ Session restored in <head>:", session.user.email);
+        // Fetch user plan and apply styling
+        if (typeof fetchUserPlan === 'function') {
+          fetchUserPlan();
+        }
+      }
+    });
+
+  </script>
+
+
+
+  <!-- Your custom CSS -->
+  <link rel="stylesheet" href="CSS/style.css"/>
+  
+</head>
+<body>
+
+  <!-- Map Container -->
+  <div id="map"></div>
+
+  <!-- Top Search Bar -->
+  <div class="top-search-bar">
+    <input id="addressSearch" type="text" placeholder="Search address or coordinates...">
+    <button id="gps-button" title="Locate Me">📍</button>
+    <span class="help-icon">?</span>
+    <div id="addressSuggestions" class="suggestions"></div>
+  </div>
+
+  <!-- Remove old sidebars, but preserve needed elements in a hidden container -->
+  <div id="uiHidden" style="display:none;">
+    <button id="addPinBtn">📍 Place Pin</button>
+    <button id="clearPinsBtn">🧹 Clear Pins</button>
+    <button id="drawTrackBtn">✏️ Draw Track</button>
+    <input id="gpxUpload" type="file" accept=".gpx" multiple>
+    <div id="gpxList"></div>
+    <button id="removeGpx">🗑️ Clear</button>
+    <button id="speciesFilter">🦌</button>
+    <div class="dropdown-content species-dropdown">
+      <button value="OFF">OFF</button>
+      <button value="Deer">Deer (All)</button>
+      <button value="Hog Deer">Hog Deer</button>
+      <button value="Duck">Duck</button>
+      <!-- <button value="Stubble Quail">Stubble Quail</button> -->
+      <!-- <button value="Pest">Pest</button> -->
+    </div>
+  </div>
+
+  <!-- Weather Popup (moved out of sidebar) -->
+  <!-- Legacy weatherWrapper removed. Only modern version retained below. -->
+
+  <!-- Disclaimer -->
+  <div id="disclaimerOverlay">
+    <div>
+      <h2>Disclaimer</h2>
+      <p>
+        Note: Hunters are personally responsible for acting in accordance with the Firearms Act 1996 and the Firearm Safety Code, including informing themselves about any prohibited locations within the areas shown on this map and other relevant laws; obtaining the required hunting licence; and for hunting only within season. The Firearm Safety Code Rules 4 (identify your target beyond all doubt) and 5 (check your firing zone) are of particular relevance.
+      </p>
+      <p>
+        This map is provided for general reference only. Public land boundaries, hunting zones, and seasonal restrictions may change. Always verify with official sources before hunting.
+      </p>
+      <p>
+        <a href="https://www.gma.vic.gov.au/hunting/hunting-maps" target="_blank">Game Management Authority – Hunting Maps</a><br>
+        <a href="https://mapshare.vic.gov.au/mapsharevic/" target="_blank">MapShareVic (Interactive)</a><br>
+        <a href="https://www.land.vic.gov.au/maps-and-spatial/spatial-data/vicmap-catalogue/vicmap-planning" target="_blank">Land.Vic Maps & Data</a><br>
+        <a href="https://www.gma.vic.gov.au/__data/assets/pdf_file/0019/652419/Firearms-Safety-Code.pdf" target="_blank">Firearm Safety Code PDF</a>
+      </p>
+      <p>
+        <strong>Data Sources:</strong> Vicmap Planning, MapShareVic, DataShareVic, and the "Hunting Area Dataset for More To Explore App" (DEECA, Game Management Authority).
+      </p>
+      <p>
+        © Government of Victoria, licensed under <a href="https://creativecommons.org/licenses/by/4.0/" target="_blank">CC BY 4.0</a>. Data reused with attribution and for reference only. No guarantee is made regarding accuracy or legal validity.
+      </p>
+      <p>
+        Disclaimer: WhereIsTheDeer is not affiliated with the Victorian Government.
+      </p>
+      <button id="agreeDisclaimer" class="sidebar-content">Agree and enter map</button>
+    </div>
+  </div>
+
+  <!-- UI Dropdown JS -->
+  <script>
+    document.querySelectorAll('.dropdown > button').forEach(button => {
+      button.addEventListener('click', function(e) {
+        e.stopPropagation();
+        const parent = this.parentElement;
+        document.querySelectorAll('.dropdown').forEach(d => {
+          if (d !== parent) d.classList.remove('open');
+        });
+        parent.classList.toggle('open');
+      });
+    });
+    document.querySelectorAll('.dropdown-content').forEach(content => {
+      content.addEventListener('click', function(e) {
+        e.stopPropagation();
+      });
+    });
+    document.addEventListener('click', () => {
+      document.querySelectorAll('.dropdown').forEach(d => d.classList.remove('open'));
+    });
+  </script>
+
+  <!-- All your modules in order -->
+  <script src="JS/mapEngine.js"></script>
+  <script src="JS/layerManager.js"></script>
+  <script src="JS/speciesLayer.js"></script>
+  <script type="module" src="JS/searchUI.js"></script>
+  <script type="module" src="JS/apiManager.js"></script>
+  <script type="module" src="JS/pinManager.js"></script>
+  <script src="JS/gpxManager.js"></script>
+  <script type="module" src="JS/drawModule.js"></script>
+  <script src="JS/measurementModule.js"></script>
+  <script type="module" src="JS/weatherModule.js"></script>
+  <script src="JS/journalModal.js"></script>
+  <script src="JS/uiManager.js"></script>
+  <script src="JS/disclaimerModule.js"></script>
+  <script src="JS/settings.js"></script>
+  <script src="JS/main.js" type="module"></script>
+  <script src="JS/authModal.js"></script>
+
+  <script>
+  const speciesFilter = document.getElementById("speciesFilter");
+
+if (speciesFilter) {
+  speciesFilter.addEventListener("click", (e) => {
+    e.stopPropagation();
+    const dropdown = speciesFilter.nextElementSibling;
+    if (dropdown) {
+      dropdown.style.display = dropdown.style.display === "block" ? "none" : "block";
+    }
+  });
+
+  const speciesDropdown = speciesFilter.nextElementSibling;
+  if (speciesDropdown) {
+    speciesDropdown.addEventListener("click", e => e.stopPropagation());
+
+    speciesDropdown.querySelectorAll("button").forEach(button => {
+      button.addEventListener("click", e => {
+        const selected = button.value;
+        speciesFilter.textContent = button.textContent;
+
+        // ✅ Wait until species layers are initialized
+        if (!window.WITD?.species?.ready) {
+          console.warn("Species layers not ready yet.");
+          return;
+        }
+
+        if (selected === "All" || selected === "OFF") {
+          switchSpeciesLayer("OFF");
+        } else if (selected === "Deer (All Year)" || selected === "Deer") {
+          switchSpeciesLayer("Deer");
+        } else {
+          switchSpeciesLayer(selected);
+        }
+
+        speciesDropdown.style.display = "none";
+      });
+    });
+  }
+}
+
+
+  document.addEventListener("click", function (e) {
+    const speciesBtn = document.getElementById("speciesFilter");
+    const speciesDropdown = speciesBtn?.nextElementSibling;
+
+    if (!speciesBtn || !speciesDropdown) return;
+
+    if (!speciesBtn.contains(e.target) && !speciesDropdown.contains(e.target)) {
+      speciesDropdown.style.display = "none";
+    }
+  });
+</script>
+
+<!-- === Bottom Toolbar Modals & Dropdowns === -->
+<!-- Tools Popup (modern style) - 1x3 horizontal layout -->
+<div id="toolsDropdown" class="modern-popup" style="display:none;">
+  <div class="popup-grid-horizontal">
+    <button id="toolbarPins" class="popup-btn disabled">📍<br><span>Pins</span></button>
+    <button id="toolbarDraw" class="popup-btn disabled">✏️<br><span>Draw</span></button>
+    <button id="toolbarTrack" class="popup-btn disabled">🚶‍♂️<br><span>Track</span></button>
+  </div>
+  <div class="modern-popup-arrow">
+    <svg width="28" height="14" viewBox="0 0 28 14">
+      <polygon points="14,14 0,0 28,0" fill="#fff" stroke="#e0e0e0" stroke-width="1"/>
+    </svg>
+  </div>
+</div>
+
+<!-- Pins Submenu -->
+<div id="pinsSubmenu" class="tool-submenu" style="display:none;">
+  <div class="submenu-header">
+    <button id="pinsBackBtn" class="back-btn">← Back</button>
+    <h3>Pin Tools</h3>
+  </div>
+  <div class="submenu-content">
+    <div class="submenu-section">
+      <h4>Pin Colors</h4>
+      <div class="pin-styles-grid">
+        <button class="pin-style-btn active" data-style="orange">
+          <span class="pin-color-preview" style="background: #ff7a00;"></span>
+          <span>Orange</span>
+        </button>
+        <button class="pin-style-btn" data-style="red">
+          <span class="pin-color-preview" style="background: #e74c3c;"></span>
+          <span>Red</span>
+        </button>
+        <button class="pin-style-btn" data-style="green">
+          <span class="pin-color-preview" style="background: #27ae60;"></span>
+          <span>Green</span>
+        </button>
+        <button class="pin-style-btn" data-style="yellow">
+          <span class="pin-color-preview" style="background: #f1c40f;"></span>
+          <span>Yellow</span>
+        </button>
+        <button class="pin-style-btn" data-style="blue">
+          <span class="pin-color-preview" style="background: #3498db;"></span>
+          <span>Blue</span>
+        </button>
+        <button class="pin-style-btn" data-style="purple">
+          <span class="pin-color-preview" style="background: #9b59b6;"></span>
+          <span>Purple</span>
+        </button>
+        <button class="pin-style-btn" data-style="brown">
+          <span class="pin-color-preview" style="background: #8b4513;"></span>
+          <span>Brown</span>
+        </button>
+      </div>
+    </div>
+    <div class="submenu-section">
+      <h4>Pin Actions</h4>
+      <div class="action-buttons">
+        <button id="placePinBtn" class="action-btn">📍 Place Pin</button>
+        <button id="clearAllPinsBtn" class="action-btn">🧹 Clear All</button>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- Draw Submenu -->
+<div id="drawSubmenu" class="tool-submenu" style="display:none;">
+  <div class="submenu-header">
+    <button id="drawBackBtn" class="back-btn">← Back</button>
+    <h3>Drawing Tools</h3>
+  </div>
+  <div class="submenu-content">
+    <div class="submenu-section">
+      <h4>Drawing Tools</h4>
+      <div class="draw-tools-grid">
+        <button class="draw-tool-btn active" data-tool="pencil">✏️<br><span>Pencil</span></button>
+        <button class="draw-tool-btn" data-tool="line">📏<br><span>Line</span></button>
+        <button class="draw-tool-btn" data-tool="polygon">⬟<br><span>Polygon</span></button>
+        <button class="draw-tool-btn" data-tool="circle">⭕<br><span>Circle</span></button>
+      </div>
+    </div>
+    <div class="submenu-section">
+      <h4>Style Options</h4>
+      <div class="style-controls">
+        <label>Color:</label>
+        <input type="color" id="drawColorPicker" value="#ff6b35">
+        <label>Thickness: <span id="thicknessValue">3</span></label>
+        <input type="range" id="thicknessSlider" min="1" max="10" value="3">
+        <label>Style:</label>
+        <select id="lineStyleSelect">
+          <option value="solid">Solid</option>
+          <option value="dashed">Dashed</option>
+          <option value="dotted">Dotted</option>
+        </select>
+      </div>
+    </div>
+    <div class="submenu-section">
+      <h4>Actions</h4>
+      <div class="action-buttons">
+        <button id="startDrawBtn" class="action-btn">✏️ Start Drawing</button>
+        <button id="clearAllDrawingsBtn" class="action-btn">🗑️ Clear All</button>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- Track Submenu -->
+<div id="trackSubmenu" class="tool-submenu" style="display:none;">
+  <div class="submenu-header">
+    <button id="trackBackBtn" class="back-btn">← Back</button>
+    <h3>GPS Tracking</h3>
+  </div>
+  <div class="submenu-content">
+    <div id="trackingStats" style="text-align:center;font-size:1em;margin-bottom:10px;color:#333;">
+      <em>Tracking not started.</em>
+    </div>
+    <div class="submenu-section">
+      <h4>Actions</h4>
+      <div class="action-buttons">
+        <button id="startTrackingBtn" class="action-btn">▶️ Start</button>
+        <button id="stopTrackingBtn" class="action-btn">⏹️ Stop</button>
+        <button id="saveTrackBtn" class="action-btn">💾 Save</button>
+        <button id="toggleFollowBtn" class="action-btn">📍 Follow Me</button>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- Layers Popup (modern style) -->
+<div id="layersDropdown" class="modern-popup" style="display:none;">
+  <div class="popup-grid">
+    <button data-layer="Terrain" class="popup-btn disabled">🗺️<br><span>Terrain</span></button>
+    <button data-layer="Satellite" class="popup-btn disabled">🛰️<br><span>Satellite</span></button>
+    <button data-layer="Contours" class="popup-btn disabled">🗻<br><span>Contours</span></button>
+    <button data-layer="Hybrid" class="popup-btn disabled">🌐<br><span>Hybrid</span></button>
+  </div>
+  <div style="width:100%;margin:10px 0 0 0;text-align:left;font-weight:600;font-size:1em;">🦌 Species list</div>
+  <div class="popup-grid" style="margin-top:6px;">
+    <button class="species-btn popup-btn disabled" data-species="OFF">OFF</button>
+    <button class="species-btn popup-btn disabled" data-species="Deer">Deer</button>
+    <button class="species-btn popup-btn disabled" data-species="Hog Deer">Hog Deer</button>
+    <button class="species-btn popup-btn disabled" data-species="Duck">Duck</button>
+    <!-- <button class="species-btn popup-btn disabled" data-species="Stubble Quail">Stubble Quail</button> -->
+    <!-- <button class="species-btn popup-btn disabled" data-species="Pest">Pest</button> -->
+  </div>
+  <div class="modern-popup-arrow">
+    <svg width="28" height="14" viewBox="0 0 28 14"><polygon points="14,14 0,0 28,0" fill="#fff" stroke="#e0e0e0" stroke-width="1"/></svg>
+  </div>
+</div>
+<!-- GPX Modal (modern style) -->
+<div id="gpxModal" class="modern-popup" style="display:none;">
+  <div class="popup-grid">
+    <button id="gpxUploadBtn" class="popup-btn gpx-upload-label disabled" style="margin-bottom:0;">
+      📁<br><span>Upload GPX</span>
+    </button>
+    
+    <button id="removeGpxProxy" class="popup-btn disabled">🗑️<br><span>Clear</span></button>
+  </div>
+  <div id="gpxListProxy" style="width:100%;margin:10px 0 0 0;"></div>
+  <div class="modern-popup-arrow">
+    <svg width="28" height="14" viewBox="0 0 28 14"><polygon points="14,14 0,0 28,0" fill="#fff" stroke="#e0e0e0" stroke-width="1"/></svg>
+  </div>
+</div>
+<!-- Weather Popup (modern style, unified) -->
+<div id="weatherWrapper" class="modern-popup" style="display:none;">
+  <div class="weather-fixed-header">
+    <h3 class="weather-title">Weather Forecast</h3>
+    <div class="weather-search-row">
+      <input id="weatherSearch" type="text" placeholder="Search location...">
+      <button id="useMyLocationBtn">📍 Use My Location</button>
+    </div>
+    <div id="weatherLocationConfirmation" class="weather-location-confirmation"></div>
+    <div id="weatherSuggestions" class="suggestions"></div>
+  </div>
+
+  <div class="weather-forecast-container">
+    <div id="weatherOutput" class="weather-output"></div>
+  </div>
+
+</div>
+<!-- Detached tail for weather popup -->
+<div id="weatherTail" class="modern-popup-arrow" style="display:none;">
+  <svg width="28" height="14" viewBox="0 0 28 14">
+    <polygon points="14,14 0,0 28,0" fill="#fff" stroke="#e0e0e0" stroke-width="1"/>
+  </svg>
+</div>
+
+
+<!-- Journal Modal (modern style) -->
+<div id="journalModal" class="modern-popup" style="display:none;">
+  <div class="popup-grid">
+    <button id="journalNewEntry" class="popup-btn disabled">📝<br><span>New Entry</span></button>
+    <button id="journalViewEntries" class="popup-btn disabled">📖<br><span>View All</span></button>
+  </div>
+  <div id="journalContent" style="width:100%;margin:10px 0 0 0;">
+    <p style="text-align:center;color:#666;font-size:0.9em;">Journal entries will appear here</p>
+  </div>
+  <button class="close-modal popup-btn" style="width:100%;margin-top:10px;" onclick="closeJournalModal()">Close</button>
+  <div class="modern-popup-arrow">
+    <svg width="28" height="14" viewBox="0 0 28 14"><polygon points="14,14 0,0 28,0" fill="#fff" stroke="#e0e0e0" stroke-width="1"/></svg>
+  </div>
+</div>
+
+<!-- Modern Login Modal -->
+<div id="loginModal" class="login-modal hidden">
+  <div class="login-modal-content">
+    <div class="login-header">
+      <h2>Log In</h2>
+      <button class="login-close" id="loginCloseBtn">&times;</button>
+    </div>
+    <form id="loginForm" class="login-form">
+      <div class="form-group">
+        <label for="loginEmail">Email</label>
+        <input type="email" id="loginEmail" name="email" placeholder="Enter your email" required>
+      </div>
+      <div class="form-group">
+        <label for="loginPassword">Password</label>
+        <input type="password" id="loginPassword" name="password" placeholder="Enter your password" required>
+      </div>
+      <button type="submit" class="login-submit-btn">Log in</button>
+      <div class="login-links">
+        <a href="#" id="forgotPasswordLink" class="forgot-password">Forgot your password?</a>
+        <span class="login-separator">•</span>
+        <a href="#" id="showRegisterLink" class="signup-link">Don't have an account? Sign up</a>
+      </div>
+    </form>
+    <div class="login-divider">
+      <span class="divider-text">or</span>
+      <div class="divider-line"></div>
+    </div>
+    <button id="googleLoginBtnNew" class="google-login-btn">
+      <svg class="google-icon" viewBox="0 0 24 24">
+        <path fill="#4285F4" d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92c-.26 1.37-1.04 2.53-2.21 3.31v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.09z"/>
+        <path fill="#34A853" d="M12 23c2.97 0 5.46-.98 7.28-2.66l-3.57-2.77c-.98.66-2.23 1.06-3.71 1.06-2.86 0-5.29-1.93-6.16-4.53H2.18v2.84C3.99 20.53 7.7 23 12 23z"/>
+        <path fill="#FBBC05" d="M5.84 14.09c-.22-.66-.35-1.36-.35-2.09s.13-1.43.35-2.09V7.07H2.18C1.43 8.55 1 12s.43 3.45 1.18 4.93l2.85-2.22.81-.62z"/>
+        <path fill="#EA4335" d="M12 5.38c1.62 0 3.06.56 4.21 1.64l3.15-3.15C17.45 2.09 14.97 1 12 1 7.7 1 3.99 3.47 2.18 7.07l3.66 2.84c.87-2.6 3.3-4.53 6.16-4.53z"/>
+      </svg>
+      Continue with Google
+    </button>
+  </div>
+</div>
+
+<!-- Modern Registration Modal -->
+<div id="registerModal" class="login-modal" style="display: none;">
+  <div class="login-modal-content">
+    <div class="login-header">
+      <h2>Sign Up</h2>
+      <button class="login-close" id="registerCloseBtn" onclick="document.getElementById('registerModal').style.display='none'">&times;</button>
+    </div>
+    
+    <form id="registerForm" class="login-form">
+      <div class="form-group">
+        <label for="registerEmail">Email</label>
+        <input type="email" id="registerEmail" name="email" placeholder="Enter your email" required>
+      </div>
+      
+      <div class="form-group">
+        <label for="registerPassword">Password</label>
+        <input type="password" id="registerPassword" name="password" placeholder="Create a password" required>
+      </div>
+      
+      <div class="form-group">
+        <label for="confirmPassword">Confirm Password</label>
+        <input type="password" id="confirmPassword" name="confirmPassword" placeholder="Confirm your password" required>
+      </div>
+      
+      <button type="submit" class="login-submit-btn">Sign up</button>
+      
+      <div class="login-links">
+        <a href="#" id="showLoginLink" class="login-link">Already have an account? Log in</a>
+      </div>
+    </form>
+    
+    <div class="login-divider">
+      <span class="divider-text">or</span>
+      <div class="divider-line"></div>
+    </div>
+    
+    <button id="googleRegisterBtn" class="google-login-btn">
+      <svg class="google-icon" viewBox="0 0 24 24">
+        <path fill="#4285F4" d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92c-.26 1.37-1.04 2.53-2.21 3.31v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.09z"/>
+        <path fill="#34A853" d="M12 23c2.97 0 5.46-.98 7.28-2.66l-3.57-2.77c-.98.66-2.23 1.06-3.71 1.06-2.86 0-5.29-1.93-6.16-4.53H2.18v2.84C3.99 20.53 7.7 23 12 23z"/>
+        <path fill="#FBBC05" d="M5.84 14.09c-.22-.66-.35-1.36-.35-2.09s.13-1.43.35-2.09V7.07H2.18C1.43 8.55 1 12s.43 3.45 1.18 4.93l2.85-2.22.81-.62z"/>
+        <path fill="#EA4335" d="M12 5.38c1.62 0 3.06.56 4.21 1.64l3.15-3.15C17.45 2.09 14.97 1 12 1 7.7 1 3.99 3.47 2.18 7.07l3.66 2.84c.87-2.6 3.3-4.53 6.16-4.53z"/>
+      </svg>
+      Continue with Google
+    </button>
+  </div>
+</div>
+
+<!-- === Global Popup Arrow for Tools Popup === -->
+<!-- (Removed: no arrow for Tools popup) -->
+<!-- === Bottom Toolbar === -->
+<div id="bottomToolbar" class="bottom-toolbar">
+  <button id="toolbarToolsBtn" class="toolbar-btn">🛠️ <span>Tools</span></button>
+  <button id="toolbarLayersBtn" class="toolbar-btn">🗺️ <span>Layers</span></button>
+  <button id="toolbarGpxBtn" class="toolbar-btn">📁 <span>GPX</span></button>
+  <button id="toolbarWeatherBtn" class="toolbar-btn">🌤️ <span>Weather</span></button>
+  <button id="toolbarJournalBtn" class="toolbar-btn">📓 <span>Journal</span></button>
+  <!-- <button id="toolbarSSSBtn" class="toolbar-btn">💡 <span>SSS</span></button> -->
+  <button id="toolbarLoginBtn" class="toolbar-btn">🔐 <span>Login</span></button>
+</div>
+
+<!-- Plan Indicator Badge -->
+
+<!-- No clones, no carousel, no infinite scroll code. Only a simple horizontal scroll toolbar remains. -->
+
+<style>
+  @media (max-width: 900px) {
+    .bottom-toolbar {
+      position: fixed;
+      left: 0;
+      right: 0;
+      bottom: 0;
+      z-index: 4000;
+      width: 100vw;
+      padding: 12px 0 12px 0;
+      background: #f8f8f8;
+      box-shadow: 0 -2px 8px rgba(0,0,0,0.12);
+      display: flex;
+      flex-direction: row;
+      flex-wrap: nowrap;
+      overflow-x: auto;
+      overflow-y: hidden;
+      white-space: nowrap;
+      justify-content: space-evenly;
+      align-items: center;
+      gap: 0;
+      scrollbar-width: none;
+      -ms-overflow-style: none;
+    }
+    .bottom-toolbar::-webkit-scrollbar {
+      display: none;
+    }
+    .bottom-toolbar .toolbar-btn {
+      min-width: 85px;
+      max-width: 110px;
+      font-size: 1.3em;
+      padding: 4px 0;
+      margin: 0 6px;
+      border-radius: 14px;
+      background: #fff;
+      border: 1.5px solid #e0e0e0;
+      box-shadow: 0 1px 4px rgba(0,0,0,0.04);
+      transition: background 0.2s, border 0.2s;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      position: relative;
+    }
+    .bottom-toolbar .toolbar-btn:active, .bottom-toolbar .toolbar-btn:focus {
+      background: #f0f8ff;
+      border-color: #b3d8ff;
+    }
+    .bottom-toolbar .toolbar-btn span {
+      font-size: 0.95em;
+      margin-top: 2px;
+      display: block;
+    }
+  }
+</style>
+<!-- No Swiper, carousel, or duplicate toolbar code remains. -->
+
+<script>
+// --- Toolbar Dropdown/Modal Logic ---
+function closeAllDropdownsAndModals() {
+  const ids = [
+    'toolsDropdown', 'layersDropdown', 'gpxModal', 'journalModal', /* 'sssModal', */ // SSS not in use currently
+    'loginModal', 'registerModal', 'weatherWrapper', 'weatherTail'
+  ];
+  ids.forEach(id => {
+    const el = document.getElementById(id);
+    if (el && el.style) el.style.display = 'none';
+  });
+  // Reset global state
+  openPopup = null;
+  openButton = null;
+  openAlignRight = false;
+}
+
+// Expose function globally for map click events
+window.closeAllDropdownsAndModals = closeAllDropdownsAndModals;
+
+// Helper for popup positioning
+function showPopupAboveButton(popup, button, alignRight = false) {
+  // For Tools popup, always reset height and position before showing
+  if (popup.id === 'toolsDropdown') {
+    popup.style.height = '';
+    popup.style.top = '';
+    popup.style.left = '';
+  }
+  popup.style.display = 'block';
+  popup.style.position = 'fixed';
+  popup.style.zIndex = 3300;
+  // Arrows are now hidden via CSS, no need to manipulate them
+  // Position popup first
+  positionPopup(popup, button, alignRight);
+  // Weather tail arrow is now hidden via CSS, no need to position it
+}
+
+function positionPopup(popup, button, alignRight = false) {
+  if (!button || popup.style.display === 'none') return;
+
+  const btnRect = button.getBoundingClientRect();
+  const popupWidth = popup.offsetWidth;
+  const popupHeight = popup.offsetHeight;
+
+  let left;
+  let top;
+
+  const isMobile = window.innerWidth <= 900;
+
+  // Special handling for tools dropdown - align left edge with button left edge
+  if (popup.id === 'toolsDropdown') {
+    if (isMobile) {
+      // 📱 Center popup horizontally on mobile and position above toolbar
+      left = (window.innerWidth / 2) - (popupWidth / 2);
+      top = btnRect.top - popupHeight - 20; // Extra gap for mobile
+    } else {
+      // 🖥️ Desktop: align left edge with button left edge
+      left = btnRect.left;
+      top = btnRect.top - popupHeight - 12 - 8; // 8px extra gap
+    }
+  } else {
+    // Standard positioning for other popups
+    if (isMobile) {
+      // 📱 Center popup horizontally on mobile
+      left = (window.innerWidth / 2) - (popupWidth / 2);
+      top = btnRect.top - popupHeight - 12 - 8; // 8px extra gap
+    } else {
+      // 🖥️ Desktop: normal align logic
+      left = alignRight
+        ? btnRect.right - popup.offsetWidth
+        : btnRect.left;
+      top = btnRect.top - popupHeight - 12 - 8; // 8px extra gap
+    }
+  }
+
+  popup.style.left = `${Math.max(8, left)}px`;
+  popup.style.top = `${Math.max(8, top)}px`;
+
+  // Arrows are now hidden via CSS, no need to position them
+}
+
+// Function to position tool submenus (pins, draw, etc.)
+function positionToolSubmenu(submenu) {
+  if (!submenu || submenu.style.display === 'none') return;
+  
+  const toolbar = document.getElementById('bottomToolbar');
+  if (!toolbar) return;
+  
+  const toolbarRect = toolbar.getBoundingClientRect();
+  const submenuHeight = submenu.offsetHeight;
+  const isMobile = window.innerWidth <= 900;
+  
+  let left, top;
+  
+  if (isMobile) {
+    // On mobile, center horizontally and position above toolbar
+    left = (window.innerWidth / 2) - (submenu.offsetWidth / 2);
+    top = toolbarRect.top - submenuHeight - 20; // Extra gap for mobile
+  } else {
+    // On desktop, align with toolbar left edge
+    left = toolbarRect.left + 20; // Small offset from edge
+    top = toolbarRect.top - submenuHeight - 20;
+  }
+  
+  // Ensure submenu doesn't go off screen
+  left = Math.max(10, Math.min(left, window.innerWidth - submenu.offsetWidth - 10));
+  top = Math.max(10, top);
+  
+  submenu.style.left = `${left}px`;
+  submenu.style.top = `${top}px`;
+}
+
+// Keep track of open popup/button
+let openPopup = null;
+let openButton = null;
+let openAlignRight = false;
+
+// Function to reposition GPX popup when content changes
+let repositionTimeout = null;
+function repositionGpxPopup() {
+  console.log('repositionGpxPopup called');
+  
+  // Clear any existing timeout to prevent multiple rapid calls
+  if (repositionTimeout) {
+    clearTimeout(repositionTimeout);
+  }
+  
+  if (openPopup && openPopup.id === 'gpxModal' && openPopup.style.display === 'block' && openButton && openButton.getBoundingClientRect) {
+    console.log('Repositioning GPX popup...');
+    
+
+    
+    // Longer delay to let map operations and DOM updates settle
+    repositionTimeout = setTimeout(() => {
+      console.log('Executing positionPopup...');
+      positionPopup(openPopup, openButton, openAlignRight);
+      console.log('GPX popup repositioned');
+      repositionTimeout = null;
+      
+      // Check if this repositioning is re-loading GPX files
+      console.log('[GPX] After repositioning - checking if files were re-loaded');
+      if (window.gpxCleared) {
+        console.log('[GPX] Files were cleared, preventing re-load');
+        return; // Exit early if files were cleared
+      }
+    }, 100); // Increased delay to let map operations complete
+  } else {
+    console.log('GPX popup repositioning skipped - conditions not met');
+  }
+}
+
+// Make it globally accessible for GPX operations
+window.repositionGpxPopup = repositionGpxPopup;
+window.positionPopup = positionPopup;
+
+function openPopupAboveButton(popup, button, alignRight = false) {
+  closeAllDropdownsAndModals();
+  showPopupAboveButton(popup, button, alignRight);
+  openPopup = popup;
+  openButton = button;
+  openAlignRight = alignRight;
+}
+window.addEventListener('resize', () => {
+  if (openPopup && openPopup.style.display === 'block' && openButton) {
+    positionPopup(openPopup, openButton, openAlignRight);
+  }
+});
+window.addEventListener('scroll', () => {
+  if (openPopup && openPopup.style.display === 'block' && openButton) {
+    positionPopup(openPopup, openButton, openAlignRight);
+  }
+}, true);
+// Tools Dropdown
+const toolsBtn = document.getElementById('toolbarToolsBtn');
+const toolsDropdown = document.getElementById('toolsDropdown');
+if (toolsBtn && toolsDropdown) {
+  toolsBtn.addEventListener('click', e => {
+    e.stopPropagation();
+    if (toolsDropdown.style.display === 'block') {
+      toolsDropdown.style.display = 'none';
+      openPopup = null;
+      openButton = null;
+    } else {
+      openPopupAboveButton(toolsDropdown, toolsBtn);
+      
+      // Apply gating based on user plan
+      if (currentUserPlan === 'premium') {
+        // Premium user - enable all Tools features
+        const toolsButtons = toolsDropdown.querySelectorAll('.popup-btn');
+        toolsButtons.forEach(btn => {
+          btn.classList.remove('disabled');
+          btn.removeAttribute('disabled');
+          btn.style.opacity = '1';
+          btn.style.filter = 'none';
+        });
+      } else {
+        // Free user - disable Tools features
+        const toolsButtons = toolsDropdown.querySelectorAll('.popup-btn');
+        toolsButtons.forEach(btn => {
+          btn.classList.add('disabled');
+          btn.style.opacity = '0.5';
+          btn.style.filter = 'grayscale(0.5)';
+        });
+        
+        // Add click interceptors for disabled features
+        toolsButtons.forEach(btn => {
+          btn.addEventListener('click', (e) => {
+            e.stopPropagation();
+            e.preventDefault();
+            console.log(`[Security] Intercepted disabled Tools feature click`);
+            showUpgradeMessage();
+          });
+        });
+      }
+    }
+  });
+}
+// Layers Dropdown - Unified gating
+applyUnifiedGating('toolbarLayersBtn', 'layersDropdown');
+
+// Set up layers functionality - Species overlay now available for all users
+// Remove disabled class for species buttons (now available for free users)
+const speciesButtons = layersDropdown.querySelectorAll('.species-btn');
+speciesButtons.forEach(btn => {
+  btn.classList.remove('disabled');
+  btn.removeAttribute('disabled');
+  btn.style.opacity = '1';
+  btn.style.filter = 'none';
+});
+
+// Set up species button functionality for all users
+layersDropdown.querySelectorAll('.species-btn').forEach(btn => {
+  btn.onclick = () => {
+    const value = btn.getAttribute('data-species');
+    
+    // Check if the new species layer system is ready
+    if (!window.WITD?.species?.ready) {
+      console.log('Species layers not ready yet, waiting...');
+      // Wait a bit then try again
+      setTimeout(() => {
+        if (window.switchSpeciesLayer) {
+          window.switchSpeciesLayer(value);
+        } else {
+          console.error('switchSpeciesLayer function not available');
+        }
+      }, 500);
+    } else {
+      // Species layers ready, switch immediately
+      if (window.switchSpeciesLayer) {
+        window.switchSpeciesLayer(value);
+      } else {
+        console.error('switchSpeciesLayer function not available');
+      }
+    }
+  };
+});
+
+// Set up layers functionality for premium users only
+if (currentUserPlan === 'premium') {
+  // Remove disabled class for layer buttons (Terrain, Satellite, Contours, Hybrid)
+  const layerButtons = layersDropdown.querySelectorAll('button[data-layer]');
+  layerButtons.forEach(btn => {
+    btn.classList.remove('disabled');
+    btn.removeAttribute('disabled');
+    btn.style.opacity = '1';
+    btn.style.filter = 'none';
+  });
+  
+  layersDropdown.querySelectorAll('button[data-layer]').forEach(btn => {
+    btn.onclick = () => window.switchBaseLayer(btn.getAttribute('data-layer'));
+  });
+} else {
+  // Free user - disable premium layer features
+  const layerButtons = layersDropdown.querySelectorAll('button[data-layer]');
+  layerButtons.forEach(btn => {
+    btn.classList.add('disabled');
+    btn.style.opacity = '0.5';
+    btn.style.filter = 'grayscale(0.5)';
+  });
+  
+  // Add click interceptors for disabled premium features
+  layerButtons.forEach(btn => {
+    btn.addEventListener('click', (e) => {
+      e.stopPropagation();
+      e.preventDefault();
+      console.log(`[Security] Intercepted disabled layer feature click`);
+      showUpgradeMessage();
+    });
+  });
+}
+
+// GPX Modal - Unified gating with custom logic
+const gpxBtn = document.getElementById('toolbarGpxBtn');
+const gpxModal = document.getElementById('gpxModal');
+if (gpxBtn && gpxModal) {
+  gpxBtn.addEventListener('click', e => {
+    e.stopPropagation();
+    if (gpxModal.style.display === 'block') {
+      gpxModal.style.display = 'none';
+      openPopup = null;
+      openButton = null;
+    } else {
+      openPopupAboveButton(gpxModal, gpxBtn);
+      
+      // Close button removed - modal closes on outside click
+      
+      // Apply gating based on user plan
+      if (currentUserPlan === 'premium') {
+        // Premium user - enable all GPX features
+        const uploadLabel = document.querySelector('.gpx-upload-label');
+        const removeBtn = document.getElementById('removeGpxProxy');
+        if (uploadLabel) {
+          uploadLabel.classList.remove('disabled');
+          uploadLabel.removeAttribute('disabled');
+          uploadLabel.style.opacity = '1';
+          uploadLabel.style.filter = 'none';
+        }
+        if (removeBtn) {
+          removeBtn.classList.remove('disabled');
+          removeBtn.removeAttribute('disabled');
+          removeBtn.style.opacity = '1';
+          removeBtn.style.filter = 'none';
+        }
+      } else {
+        // Free user - disable GPX features
+        const uploadLabel = document.querySelector('.gpx-upload-label');
+        const removeBtn = document.getElementById('removeGpxProxy');
+        if (uploadLabel) {
+          uploadLabel.classList.add('disabled');
+          uploadLabel.style.opacity = '0.5';
+          uploadLabel.style.filter = 'grayscale(0.5)';
+        }
+        if (removeBtn) {
+          removeBtn.classList.add('disabled');
+          removeBtn.style.opacity = '0.5';
+          removeBtn.style.filter = 'grayscale(0.5)';
+        }
+        
+        // Add click interceptors for disabled features
+        if (uploadLabel) {
+          uploadLabel.addEventListener('click', (e) => {
+            e.stopPropagation();
+            e.preventDefault();
+            console.log(`[Security] Intercepted disabled GPX upload click`);
+            showUpgradeMessage();
+          });
+        }
+        if (removeBtn) {
+          removeBtn.addEventListener('click', (e) => {
+            e.stopPropagation();
+            e.preventDefault();
+            console.log(`[Security] Intercepted disabled GPX remove click`);
+            showUpgradeMessage();
+          });
+        }
+      }
+    }
+  });
+}
+
+// Weather Button
+const weatherBtn = document.getElementById('toolbarWeatherBtn');
+const weatherWrapper = document.getElementById('weatherWrapper');
+if (weatherBtn && weatherWrapper) {
+  weatherBtn.addEventListener('click', e => {
+    e.stopPropagation();
+    if (weatherWrapper.style.display === 'block') {
+      closeAllDropdownsAndModals();
+    } else {
+      openPopupAboveButton(weatherWrapper, weatherBtn);
+      if (window.autoFetchWeatherLocation) {
+        setTimeout(() => window.autoFetchWeatherLocation(), 150);
+      }
+    }
+  });
+}
+
+// Journal Modal - Unified gating with custom logic
+const journalBtn = document.getElementById('toolbarJournalBtn');
+const journalModal = document.getElementById('journalModal');
+if (journalBtn && journalModal) {
+  journalBtn.addEventListener('click', e => {
+    e.stopPropagation();
+    
+    // Check if user is authenticated
+    if (!loggedInUser) {
+      console.log('[Security] Journal access denied - user not authenticated');
+      showUpgradeMessage();
+      return;
+    }
+    
+    if (journalModal.style.display === 'block') {
+      journalModal.style.display = 'none';
+      openPopup = null;
+      openButton = null;
+    } else {
+      openPopupAboveButton(journalModal, journalBtn, true); // alignRight = true
+      
+      // Apply gating based on user plan
+      if (currentUserPlan === 'premium') {
+        // Premium user - enable all Journal features
+        const newEntryBtn = document.getElementById('journalNewEntry');
+        const viewEntriesBtn = document.getElementById('journalViewEntries');
+        if (newEntryBtn) {
+          newEntryBtn.classList.remove('disabled');
+          newEntryBtn.removeAttribute('disabled');
+          newEntryBtn.style.opacity = '1';
+          newEntryBtn.style.filter = 'none';
+        }
+        if (viewEntriesBtn) {
+          viewEntriesBtn.classList.remove('disabled');
+          viewEntriesBtn.removeAttribute('disabled');
+          viewEntriesBtn.style.opacity = '1';
+          viewEntriesBtn.style.filter = 'none';
+        }
+        
+        // Initialize journal for premium users
+        setTimeout(() => {
+          if (typeof initJournal === 'function') initJournal();
+          setTimeout(() => {
+            if (openPopup && openButton) {
+              positionPopup(openPopup, openButton, openAlignRight);
+            }
+          }, 10);
+        }, 0);
+      } else {
+        // Free user - disable Journal features
+        const newEntryBtn = document.getElementById('journalNewEntry');
+        const viewEntriesBtn = document.getElementById('journalViewEntries');
+        if (newEntryBtn) {
+          newEntryBtn.classList.add('disabled');
+          newEntryBtn.style.opacity = '0.5';
+          newEntryBtn.style.filter = 'grayscale(0.5)';
+        }
+        if (viewEntriesBtn) {
+          viewEntriesBtn.classList.add('disabled');
+          viewEntriesBtn.style.opacity = '0.5';
+          viewEntriesBtn.style.filter = 'grayscale(0.5)';
+        }
+        
+        // Add click interceptors for disabled features
+        if (newEntryBtn) {
+          newEntryBtn.addEventListener('click', (e) => {
+            e.stopPropagation();
+            e.preventDefault();
+            console.log(`[Security] Intercepted disabled journal new entry click`);
+            showUpgradeMessage();
+          });
+        }
+        if (viewEntriesBtn) {
+          viewEntriesBtn.addEventListener('click', (e) => {
+            e.stopPropagation();
+            e.preventDefault();
+            console.log(`[Security] Intercepted disabled journal view entries click`);
+            showUpgradeMessage();
+          });
+        }
+      }
+    }
+  });
+}
+
+
+// SSS Modal - Unified gating (commented out - SSS not in use currently)
+// applyUnifiedGating('toolbarSSSBtn', 'sssModal');
+
+// Set up SSS functionality for premium users (commented out - SSS not in use currently)
+// if (currentUserPlan === 'premium') {
+//   // Remove disabled class for premium users
+//   const closeBtn = sssModal.querySelector('.close-modal');
+//   if (closeBtn) closeBtn.classList.remove('disabled');
+// }
+
+// sssModal.querySelector('.close-modal').onclick = () => { 
+//   sssModal.style.display = 'none'; 
+//   openPopup = null; 
+//   openButton = null; 
+//   openAlignRight = false; 
+// };
+
+// NOTE: Login modal logic removed - now handled by authModal.js
+// The login modal uses 'loginModal' ID and close button uses 'loginCloseBtn' ID
+
+// Update login modal content based on user status
+function updateLoginModalContent() {
+  const loginContent = document.getElementById('loginContent');
+  const userInfo = document.getElementById('userInfo');
+  const userEmail = document.getElementById('userEmail');
+  const userPlan = document.getElementById('userPlan');
+  if (window.loggedInUser && userInfo && loginContent) {
+    loginContent.style.display = 'none';
+    userInfo.style.display = 'block';
+    if (userEmail) userEmail.textContent = window.loggedInUser.email;
+    if (userPlan && window.currentUserPlan) userPlan.textContent = `Plan: ${window.currentUserPlan.charAt(0).toUpperCase() + window.currentUserPlan.slice(1)}`;
+  } else if (loginContent && userInfo) {
+    loginContent.style.display = 'block';
+    userInfo.style.display = 'none';
+  }
+}
+
+// After successful login, set window.loggedInUser and update modal
+window.setLoggedInUser = function(user, plan) {
+  window.loggedInUser = user;
+  currentUserPlan = plan || 'free';
+  window.currentUserPlan = currentUserPlan;
+  updateLoginModalContent();
+};
+
+
+// Logout functionality
+const logoutBtn = document.getElementById('logoutBtn');
+if (logoutBtn) {
+  logoutBtn.addEventListener('click', async () => {
+    if (window.supabaseClient && window.supabaseClient.auth) {
+      const { error } = await window.supabaseClient.auth.signOut();
+      if (error) {
+        console.error('Logout error:', error.message);
+      } else {
+        console.log('Logged out successfully');
+        window.loggedInUser = null;
+        currentUserPlan = 'free';
+        window.currentUserPlan = currentUserPlan;
+        updateLoginModalContent();
+        // Clear protected modals to allow re-protection
+        clearProtectedModals();
+        // Refresh the page to clear all user data from map
+        console.log('🔄 Refreshing page to clear user data...');
+        window.location.reload();
+      }
+    }
+  });
+}
+
+// NOTE: Google login button handler removed - now handled by authModal.js
+// The button ID is 'googleLoginBtnNew', not 'googleLoginBtn'
+
+// 🔐 Step 1: Set the plan access levels
+const accessMap = true;
+const accessWeather = true;
+const accessPaidFeatures = (currentUserPlan === 'premium');
+
+// Feature gating function with plan requirements
+function requirePlan(minPlan, callback) {
+  // Check if globals are initialized
+  if (typeof loggedInUser === 'undefined' || typeof currentUserPlan === 'undefined') {
+    console.warn("⚠️ requirePlan() called before globals initialized");
+    return;
+  }
+
+  const rank = { free: 0, basic: 1, premium: 2 };
+  if (!loggedInUser) {
+    showUpgradeMessage();
+    document.getElementById("loginModal").style.display = "block";
+    return;
+  }
+  if (rank[currentUserPlan] < rank[minPlan]) {
+    showUpgradeMessage();
+    return;
+  }
+  callback();
+}
+
+// 🔐 Step 2: Intercept ALL tool-related buttons & feature access
+function secureFeatureAccess(buttonId, requiredPlan = 'premium') {
+  // Check if globals are initialized
+  if (typeof currentUserPlan === 'undefined') {
+    console.warn("⚠️ secureFeatureAccess() called before globals initialized");
+    return;
+  }
+
+  const el = document.getElementById(buttonId);
+  if (!el) return;
+
+  const isAllowed = (currentUserPlan === requiredPlan);
+
+  if (!isAllowed) {
+    el.onclick = () => showUpgradeMessage();
+    el.style.pointerEvents = 'auto';
+    
+    // Don't apply greyed-out styling to drawing action buttons
+    // They are handled by applyPremiumStyling() instead
+    const drawingActionButtons = ['startDrawBtn', 'clearLastStrokeBtn', 'clearAllDrawingsBtn', 'saveDrawingBtn'];
+    if (!drawingActionButtons.includes(buttonId)) {
+      el.style.opacity = 0.5;
+    }
+  }
+}
+
+
+
+// 🔐 Step 3.5: Show upgrade message popup (replaces alert)
+function showUpgradeMessage() {
+  // Don't show upgrade message for premium users
+  if (currentUserPlan === 'premium') {
+    console.log("[UI] Skipping upgrade message - user is premium");
+    return;
+  }
+
+  // Remove any existing popup first
+  const existingPopup = document.querySelector('.premium-upgrade-popup');
+  if (existingPopup) {
+    console.log("[UI] Removing existing premium popup before creating new one");
+    existingPopup.remove();
+  }
+
+  console.log("[UI] Showing Premium Feature modal...");
+
+  // Create the upgrade popup
+  const popup = document.createElement('div');
+  popup.className = 'premium-upgrade-popup';
+  popup.style.cssText = `
+    position: fixed;
+    top: 50%;
+    left: 50%;
+    transform: translate(-50%, -50%);
+    background: white;
+    border-radius: 12px;
+    padding: 30px;
+    text-align: center;
+    box-shadow: 0 10px 30px rgba(0,0,0,0.3);
+    z-index: 10000;
+    max-width: 400px;
+    width: 90%;
+    border: 2px solid #ff6b6b;
+  `;
+
+  popup.innerHTML = `
+    <div style="font-size: 48px; margin-bottom: 20px;">🔒</div>
+    <h2 style="margin: 0 0 15px 0; color: #333; font-size: 24px;">Premium Feature</h2>
+    <p style="margin: 0 0 25px 0; color: #666; font-size: 16px; line-height: 1.5;">
+      Upgrade to Premium to access this feature and unlock all tools.
+    </p>
+    <button id="premium-popup-close" style="
+      background: #ff6b6b;
+      color: white;
+      border: none;
+      padding: 12px 30px;
+      border-radius: 8px;
+      font-size: 16px;
+      cursor: pointer;
+      font-weight: 600;
+    ">Got it</button>
+  `;
+
+  document.body.appendChild(popup);
+
+  // Add proper event listener to close button
+  const closeBtn = popup.querySelector('#premium-popup-close');
+  if (closeBtn) {
+    closeBtn.addEventListener('click', (e) => {
+      e.stopPropagation();
+      e.preventDefault();
+      popup.remove();
+    });
+  }
+
+  // Add click outside to close functionality
+  popup.addEventListener('click', (e) => {
+    if (e.target === popup) {
+      popup.remove();
+    }
+  });
+}
+
+
+// 🔐 Step 4: Apply unified gating to all premium feature buttons
+function applyUnifiedGating(buttonId, modalId) {
+  const button = document.getElementById(buttonId);
+  const modal = document.getElementById(modalId);
+  
+  if (!button || !modal) return;
+  
+  // Remove any existing listeners to prevent duplicates
+  const newButton = button.cloneNode(true);
+  button.parentNode.replaceChild(newButton, button);
+  
+  // Add unified click handler - only toggle popup visibility
+  newButton.addEventListener('click', (e) => {
+    e.stopPropagation();
+    console.debug(`[Toolbar] ${buttonId} clicked - toggling popup`);
+    
+    if (modal.style.display === 'block') {
+      modal.style.display = 'none';
+      openPopup = null;
+      openButton = null;
+    } else {
+      openPopupAboveButton(modal, newButton);
+      // Apply protection after popup is opened (skip for layersDropdown - species now free)
+      if (modalId !== 'layersDropdown') {
+        applyModalProtection(modalId);
+      }
+    }
+  });
+}
+
+
+
+// 🔐 Step 4.6: Close Journal modal function
+function closeJournalModal() {
+  const journalModal = document.getElementById('journalModal');
+  if (journalModal) {
+    journalModal.style.display = 'none';
+    openPopup = null;
+    openButton = null;
+  }
+}
+
+// 🔐 Step 5: Apply subtle modal protection for free users
+// Track which modals have already been protected to prevent duplicate protection
+const protectedModals = new Set();
+
+function applyModalProtection(modalId) {
+  const modal = document.getElementById(modalId);
+  const isFreeUser = currentUserPlan !== 'premium';
+  if (!modal || !isFreeUser) {
+    console.log(`[Protection] Skipping protection for ${modalId} - ${isFreeUser ? 'modal not found' : 'premium user'}`);
+    return;
+  }
+
+  // Prevent duplicate protection
+  if (protectedModals.has(modalId)) {
+    console.log(`[Protection] Modal ${modalId} already protected, skipping`);
+    return;
+  }
+  
+  protectedModals.add(modalId);
+  
+  // For premium users, ensure close buttons work properly
+  if (!isFreeUser) {
+    const closeButtons = modal.querySelectorAll('.close-modal');
+    closeButtons.forEach(btn => {
+      btn.classList.remove('disabled');
+      btn.removeAttribute('disabled');
+      btn.style.opacity = '1';
+      btn.style.cursor = 'pointer';
+      btn.style.pointerEvents = 'auto';
+    });
+    return;
+  }
+  
+
+
+  console.log(`[Protection] Applying protection to ${modalId} for FREE user`);
+
+  // Get all popup buttons and ensure they have disabled class for free users
+  const allPopupButtons = modal.querySelectorAll('.popup-btn');
+  console.log(`[Styling] All popup buttons in modal: ${modalId}`, allPopupButtons.length);
+  
+  // For free users, make buttons clickable but show upgrade popup
+  allPopupButtons.forEach(btn => {
+    // Don't modify close buttons for free users - they should work normally
+    if (!btn.classList.contains('close-modal')) {
+      btn.classList.add('disabled');
+      // Remove disabled attribute to keep buttons clickable
+      btn.removeAttribute('disabled');
+      btn.style.cursor = 'pointer';
+      btn.style.pointerEvents = 'auto';
+      
+      // Force style refresh for consistent dimming
+      btn.style.opacity = '0.5';
+      btn.style.filter = 'grayscale(0.5)';
+      
+      console.log(`[Protection] Applied disabled styling to: ${btn.id || btn.textContent}`);
+    } else {
+      // Ensure close buttons work normally for free users
+      btn.classList.remove('disabled');
+      btn.removeAttribute('disabled');
+      btn.style.opacity = '1';
+      btn.style.filter = 'none';
+      btn.style.cursor = 'pointer';
+      btn.style.pointerEvents = 'auto';
+    }
+  });
+  
+  // Now get the disabled buttons for event listener setup
+  const disabledButtons = modal.querySelectorAll('.popup-btn.disabled');
+  console.log(`[Styling] Disabled buttons in modal: ${modalId}`, disabledButtons.length);
+  
+  // Log specific button types for debugging
+  if (modalId === 'layersDropdown') {
+    const layerButtons = modal.querySelectorAll('button[data-layer]');
+    const speciesButtons = modal.querySelectorAll('.species-btn');
+    console.log(`[Debug] Layer buttons: ${layerButtons.length}, Species buttons: ${speciesButtons.length}`);
+  }
+
+  disabledButtons.forEach(btn => {
+    // Skip close buttons - they should work normally
+    if (btn.classList.contains('close-modal')) {
+      return;
+    }
+    
+    // Remove any existing listeners by cloning the button
+    const newBtn = btn.cloneNode(true);
+    btn.parentNode.replaceChild(newBtn, btn);
+    
+    console.log(`[Debug] Replaced button with new instance to clear old listeners`);
+    
+    // Add single event listener to the new button
+    newBtn.addEventListener('click', (e) => {
+      e.stopPropagation();
+      e.preventDefault();
+      console.log(`[Security] Intercepted disabled feature click in ${modalId}`);
+      showUpgradeMessage(); // The styled upgrade popup
+    });
+  });
+}
+
+async function fetchUserPlan() {
+  // Prevent multiple simultaneous plan fetches
+  if (planLoaded) {
+    console.log("📡 fetchUserPlan() skipped - plan already loaded");
+    console.log("📊 Current plan state:", { currentUserPlan, planLoaded });
+    return;
+  }
+  
+  console.log("📡 fetchUserPlan() running...");
+  planLoaded = true; // Set flag immediately to prevent concurrent calls
+  
+  try {
+    const { data: { user } } = await window.supabaseClient.auth.getUser();
+    if (!user) {
+      console.log("❌ No user found in fetchUserPlan");
+      planLoaded = false; // Reset flag on error
+      return;
+    }
+    
+    console.log("🔍 Fetching plan for user:", user.id);
+    
+    const { data, error } = await supabase
+      .from('profiles')
+      .select('plan')
+      .eq('id', user.id)
+      .single();
+      
+    console.log("📊 Database response:", { data, error });
+    
+    if (data) {
+      currentUserPlan = data.plan || 'free';
+      window.currentUserPlan = currentUserPlan; // Make it globally accessible
+      console.log("✅ User plan fetched:", data.plan);
+      applyPremiumStyling(); // Apply premium styling to UI
+      
+      // Apply modal protection logic AFTER plan is determined
+      console.log("[Plan] Current user plan:", currentUserPlan);
+        if (currentUserPlan === 'premium') {
+    console.log("[Plan] Premium user - restoring button functionality");
+    restoreOriginalButtonFunctionality();
+    
+    // Load saved GPX files for premium users
+    // DISABLED: Using new Mapbox GPX manager instead
+    // setTimeout(() => {
+    //   if (typeof loadGpxFiles === 'function' && !window.gpxCleared) {
+    //     loadGpxFiles();
+    //   }
+    // }, 1000);
+        } else {
+        console.log("[Plan] Free user - applying modal protection (species now free)");
+        applyModalProtection('gpxModal');
+        applyModalProtection('journalModal');
+        // applyModalProtection('sssModal'); // SSS not in use currently
+        applyToolbarProtection();
+        applyToolsProtection();
+      }
+    } else {
+      console.warn("⚠️ No profile found for user, creating one...");
+      // If no profile found, try to create one with default 'free' plan
+      const { error: insertError } = await supabase
+        .from('profiles')
+        .insert([{ id: user.id, plan: 'free' }]);
+      if (insertError) {
+        console.warn("⚠️ Failed to create profile:", insertError.message);
+        // Set to free as fallback
+        currentUserPlan = 'free';
+        window.currentUserPlan = currentUserPlan; // Make it globally accessible
+        applyPremiumStyling();
+        console.log("[Plan] Free user (fallback) - applying modal protection (species now free)");
+        applyModalProtection('gpxModal');
+        applyModalProtection('journalModal');
+        // applyModalProtection('sssModal'); // SSS not in use currently
+      } else {
+        console.log("✅ Profile created with free plan");
+        currentUserPlan = 'free';
+        window.currentUserPlan = currentUserPlan; // Make it globally accessible
+        applyPremiumStyling();
+        console.log("[Plan] Free user (new profile) - applying modal protection (species now free)");
+        applyModalProtection('gpxModal');
+        applyModalProtection('journalModal');
+        // applyModalProtection('sssModal'); // SSS not in use currently
+      }
+    }
+
+    if (currentUserPlan !== 'premium') {
+      const hidden = document.getElementById('uiHidden');
+      if (hidden) hidden.remove();
+    }
+  } catch (error) {
+    console.error("❌ Error in fetchUserPlan:", error);
+    // Set to free as fallback
+    currentUserPlan = 'free';
+    window.currentUserPlan = currentUserPlan; // Make it globally accessible
+    applyPremiumStyling();
+    console.log("[Plan] Free user (error fallback) - applying modal protection (species now free)");
+    applyModalProtection('gpxModal');
+    applyModalProtection('journalModal');
+    // applyModalProtection('sssModal'); // SSS not in use currently
+    planLoaded = false; // Reset flag on error
+    if (currentUserPlan !== 'premium') {
+      const hidden = document.getElementById('uiHidden');
+      if (hidden) hidden.remove();
+    }
+  }
+}
+
+// Function to reset plan loading flag (useful for logout/login scenarios)
+function resetPlanLoaded() {
+  planLoaded = false;
+  console.log("🔄 Plan loading flag reset");
+}
+
+// Function to clear protected modals (useful for logout/login scenarios)
+function clearProtectedModals() {
+  protectedModals.clear();
+  console.log("🔄 Protected modals cleared");
+}
+
+// Debug function to check and reset plan
+window.debugPlan = function() {
+  console.log("🔍 Current plan state:", { currentUserPlan, planLoaded });
+  if (planLoaded) {
+    console.log("🔄 Resetting plan and re-fetching...");
+    planLoaded = false;
+    fetchUserPlan();
+  } else {
+    console.log("📡 Fetching plan...");
+    fetchUserPlan();
+  }
+};
+
+
+
+// Function to apply premium styling to UI elements
+function applyPremiumStyling() {
+  console.log(`[Styling] Applying premium styling for plan: ${currentUserPlan}`);
+  
+  // Update 2D/3D toggle button styling
+  if (window.viewModeControl) {
+    window.viewModeControl.updateButtonStyle();
+  }
+  
+  // Apply protection to all modals based on current plan
+  if (currentUserPlan === 'premium') {
+    // Premium user - enable all features
+    console.log('[Styling] Premium user - enabling all features');
+    
+    // Enable all layer buttons (Terrain, Satellite, Contours, Hybrid)
+    const layerButtons = document.querySelectorAll('button[data-layer]');
+    layerButtons.forEach(btn => {
+      btn.classList.remove('disabled');
+      btn.removeAttribute('disabled');
+      btn.style.opacity = '1';
+      btn.style.filter = 'none';
+    });
+    
+    // Enable GPX features
+    const gpxButtons = document.querySelectorAll('#gpxModal .popup-btn:not(.close-modal)');
+    gpxButtons.forEach(btn => {
+      btn.classList.remove('disabled');
+      btn.removeAttribute('disabled');
+      btn.style.opacity = '1';
+      btn.style.filter = 'none';
+    });
+    
+    // Enable Journal features
+    const journalButtons = document.querySelectorAll('#journalModal .popup-btn:not(.close-modal)');
+    journalButtons.forEach(btn => {
+      btn.classList.remove('disabled');
+      btn.removeAttribute('disabled');
+      btn.style.opacity = '1';
+      btn.style.filter = 'none';
+    });
+    
+    // Enable Tools features
+    const toolsButtons = document.querySelectorAll('#toolsDropdown .popup-btn');
+    toolsButtons.forEach(btn => {
+      btn.classList.remove('disabled');
+      btn.removeAttribute('disabled');
+      btn.style.opacity = '1';
+      btn.style.filter = 'none';
+    });
+    
+    // Enable Drawing action buttons
+    const drawingActionButtons = document.querySelectorAll('#drawSubmenu .action-btn');
+    drawingActionButtons.forEach(btn => {
+      btn.classList.remove('disabled');
+      btn.removeAttribute('disabled');
+      btn.style.opacity = '1';
+      btn.style.filter = 'none';
+    });
+    
+  } else {
+    // Free user - apply protection to premium features
+    console.log('[Styling] Free user - applying protection to premium features');
+    
+    // Species layers remain free for all users
+    const speciesButtons = document.querySelectorAll('.species-btn');
+    speciesButtons.forEach(btn => {
+      btn.classList.remove('disabled');
+      btn.removeAttribute('disabled');
+      btn.style.opacity = '1';
+      btn.style.filter = 'none';
+    });
+    
+    // Disable premium layer features (Terrain, Satellite, Contours, Hybrid)
+    const layerButtons = document.querySelectorAll('button[data-layer]');
+    layerButtons.forEach(btn => {
+      btn.classList.add('disabled');
+      btn.style.opacity = '0.5';
+      btn.style.filter = 'grayscale(0.5)';
+    });
+    
+    // Disable GPX features
+    const gpxButtons = document.querySelectorAll('#gpxModal .popup-btn:not(.close-modal)');
+    gpxButtons.forEach(btn => {
+      btn.classList.add('disabled');
+      btn.style.opacity = '0.5';
+      btn.style.filter = 'grayscale(0.5)';
+    });
+    
+    // Disable Journal features
+    const journalButtons = document.querySelectorAll('#journalModal .popup-btn:not(.close-modal)');
+    journalButtons.forEach(btn => {
+      btn.classList.add('disabled');
+      btn.style.opacity = '0.5';
+      btn.style.filter = 'grayscale(0.5)';
+    });
+    
+    // Disable Tools features for free users
+    const toolsButtons = document.querySelectorAll('#toolsDropdown .popup-btn');
+    toolsButtons.forEach(btn => {
+      btn.classList.add('disabled');
+      btn.style.opacity = '0.5';
+      btn.style.filter = 'grayscale(0.5)';
+    });
+    
+    // Keep Drawing action buttons normal looking but gated for free users
+    const drawingActionButtons = document.querySelectorAll('#drawSubmenu .action-btn');
+    drawingActionButtons.forEach(btn => {
+      btn.classList.add('disabled');
+      btn.style.opacity = '1'; // Keep normal opacity
+      btn.style.filter = 'none'; // Keep normal colors
+    });
+  }
+  
+  // Apply event listeners for disabled buttons
+  applyDisabledButtonListeners();
+}
+
+// Function to apply event listeners for disabled buttons
+function applyDisabledButtonListeners() {
+  const disabledButtons = document.querySelectorAll('.popup-btn.disabled, button[data-layer].disabled');
+  
+  disabledButtons.forEach(btn => {
+    // Skip close buttons - they should work normally
+    if (btn.classList.contains('close-modal')) {
+      return;
+    }
+    
+    // Remove any existing listeners by cloning the button
+    const newBtn = btn.cloneNode(true);
+    btn.parentNode.replaceChild(newBtn, btn);
+    
+    console.log(`[Debug] Replaced button with new instance to clear old listeners`);
+    
+    // Add single event listener to the new button
+    newBtn.addEventListener('click', (e) => {
+      e.stopPropagation();
+      e.preventDefault();
+      console.log(`[Security] Intercepted disabled feature click`);
+      showUpgradeMessage(); // The styled upgrade popup
+    });
+  });
+}
+
+// Function to apply protection to popup content for free users
+function applyToolbarProtection() {
+  const isFreeUser = currentUserPlan !== 'premium';
+  if (!isFreeUser) {
+    return; // Skip for premium users
+  }
+  
+  console.log('[Protection] Applying popup content protection for FREE user');
+  
+  // Don't protect toolbar buttons - they should remain clickable to open popups
+  // The modal protection will handle the buttons inside the popups
+}
+
+// Function to apply protection to tools popup buttons for free users
+function applyToolsProtection() {
+  const isFreeUser = currentUserPlan !== 'premium';
+  if (!isFreeUser) {
+    return; // Skip for premium users
+  }
+  
+  console.log('[Protection] Applying tools popup protection for FREE user');
+  
+  // Get the tools popup buttons
+  const toolsButtons = document.querySelectorAll('#toolsDropdown .popup-btn');
+  
+  toolsButtons.forEach(btn => {
+    // Add disabled styling
+    btn.classList.add('disabled');
+    btn.removeAttribute('disabled'); // Keep clickable
+    btn.style.cursor = 'pointer';
+    btn.style.pointerEvents = 'auto';
+    
+    // Force style refresh
+    btn.style.opacity = '0.5';
+    btn.style.filter = 'grayscale(0.5)';
+    
+    console.log(`[Protection] Applied disabled styling to: ${btn.id || btn.textContent}`);
+    
+    // Remove existing onclick handlers and add upgrade popup
+    const newBtn = btn.cloneNode(true);
+    btn.parentNode.replaceChild(newBtn, btn);
+    
+    newBtn.addEventListener('click', (e) => {
+      e.stopPropagation();
+      e.preventDefault();
+      console.log(`[Security] Intercepted tools button click: ${newBtn.id || newBtn.textContent}`);
+      showUpgradeMessage();
+    });
+  });
+}
+
+// Function to restore original button functionality for premium users
+function restoreOriginalButtonFunctionality() {
+  console.log("🔧 restoreOriginalButtonFunctionality() called");
+  console.log("[Restore] Restoring original button functionality for premium user");
+  
+  // First, remove any disabled styling from all buttons
+  const allButtons = document.querySelectorAll('.popup-btn, .species-btn, button[data-layer]');
+  allButtons.forEach(btn => {
+    btn.classList.remove('disabled');
+    btn.removeAttribute('disabled');
+    btn.style.opacity = '1';
+    btn.style.cursor = 'pointer';
+    btn.style.pointerEvents = 'auto';
+  });
+  
+  // --- Helper to robustly replace button handlers (handles clones) ---
+  const replaceButtonHandler = (id, handler) => {
+    const oldBtn = document.getElementById(id);
+    if (!oldBtn) return;
+    const newBtn = oldBtn.cloneNode(true);
+    oldBtn.replaceWith(newBtn);
+    newBtn.onclick = handler;
+  };
+
+  // --- Tools popup ---
+  replaceButtonHandler('toolbarPins', () => {
+    console.log("📍 Pins clicked - Opening pins submenu");
+    // Close all other submenus first
+    closeAllToolSubmenus();
+    // Close the tools popup and open pins submenu
+    const toolsDropdown = document.getElementById('toolsDropdown');
+    const pinsSubmenu = document.getElementById('pinsSubmenu');
+    if (toolsDropdown) toolsDropdown.style.display = 'none';
+    if (pinsSubmenu) {
+      pinsSubmenu.style.display = 'block';
+      // Position the submenu properly
+      positionToolSubmenu(pinsSubmenu);
+    }
+  });
+  replaceButtonHandler('toolbarDraw', () => {
+    console.log("✏️ Draw clicked - Opening draw submenu");
+    // Close all other submenus first
+    closeAllToolSubmenus();
+    // Close the tools popup and open draw submenu
+    const toolsDropdown = document.getElementById('toolsDropdown');
+    const drawSubmenu = document.getElementById('drawSubmenu');
+    if (toolsDropdown) toolsDropdown.style.display = 'none';
+    if (drawSubmenu) {
+      drawSubmenu.style.display = 'block';
+      // Position the submenu properly
+      positionToolSubmenu(drawSubmenu);
+    }
+  });
+  replaceButtonHandler('toolbarTrack', () => {
+    console.log("🚶‍♂️ Track clicked - Opening track submenu");
+    // Close all other submenus first
+    closeAllToolSubmenus();
+    // Close the tools popup and open track submenu
+    const toolsDropdown = document.getElementById('toolsDropdown');
+    const trackSubmenu = document.getElementById('trackSubmenu');
+    if (toolsDropdown) toolsDropdown.style.display = 'none';
+    if (trackSubmenu) {
+      trackSubmenu.style.display = 'block';
+      // Position the submenu properly
+      positionToolSubmenu(trackSubmenu);
+    }
+  });
+
+  // === Submenu Navigation Logic ===
+  
+  // Back button handlers for submenus
+  replaceButtonHandler('pinsBackBtn', () => {
+    console.log("← Back to main tools");
+    const pinsSubmenu = document.getElementById('pinsSubmenu');
+    const toolsDropdown = document.getElementById('toolsDropdown');
+    if (pinsSubmenu) pinsSubmenu.style.display = 'none';
+    if (toolsDropdown) {
+      toolsDropdown.style.display = 'block';
+      // Reposition the main tools dropdown
+      const toolsBtn = document.getElementById('toolbarToolsBtn');
+      if (toolsBtn) {
+        positionPopup(toolsDropdown, toolsBtn);
+      }
+    }
+  });
+  
+  replaceButtonHandler('drawBackBtn', () => {
+    console.log("← Back to main tools");
+    const drawSubmenu = document.getElementById('drawSubmenu');
+    const toolsDropdown = document.getElementById('toolsDropdown');
+    if (drawSubmenu) drawSubmenu.style.display = 'none';
+    if (toolsDropdown) {
+      toolsDropdown.style.display = 'block';
+      // Reposition the main tools dropdown
+      const toolsBtn = document.getElementById('toolbarToolsBtn');
+      if (toolsBtn) {
+        positionPopup(toolsDropdown, toolsBtn);
+      }
+    }
+  });
+  
+  replaceButtonHandler('trackBackBtn', () => {
+    console.log("← Back to main tools");
+    const trackSubmenu = document.getElementById('trackSubmenu');
+    const toolsDropdown = document.getElementById('toolsDropdown');
+    if (trackSubmenu) trackSubmenu.style.display = 'none';
+    if (toolsDropdown) {
+      toolsDropdown.style.display = 'block';
+      // Reposition the main tools dropdown
+      const toolsBtn = document.getElementById('toolbarToolsBtn');
+      if (toolsBtn) {
+        positionPopup(toolsDropdown, toolsBtn);
+      }
+    }
+  });
+
+  // === Pins Submenu Functionality ===
+  
+  // Pin style selection
+  document.querySelectorAll('.pin-style-btn').forEach(btn => {
+    btn.addEventListener('click', () => {
+      // Remove active class from all buttons
+      document.querySelectorAll('.pin-style-btn').forEach(b => b.classList.remove('active'));
+      // Add active class to clicked button
+      btn.classList.add('active');
+      // Update the selected pin style
+      const selectedStyle = btn.dataset.style;
+      updateSelectedPinStyle(selectedStyle);
+      console.log('Pin style selected:', selectedStyle);
+    });
+  });
+  
+  // Set default pin style button as active
+  const defaultPinStyleBtn = document.querySelector('.pin-style-btn[data-style="orange"]');
+  if (defaultPinStyleBtn) {
+    defaultPinStyleBtn.classList.add('active');
+  }
+  
+  // Pin actions
+  replaceButtonHandler('placePinBtn', () => {
+    console.log("📍 Place Pin clicked from submenu");
+    const pinsSubmenu = document.getElementById('pinsSubmenu');
+    if (pinsSubmenu) pinsSubmenu.style.display = 'none';
+    // Set pin mode and activate the button
+    window.WITD.pinMode = true;
+    const addPinBtn = document.getElementById('addPinBtn');
+    if (addPinBtn) addPinBtn.classList.add('active');
+  });
+  
+  replaceButtonHandler('clearAllPinsBtn', () => {
+    console.log("🧹 Clear All Pins clicked from submenu");
+    const pinsSubmenu = document.getElementById('pinsSubmenu');
+    if (pinsSubmenu) pinsSubmenu.style.display = 'none';
+    // Show styled confirmation dialog
+    showStyledConfirm("Clear all Pin Tool pins?", () => {
+      // User confirmed - call the clear all pins function
+      if (window.clearAllPins) {
+        window.clearAllPins();
+      }
+    });
+  });
+  
+
+  // === Draw Submenu Functionality ===
+  
+  // Draw tool selection
+  document.querySelectorAll('.draw-tool-btn').forEach(btn => {
+    btn.addEventListener('click', () => {
+      // Remove active class from all buttons
+      document.querySelectorAll('.draw-tool-btn').forEach(b => b.classList.remove('active'));
+      // Add active class to clicked button
+      btn.classList.add('active');
+      const selectedTool = btn.dataset.tool;
+      console.log('Draw tool selected:', selectedTool);
+      
+      // Update drawing mode
+      if (window.WITD && window.WITD.draw && window.WITD.draw.setDrawMode) {
+        window.WITD.draw.setDrawMode(selectedTool);
+      } else {
+        console.warn('Drawing module not ready yet');
+      }
+    });
+  });
+  
+  // Draw actions
+  replaceButtonHandler('startDrawBtn', () => {
+    console.log("✏️ Start Drawing clicked from submenu");
+    const drawSubmenu = document.getElementById('drawSubmenu');
+    if (drawSubmenu) drawSubmenu.style.display = 'none';
+    // Call the start draw track function directly
+    if (window.startDrawTrack) window.startDrawTrack();
+  });
+  
+  replaceButtonHandler('clearAllDrawingsBtn', () => {
+    console.log("🗑️ Clear All Drawings clicked");
+    showStyledConfirm("Clear all drawn tracks?", async () => {
+      // User confirmed - call the clear all drawings function
+      if (window.WITD && window.WITD.draw && window.WITD.draw.clearAllDrawings) {
+        try {
+          await window.WITD.draw.clearAllDrawings();
+          console.log("✅ All drawn tracks cleared");
+        } catch (error) {
+          console.error("❌ Error clearing tracks:", error);
+        }
+      } else {
+        console.warn("Drawing module not ready yet");
+      }
+    });
+  });
+
+
+  // === Submenu Control Updates ===
+  
+  
+  // Thickness slider
+  const thicknessSlider = document.getElementById('thicknessSlider');
+  const thicknessValue = document.getElementById('thicknessValue');
+  if (thicknessSlider && thicknessValue) {
+    thicknessSlider.addEventListener('input', (e) => {
+      const newThickness = e.target.value;
+      thicknessValue.textContent = newThickness;
+      console.log('Line thickness changed to:', newThickness);
+
+      // Update the drawing module thickness
+      if (window.WITD && window.WITD.draw && window.WITD.draw.updateDrawThickness) {
+        window.WITD.draw.updateDrawThickness(newThickness);
+      } else {
+        console.warn('Drawing module not ready yet');
+      }
+    });
+  }
+
+  // Color picker
+  const drawColorPicker = document.getElementById('drawColorPicker');
+  if (drawColorPicker) {
+    drawColorPicker.addEventListener('input', (e) => {
+      const newColor = e.target.value;
+      console.log('Drawing color changed to:', newColor);
+      
+      // Update the drawing module color
+      if (window.WITD && window.WITD.draw && window.WITD.draw.updateDrawColor) {
+        window.WITD.draw.updateDrawColor(newColor);
+      } else {
+        console.warn('Drawing module not ready yet');
+      }
+    });
+  }
+
+  // Style dropdown
+  const lineStyleSelect = document.getElementById('lineStyleSelect');
+  if (lineStyleSelect) {
+    lineStyleSelect.addEventListener('change', (e) => {
+      const newStyle = e.target.value;
+      console.log('Drawing style changed to:', newStyle);
+      
+      // Update the drawing module style
+      if (window.WITD && window.WITD.draw && window.WITD.draw.updateDrawStyle) {
+        window.WITD.draw.updateDrawStyle(newStyle);
+      } else {
+        console.warn('Drawing module not ready yet');
+      }
+    });
+  }
+  
+  // Precision slider
+  const precisionSlider = document.getElementById('precisionSlider');
+  const precisionValue = document.getElementById('precisionValue');
+  if (precisionSlider && precisionValue) {
+    precisionSlider.addEventListener('input', (e) => {
+      precisionValue.textContent = e.target.value;
+      console.log('Measurement precision changed to:', e.target.value);
+    });
+  }
+
+  // === Pin Style Management ===
+  
+  // Global variable to track selected pin style
+  window.selectedPinStyle = 'orange';
+  
+  // Function to update selected pin style
+  function updateSelectedPinStyle(style) {
+    window.selectedPinStyle = style;
+    console.log('Pin style updated to:', style);
+  }
+
+  // === Popup Close Functionality ===
+  
+  // Function to close all tool submenus
+  function closeAllToolSubmenus() {
+    const submenus = ['pinsSubmenu', 'drawSubmenu', 'trackSubmenu'];
+    submenus.forEach(submenuId => {
+      const submenu = document.getElementById(submenuId);
+      if (submenu) submenu.style.display = 'none';
+    });
+  }
+  
+  // Function to close all toolbars and submenus
+  function closeAllToolbars() {
+    const toolbars = ['toolsDropdown', 'layersDropdown', 'gpxModal', 'weatherWrapper', 'journalModal', 'sssModal'];
+    toolbars.forEach(toolbarId => {
+      const toolbar = document.getElementById(toolbarId);
+      if (toolbar) toolbar.style.display = 'none';
+    });
+    closeAllToolSubmenus();
+  }
+  
+  // Click outside to close popups
+  document.addEventListener('click', (e) => {
+    // Check if click is outside any tool submenu
+    const toolSubmenus = document.querySelectorAll('.tool-submenu');
+    const clickedInsideSubmenu = Array.from(toolSubmenus).some(submenu => 
+      submenu.contains(e.target)
+    );
+    
+    // Check if click is on a toolbar button (don't close if clicking toolbar buttons)
+    const toolbarButtons = document.querySelectorAll('.toolbar-btn');
+    const clickedOnToolbarButton = Array.from(toolbarButtons).some(btn => 
+      btn.contains(e.target)
+    );
+    
+    // If clicked outside submenus and not on toolbar buttons, close all submenus
+    if (!clickedInsideSubmenu && !clickedOnToolbarButton) {
+      closeAllToolSubmenus();
+    }
+  });
+  
+  // Close submenus when other toolbars are opened
+  const toolbarButtons = [
+    'toolbarLayersBtn', 'toolbarGpxBtn', 'toolbarWeatherBtn', 
+    'toolbarJournalBtn', /* 'toolbarSSSBtn', */ 'toolbarAccountBtn'
+  ];
+  
+  toolbarButtons.forEach(btnId => {
+    const btn = document.getElementById(btnId);
+    if (btn) {
+      btn.addEventListener('click', () => {
+        closeAllToolSubmenus();
+      });
+    }
+  });
+  
+  // Close submenus when main tools dropdown is opened
+  const toolsBtn = document.getElementById('toolbarToolsBtn');
+  if (toolsBtn) {
+    toolsBtn.addEventListener('click', () => {
+      closeAllToolSubmenus();
+    });
+  }
+
+  // --- GPX Modal Close Button Removed ---
+  // Close button removed - modal closes on outside click
+
+  // --- GPX Upload Proxy → Real Input Forwarder ---
+  const proxy = document.getElementById('gpxUploadProxy');
+  const real = document.getElementById('gpxUpload');
+
+  if (proxy && real) {
+    proxy.addEventListener('change', () => {
+      const proxyFiles = proxy.files;
+      console.log("🌀 Proxy input changed. Files:", proxyFiles);
+
+      if (!proxyFiles || proxyFiles.length === 0) {
+        console.warn("🌀 No files selected in proxy input");
+        return;
+      }
+
+      try {
+        const dt = new DataTransfer();
+        for (const file of proxyFiles) {
+          dt.items.add(file);
+        }
+
+        real.files = dt.files;
+        console.log("🌀 Forwarded to real input:", real.files);
+
+        // Trigger the real GPX logic
+        real.dispatchEvent(new Event('change'));
+
+        // Reset proxy so next selection works
+        proxy.value = '';
+      } catch (err) {
+        console.error("🛑 Error forwarding files:", err);
+      }
+    });
+  }
+
+  // --- Layers popup ---
+  const layerButtons = document.querySelectorAll('button[data-layer]');
+  layerButtons.forEach(btn => {
+    const layerType = btn.getAttribute('data-layer');
+    btn.onclick = () => {
+      console.log(`🗺️ Layer button clicked: ${layerType} - calling original function`);
+      if (window.switchBaseLayer) {
+        window.switchBaseLayer(layerType);
+      }
+    };
+  });
+  
+  // --- Species buttons ---
+  const speciesButtons = document.querySelectorAll('.species-btn');
+  speciesButtons.forEach(btn => {
+    const species = btn.getAttribute('data-species');
+    // Use replaceButtonHandler to ensure only one listener
+    const newBtn = btn.cloneNode(true);
+    btn.parentNode.replaceChild(newBtn, btn);
+    newBtn.onclick = () => {
+      console.log(`🦌 Species button clicked: ${species}`);
+      // Switch the species layer
+      if (window.switchSpeciesLayer) {
+        window.switchSpeciesLayer(species);
+      }
+    };
+  });
+  
+
+  
+  // --- GPX remove button ---
+  replaceButtonHandler('removeGpxProxy', () => {
+    console.log("🗑️ Remove GPX clicked");
+    // Close the GPX popup
+    const gpxModal = document.getElementById('gpxModal');
+    if (gpxModal) gpxModal.style.display = 'none';
+    // Clear all GPX tracks directly
+    if (typeof window.clearAllGpxTracks === 'function') {
+      window.clearAllGpxTracks();
+    } else {
+      console.log('❌ clearAllGpxTracks function not available');
+    }
+  });
+  
+  // --- GPX Upload Button ---
+  replaceButtonHandler('gpxUploadBtn', () => {
+    console.log("📁 GPX Upload clicked");
+    // Use our new GPX manager input to avoid conflicts
+    const gpxManagerInput = window.gpxManagerInput;
+    if (gpxManagerInput) {
+      console.log("📁 Using GPX manager input");
+      gpxManagerInput.click();
+    } else {
+      console.log("📁 Fallback to original gpxUpload input");
+      const gpxUpload = document.getElementById('gpxUpload');
+      if (gpxUpload) {
+        gpxUpload.click();
+      }
+    }
+  });
+  
+  // --- Journal popup ---
+  const journalNewEntry = document.getElementById('journalNewEntry');
+  if (journalNewEntry) {
+    journalNewEntry.addEventListener('click', () => {
+      console.log("📝 New Journal Entry clicked");
+      // Initialize journal if function exists
+      if (window.initJournal) {
+        window.initJournal();
+      }
+    });
+  }
+  
+  const journalViewEntries = document.getElementById('journalViewEntries');
+  if (journalViewEntries) {
+    journalViewEntries.addEventListener('click', () => {
+      console.log("📖 View Journal Entries clicked");
+      // Render journal list if function exists
+      if (window.renderJournalList) {
+        window.renderJournalList();
+      }
+    });
+  }
+  
+  // --- SSS popup close button --- (commented out - SSS not in use currently)
+  // const sssCloseBtn = document.querySelector('#sssModal .close-modal');
+  // if (sssCloseBtn) {
+  //   sssCloseBtn.onclick = () => {
+  //     const sssModal = document.getElementById('sssModal');
+  //     if (sssModal) sssModal.style.display = 'none';
+  //   };
+  // }
+  
+  console.log("✅ Button functionality restored");
+}
+
+// Global function for testing - can be called from console
+window.testPremiumFunctionality = function() {
+  console.log("🧪 Testing premium functionality...");
+  console.log("Current user plan:", currentUserPlan);
+  console.log("Current user:", loggedInUser?.email);
+  
+  if (currentUserPlan === 'premium') {
+    console.log("✅ User is premium - restoring functionality");
+    restoreOriginalButtonFunctionality();
+  } else {
+    console.log("❌ User is not premium");
+  }
+};
+
+// Styled confirmation dialog function
+function showStyledConfirm(message, onConfirm, onCancel) {
+  console.log("[UI] Showing styled confirmation dialog...");
+  
+  // Create modal
+  const confirmPopup = document.createElement('div');
+  confirmPopup.id = 'styledConfirmDialog';
+  confirmPopup.style.cssText = `
+    position: fixed;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    background: rgba(0,0,0,0.5);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    z-index: 10000;
+  `;
+  confirmPopup.innerHTML = `
+    <div class="upgrade-message">
+      <div class="upgrade-icon">❓</div>
+      <h3>Confirm Action</h3>
+      <p>${message}</p>
+      <div style="display: flex; gap: 10px; justify-content: center;">
+        <button id="confirmYesBtn" style="background: #dc3545; color: white; border: none; padding: 8px 16px; border-radius: 4px; cursor: pointer;">Yes</button>
+        <button id="confirmNoBtn" style="background: #6c757d; color: white; border: none; padding: 8px 16px; border-radius: 4px; cursor: pointer;">No</button>
+      </div>
+    </div>
+  `;
+  document.body.appendChild(confirmPopup);
+  
+  // Add event listeners
+  const yesBtn = document.getElementById("confirmYesBtn");
+  const noBtn = document.getElementById("confirmNoBtn");
+  
+  if (yesBtn) {
+    yesBtn.addEventListener("click", () => {
+      confirmPopup.remove();
+      if (onConfirm) onConfirm();
+    });
+  }
+  
+  if (noBtn) {
+    noBtn.addEventListener("click", () => {
+      confirmPopup.remove();
+      if (onCancel) onCancel();
+    });
+  }
+}
+
+// Styled message dialog function
+function showStyledMessage(message, title = "Message") {
+  console.log("[UI] Showing styled message dialog...");
+  
+  // Create modal
+  const messagePopup = document.createElement('div');
+  messagePopup.id = 'styledMessageDialog';
+  messagePopup.style.cssText = `
+    position: fixed;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    background: rgba(0,0,0,0.5);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    z-index: 10000;
+  `;
+  messagePopup.innerHTML = `
+    <div class="upgrade-message">
+      <div class="upgrade-icon">ℹ️</div>
+      <h3>${title}</h3>
+      <p>${message}</p>
+      <button id="messageOkBtn" onclick="this.parentElement.parentElement.remove()" style="background: #007bff; color: white; border: none; padding: 8px 16px; border-radius: 4px; cursor: pointer;">OK</button>
+    </div>
+  `;
+  document.body.appendChild(messagePopup);
+}
+
+// Debug helper to check button event listeners
+window.debugButtonListeners = function() {
+  const buttons = document.querySelectorAll('.popup-btn, .species-btn, button[data-layer]');
+  buttons.forEach(btn => {
+    console.log(`${btn.id || btn.textContent.trim()}:`, {
+      onclick: !!btn.onclick,
+      disabled: btn.disabled,
+      hasDisabledClass: btn.classList.contains('disabled'),
+      opacity: btn.style.opacity
+    });
+  });
+};
+
+window.supabaseClient.auth.getUser().then(({ data: { user } }) => {
+  if (user) {
+    loggedInUser = user;
+    fetchUserPlan();
+    console.log("Logged in:", user.email);
+  } else {
+    // No user logged in, ensure free user styling is applied
+    currentUserPlan = 'free';
+    window.currentUserPlan = currentUserPlan; // Make it globally accessible
+    applyPremiumStyling();
+  }
+});
+
+
+
+// Listen for auth state changes
+window.supabaseClient.auth.onAuthStateChange((event, session) => {
+  console.log("🔄 Auth state change:", event, session);
+  if (event === 'SIGNED_IN' && session?.user) {
+    loggedInUser = session.user;
+    fetchUserPlan();
+    console.log("✅ User signed in:", session.user.email);
+    
+    // Load drawing color and style when user signs in
+    if (window.WITD && window.WITD.draw && window.WITD.draw.loadDrawColor) {
+      window.WITD.draw.loadDrawColor();
+    }
+    if (window.WITD && window.WITD.draw && window.WITD.draw.loadDrawStyle) {
+      window.WITD.draw.loadDrawStyle();
+    }
+    
+    // Update modal content if it's open
+    if (loginModal.style.display === 'block') {
+      updateLoginModalContent();
+    }
+  } else if (event === 'SIGNED_OUT') {
+    loggedInUser = null;
+    currentUserPlan = 'free';
+    window.currentUserPlan = currentUserPlan; // Make it globally accessible
+    console.log("👋 User signed out");
+    applyPremiumStyling(); // Apply free user styling
+    
+    // Reset plan loading flag for next login
+    resetPlanLoaded();
+    
+    // Close the login modal if it's open
+    if (loginModal.style.display === 'block') {
+      loginModal.style.display = 'none';
+    }
+    
+  }
+});
+
+// Hide all popups on outside click
+window.addEventListener('click', () => {
+  document.getElementById('weatherTail').style.display = 'none';
+  toolsDropdown.style.display = 'none';
+  layersDropdown.style.display = 'none';
+  gpxModal.style.display = 'none';
+  weatherWrapper.style.display = 'none';
+  journalModal.style.display = 'none';
+  // sssModal.style.display = 'none'; // SSS not in use currently
+  loginModal.style.display = 'none';
+  openPopup = null;
+  openButton = null;
+});
+[toolsDropdown, layersDropdown, gpxModal, weatherWrapper, journalModal, /* sssModal, */ loginModal].forEach(el => {
+  el.addEventListener('click', e => e.stopPropagation());
+});
+</script>
+<!-- Remove old mobile tools menu if present -->
+<script>const oldMenu=document.getElementById('toolsMenu');if(oldMenu)oldMenu.remove();</script>
+<!-- END Bottom Toolbar & Modals -->
+<script>
+// Ensure weather popup is hidden on page load
+window.addEventListener('DOMContentLoaded', function() {
+  var weatherWrapper = document.getElementById('weatherWrapper');
+  if (weatherWrapper) weatherWrapper.style.display = 'none';
+  
+
+  
+  // Initialize session and user state after all functions are defined
+  if (loggedInUser) {
+    console.log("🔄 Initializing user state for:", loggedInUser.email);
+    fetchUserPlan();
+    updateLoginModalContent();
+    
+    // If returning from OAuth, show login modal to confirm login
+    if (window.location.hash.includes('access_token')) {
+      console.log("🎉 OAuth login detected, showing confirmation");
+      setTimeout(() => {
+        document.getElementById('loginModal').style.display = 'block';
+        updateLoginModalContent();
+      }, 500); // Small delay to ensure everything is ready
+    }
+  }
+
+  // 🛡️ Secure each button in uiHidden or toolbars (speciesFilter removed - now free)
+  ['addPinBtn', 'clearPinsBtn', 'drawTrackBtn', 'gpxUpload', 'removeGpx', 
+   'toolbarPins', 'toolbarDraw',
+   'startDrawBtn', 'clearLastStrokeBtn', 'clearAllDrawingsBtn', 'saveDrawingBtn'
+  ].forEach(id => secureFeatureAccess(id));
+  
+  // 🔐 Initialize unified gating for all toolbar modals
+  console.debug("[Init] Setting up unified gating for toolbar modals");
+  
+  // Apply unified gating to all modal buttons
+  applyUnifiedGating('toolbarLayersBtn', 'layersDropdown');
+  // applyUnifiedGating('toolbarSSSBtn', 'sssModal'); // SSS not in use currently
+  
+  // Modal protection is now handled in fetchUserPlan() after plan is determined
+  console.log("[Init] Modal protection will be applied after user plan is fetched");
+  
+  console.debug("[Init] Gating and popup logic initialized");
+
+  // 🎯 Add a plan badge in the bottom right corner
+  const planIndicator = document.getElementById('planIndicator');
+  // Plan indicator removed - no longer needed
+}); // Close the DOMContentLoaded event listener
+</script>
+<script src="JS/journalModal.js"></script>
+<script>
+// Apply initial styling after page load
+document.addEventListener('DOMContentLoaded', () => {
+  // Small delay to ensure all elements are loaded
+  setTimeout(() => {
+    applyPremiumStyling();
+  }, 100);
+});
+
+// Function to manually set premium status for testing
+function setPremiumStatus(isPremium) {
+  currentUserPlan = isPremium ? 'premium' : 'free';
+  window.currentUserPlan = currentUserPlan;
+  console.log(`[Testing] Manually set plan to: ${currentUserPlan}`);
+  applyPremiumStyling();
+}
+
+// Function to manually set user as premium in database
+async function setUserPremiumInDatabase(isPremium) {
+  try {
+    const { data: { user } } = await window.supabaseClient.auth.getUser();
+    if (!user) {
+      console.log("❌ No user found for database update");
+      return;
+    }
+    
+    const plan = isPremium ? 'premium' : 'free';
+    console.log(`[Database] Setting user ${user.id} plan to: ${plan}`);
+    
+    const { error } = await supabase
+      .from('profiles')
+      .upsert([{ id: user.id, plan: plan }], { onConflict: 'id' });
+      
+    if (error) {
+      console.error("❌ Failed to update user plan in database:", error);
+    } else {
+      console.log("✅ User plan updated in database");
+      // Refresh the plan
+      await fetchUserPlan();
+    }
+  } catch (error) {
+    console.error("❌ Error updating user plan:", error);
+  }
+}
+
+// Function to check current user plan status
+async function checkUserPlanStatus() {
+  try {
+    const { data: { user } } = await window.supabaseClient.auth.getUser();
+    if (!user) {
+      console.log("❌ No user logged in");
+      return;
+    }
+    
+    console.log("👤 Current user:", user.email, "ID:", user.id);
+    console.log("📋 Current plan variable:", currentUserPlan);
+    
+    const { data, error } = await supabase
+      .from('profiles')
+      .select('*')
+      .eq('id', user.id)
+      .single();
+      
+    console.log("🗄️ Database profile:", data);
+    console.log("❌ Database error:", error);
+    
+  } catch (error) {
+    console.error("❌ Error checking user plan:", error);
+  }
+}
+
+// Function to inspect all buttons and their states
+window.inspectButtons = function() {
+  console.log("🔍 Inspecting all buttons...");
+  
+  const allButtons = document.querySelectorAll('.popup-btn, .species-btn, button[data-layer]');
+  console.log(`Found ${allButtons.length} total buttons`);
+  
+  allButtons.forEach((btn, index) => {
+    const isDisabled = btn.classList.contains('disabled') || btn.hasAttribute('disabled');
+    console.log(`${index + 1}. "${btn.textContent.trim()}" - Disabled: ${isDisabled} - Classes: ${btn.className}`);
+  });
+  
+  const disabledButtons = document.querySelectorAll('.popup-btn.disabled, .species-btn.disabled, button[data-layer].disabled');
+  console.log(`Found ${disabledButtons.length} disabled buttons`);
+  
+  return {
+    total: allButtons.length,
+    disabled: disabledButtons.length,
+    buttons: Array.from(allButtons).map(btn => ({
+      text: btn.textContent.trim(),
+      disabled: btn.classList.contains('disabled') || btn.hasAttribute('disabled'),
+      classes: btn.className
+    }))
+  };
+};
+
+// Make functions globally accessible for testing
+window.setPremiumStatus = setPremiumStatus;
+window.setUserPremiumInDatabase = setUserPremiumInDatabase;
+window.checkUserPlanStatus = checkUserPlanStatus;
+window.restoreButtonFunctionality = restoreButtonFunctionality;
+
+// Immediate premium test function
+window.testPremium = function() {
+  console.log("🧪 Testing premium status...");
+  console.log("Current plan:", currentUserPlan);
+  console.log("Current user:", loggedInUser?.email);
+  
+  // Try to set premium immediately
+  setPremiumStatus(true);
+  
+  // Force apply premium styling
+  applyPremiumStyling();
+  
+  // Force re-enable all buttons by removing protection and styling
+  const allButtons = document.querySelectorAll('.popup-btn, .species-btn, button[data-layer]');
+  allButtons.forEach(btn => {
+    // Remove disabled class and attribute
+    btn.classList.remove('disabled');
+    btn.removeAttribute('disabled');
+    
+    // Remove any click event listeners that might be blocking
+    const newBtn = btn.cloneNode(true);
+    btn.parentNode.replaceChild(newBtn, btn);
+    
+    console.log(`[Test] Re-enabled button:`, newBtn.textContent.trim());
+  });
+  
+  // Restore functionality for specific buttons
+  restoreButtonFunctionality();
+  
+  // Check if buttons are enabled
+  const disabledButtons = document.querySelectorAll('.popup-btn.disabled');
+  console.log("Disabled buttons found:", disabledButtons.length);
+  
+  // Hide any upgrade modals
+  const upgradeMessage = document.getElementById('upgradeMessage');
+  if (upgradeMessage) {
+    upgradeMessage.style.display = 'none';
+    console.log("Hidden upgrade message modal");
+  }
+  
+  return {
+    plan: currentUserPlan,
+    user: loggedInUser?.email,
+    disabledButtons: disabledButtons.length,
+    totalButtons: allButtons.length
+  };
+};
+
+// Function to restore button functionality
+function restoreButtonFunctionality() {
+  console.log("🔧 Restoring button functionality...");
+  
+  // Restore Tools popup button functionality
+  const toolbarPlacePin = document.getElementById('toolbarPlacePin');
+  if (toolbarPlacePin) {
+    toolbarPlacePin.addEventListener('click', () => {
+      console.log("📍 Place Pin clicked");
+      // Trigger the original addPinBtn functionality
+      const addPinBtn = document.getElementById('addPinBtn');
+      if (addPinBtn) addPinBtn.click();
+    });
+  }
+  
+  const toolbarClearPins = document.getElementById('toolbarClearPins');
+  if (toolbarClearPins) {
+    toolbarClearPins.addEventListener('click', () => {
+      console.log("🧹 Clear Pins clicked");
+      // Trigger the original clearPinsBtn functionality
+      const clearPinsBtn = document.getElementById('clearPinsBtn');
+      if (clearPinsBtn) clearPinsBtn.click();
+    });
+  }
+  
+  const toolbarDrawTrack = document.getElementById('toolbarDrawTrack');
+  if (toolbarDrawTrack) {
+    toolbarDrawTrack.addEventListener('click', () => {
+      console.log("✏️ Draw Track clicked");
+      // Trigger the original drawTrackBtn functionality
+      const drawTrackBtn = document.getElementById('drawTrackBtn');
+      if (drawTrackBtn) drawTrackBtn.click();
+    });
+  }
+  
+  // Restore Layers popup button functionality
+  const layerButtons = document.querySelectorAll('button[data-layer]');
+  layerButtons.forEach(btn => {
+    btn.addEventListener('click', () => {
+      const layerType = btn.getAttribute('data-layer');
+      console.log(`🗺️ Layer button clicked: ${layerType}`);
+      
+      // Switch the layer
+      if (window.WITD?.baseLayers) {
+        // Remove all base layers
+        Object.values(window.WITD.baseLayers).forEach(layer => {
+          if (window.WITD.map.hasLayer(layer)) {
+            window.WITD.map.removeLayer(layer);
+          }
+        });
+        
+        // Add the selected layer
+        if (window.WITD.baseLayers[layerType.toLowerCase()]) {
+          window.WITD.baseLayers[layerType.toLowerCase()].addTo(window.WITD.map);
+          console.log(`✅ Switched to ${layerType} layer`);
+        }
+      }
+    });
+  });
+  
+  // Restore Species buttons functionality
+  const speciesButtons = document.querySelectorAll('.species-btn');
+  speciesButtons.forEach(btn => {
+    btn.addEventListener('click', () => {
+      const species = btn.getAttribute('data-species');
+      console.log(`🦌 Species button clicked: ${species}`);
+      
+      // Switch the species layer
+      if (window.switchSpeciesLayer) {
+        window.switchSpeciesLayer(species);
+      }
+    });
+  });
+  
+
+  
+  // Set up removeGpxProxy button functionality
+  document.addEventListener('DOMContentLoaded', () => {
+    const removeGpxProxy = document.getElementById('removeGpxProxy');
+    console.log('🔍 removeGpxProxy found:', !!removeGpxProxy);
+    if (removeGpxProxy) {
+      console.log('🔧 Adding event listener to removeGpxProxy');
+      removeGpxProxy.addEventListener('click', () => {
+        console.log('[GPX] Clear button clicked - direct call');
+        // Direct call to clearAllGpxTracks
+        if (typeof window.clearAllGpxTracks === 'function') {
+          window.clearAllGpxTracks();
+        } else {
+          console.log('❌ clearAllGpxTracks function not available');
+        }
+      });
+    } else {
+      console.log('❌ removeGpxProxy not found');
+    }
+  });
+  
+  // Restore Journal popup button functionality
+  const journalNewEntry = document.getElementById('journalNewEntry');
+  if (journalNewEntry) {
+    journalNewEntry.addEventListener('click', () => {
+      console.log("📝 New Journal Entry clicked");
+      // Initialize journal if function exists
+      if (window.initJournal) {
+        window.initJournal();
+      }
+    });
+  }
+  
+  const journalViewEntries = document.getElementById('journalViewEntries');
+  if (journalViewEntries) {
+    journalViewEntries.addEventListener('click', () => {
+      console.log("📖 View Journal Entries clicked");
+      // Render journal list if function exists
+      if (window.renderJournalList) {
+        window.renderJournalList();
+      }
+    });
+  }
+  
+  // --- SSS popup close button --- (commented out - SSS not in use currently)
+  // const sssCloseBtn = document.querySelector('#sssModal .close-modal');
+  // if (sssCloseBtn) {
+  //   sssCloseBtn.onclick = () => {
+  //     const sssModal = document.getElementById('sssModal');
+  //       if (sssModal) sssModal.style.display = 'none';
+  //   };
+  // }
+  
+  console.log("✅ Button functionality restored");
+}
+
+// GPX file forwarding — wait for DOM content
+document.addEventListener("DOMContentLoaded", () => {
+  const proxy = document.getElementById('gpxUploadProxy');
+  const real = document.getElementById('gpxUpload');
+
+  if (!proxy || !real) {
+    console.warn("🛑 Missing gpxUploadProxy or gpxUpload input.");
+    return;
+  }
+
+  proxy.addEventListener('change', () => {
+    const proxyFiles = proxy.files;
+    console.log("🌀 Proxy input changed. Files:", proxyFiles);
+
+    if (!proxyFiles || proxyFiles.length === 0) {
+      console.warn("🌀 No files selected in proxy input");
+      return;
+    }
+
+    try {
+      const dt = new DataTransfer();
+      for (const file of proxyFiles) {
+        dt.items.add(file);
+      }
+
+      real.files = dt.files;
+      console.log("🌀 Forwarded to real input:", real.files);
+
+      real.dispatchEvent(new Event('change'));
+      proxy.value = '';
+    } catch (err) {
+      console.error("🛑 Error forwarding files:", err);
+    }
+  });
+});
+
+// Global GPX cluster group for managing start/finish markers
+let gpxClusterGroup = null;
+let gpxLabels = []; // Array to track all GPX labels for zoom-aware visibility
+let gpxTracksInfo = []; // Array to track loaded GPX tracks
+let gpxFiles = []; // Array to store GPX file data for persistence
+
+// GPX Storage Management Functions
+function saveGpxFiles() {
+  if (currentUserPlan === 'premium') {
+    try {
+      const gpxData = gpxFiles.map(file => ({
+        name: file.name,
+        size: file.size,
+        lastModified: file.lastModified,
+        content: file.content // Store the file content as base64
+      }));
+      localStorage.setItem('witd_gpx_files', JSON.stringify(gpxData));
+      console.log('[GPX] Saved', gpxData.length, 'GPX files to localStorage');
+    } catch (error) {
+      console.error('[GPX] Error saving GPX files:', error);
+    }
+  }
+}
+
+function loadGpxFiles() {
+  console.log('[GPX] OLD GPX SYSTEM DISABLED - Using new Mapbox GPX manager instead');
+  // This function is disabled - the new Mapbox GPX manager handles everything
+  return;
+}
+
+function clearGpxFiles() {
+  // Clear all arrays and data
+  gpxFiles = [];
+  gpxTracksInfo = [];
+  gpxLabels = [];
+  
+  // Clear from localStorage
+  if (currentUserPlan === 'premium') {
+    localStorage.removeItem('witd_gpx_files');
+    console.log('[GPX] Cleared GPX files from localStorage');
+  }
+  
+  // Remove cluster group from map
+  if (gpxClusterGroup) {
+    const map = window.WITD?.map;
+    if (map) {
+      map.removeLayer(gpxClusterGroup);
+    }
+    gpxClusterGroup = null;
+  }
+  
+  // Remove all GPX track layers from the map
+  const map = window.WITD?.map;
+  if (map) {
+    // Find and remove all GPX layers
+    map.eachLayer((layer) => {
+      if (layer._gpx) {
+        console.log('[GPX] Removing GPX layer:', layer);
+        map.removeLayer(layer);
+      }
+    });
+  }
+  
+  // Clear any existing GPX list in the UI
+  const gpxList = document.getElementById('gpxList');
+  if (gpxList) {
+    gpxList.innerHTML = '';
+  }
+  
+  // Also clear the original system's gpxFiles array
+  if (window.gpxFiles && Array.isArray(window.gpxFiles)) {
+    console.log('[GPX] Clearing original system gpxFiles array');
+    window.gpxFiles.length = 0;
+  }
+  
+  // Prevent any automatic re-loading by setting a flag
+  window.gpxCleared = true;
+  console.log('[GPX] Set gpxCleared flag to true');
+  
+  // Also clear any pending timeouts that might re-load files
+  if (window.gpxLoadTimeout) {
+    clearTimeout(window.gpxLoadTimeout);
+    window.gpxLoadTimeout = null;
+    console.log('[GPX] Cleared gpxLoadTimeout');
+  }
+  
+  console.log('[GPX] Cleared all GPX files, markers, and track lines');
+  
+  // Check if tracks are actually cleared
+  setTimeout(() => {
+    const map = window.WITD?.map;
+    if (map) {
+      let gpxLayerCount = 0;
+      map.eachLayer((layer) => {
+        if (layer._gpx) {
+          gpxLayerCount++;
+          console.log('[GPX] Found GPX layer after clearing:', layer);
+        }
+      });
+      console.log('[GPX] GPX layers on map after clearing:', gpxLayerCount);
+    }
+    
+    // Reset the gpxCleared flag after 2 seconds to allow new uploads
+    setTimeout(() => {
+      window.gpxCleared = false;
+      console.log('[GPX] Reset gpxCleared flag - new uploads allowed');
+    }, 2000);
+  }, 1000);
+}
+
+// Expose functions globally for access from other modules
+window.saveGpxFiles = saveGpxFiles;
+window.loadGpxFiles = loadGpxFiles;
+window.clearGpxFiles = clearGpxFiles;
+
+function handleGpxFiles(files) {
+  console.log('[GPX] OLD GPX SYSTEM DISABLED - Using new Mapbox GPX manager instead');
+  // This function is disabled - the new Mapbox GPX manager handles everything
+  return;
+}
+
+function showSSSComingSoonModal() {
+  const existing = document.getElementById('sssComingSoonModal');
+  if (existing) existing.remove();
+
+  const overlay = document.createElement('div');
+  overlay.id = 'sssComingSoonModal';
+  overlay.style.position = 'fixed';
+  overlay.style.top = '0';
+  overlay.style.left = '0';
+  overlay.style.width = '100vw';
+  overlay.style.height = '100vh';
+  overlay.style.background = 'rgba(0,0,0,0.18)';
+  overlay.style.display = 'flex';
+  overlay.style.alignItems = 'center';
+  overlay.style.justifyContent = 'center';
+  overlay.style.zIndex = '9999';
+
+  const modal = document.createElement('div');
+  modal.style.background = '#fff';
+  modal.style.borderRadius = '22px';
+  modal.style.boxShadow = '0 2px 24px rgba(0,0,0,0.18)';
+  modal.style.padding = '38px 32px 32px 32px';
+  modal.style.maxWidth = '420px';
+  modal.style.width = '90vw';
+  modal.style.textAlign = 'center';
+  modal.style.border = '3px solid #ffb3b3';
+  modal.style.position = 'relative';
+
+  const lock = document.createElement('div');
+  lock.innerHTML = '<svg width="56" height="56" viewBox="0 0 56 56" fill="none" xmlns="http://www.w3.org/2000/svg"><rect width="56" height="56" rx="16" fill="#FFF3E0"/><path d="M28 36C29.1046 36 30 35.1046 30 34C30 32.8954 29.1046 32 28 32C26.8954 32 26 32.8954 26 34C26 35.1046 26.8954 36 28 36Z" fill="#FFB300"/><rect x="18" y="26" width="20" height="12" rx="4" fill="#FFE082" stroke="#FFB300" stroke-width="2"/><path d="M22 26V22C22 18.6863 24.6863 16 28 16C31.3137 16 34 18.6863 34 22V26" stroke="#FFB300" stroke-width="2"/></svg>';
+  lock.style.marginBottom = '18px';
+  modal.appendChild(lock);
+
+  const title = document.createElement('div');
+  title.textContent = 'Super Scout Suggestions';
+  title.style.fontWeight = 'bold';
+  title.style.fontSize = '2em';
+  title.style.marginBottom = '10px';
+  modal.appendChild(title);
+
+  const subtitle = document.createElement('div');
+  subtitle.textContent = 'Coming soon!';
+  subtitle.style.fontSize = '1.1em';
+  subtitle.style.color = '#666';
+  subtitle.style.marginBottom = '22px';
+  modal.appendChild(subtitle);
+
+  const btn = document.createElement('button');
+  btn.textContent = 'Got it';
+  btn.style.background = '#ff7e7e';
+  btn.style.color = '#fff';
+  btn.style.border = 'none';
+  btn.style.borderRadius = '10px';
+  btn.style.padding = '14px 38px';
+  btn.style.fontSize = '1.2em';
+  btn.style.fontWeight = 'bold';
+  btn.style.marginTop = '10px';
+  btn.style.cursor = 'pointer';
+  btn.style.boxShadow = '0 2px 8px rgba(0,0,0,0.08)';
+  btn.addEventListener('click', () => overlay.remove());
+  modal.appendChild(btn);
+
+  overlay.appendChild(modal);
+  document.body.appendChild(overlay);
+}
+
+document.addEventListener('DOMContentLoaded', function() {
+  // var sssBtn = document.getElementById('toolbarSSSBtn');
+  // if (sssBtn) {
+  //   sssBtn.addEventListener('click', showSSSComingSoonModal);
+  // }
+});
+</script>
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+  var loginBtn = document.getElementById('toolbarLoginBtn');
+  var loginModal = document.getElementById('loginModal');
+  if (loginBtn && loginModal) {
+    loginBtn.addEventListener('click', function() {
+      if (typeof updateLoginModalContent === 'function') {
+        updateLoginModalContent();
+      }
+      loginModal.style.display = 'flex';
+    });
+  }
+  var loginCloseBtn = document.getElementById('loginCloseBtn');
+  if (loginCloseBtn && loginModal) {
+    loginCloseBtn.addEventListener('click', function() {
+      loginModal.style.display = 'none';
+    });
+  }
+});
+</script>
+
+<script>
+// Helper: check if user is logged in (Supabase session exists)
+async function isUserLoggedIn() {
+  if (window.supabaseClient && window.supabaseClient.auth) {
+    const { data: { session } } = await window.supabaseClient.auth.getSession();
+    return !!(session && session.user);
+  }
+  return false;
+}
+
+// Helper: Google login for modal button (same redirect rules as authModal.js startGoogleOAuthFlow)
+async function loginWithGoogle() {
+  if (!window.supabaseClient || !window.supabaseClient.auth) return;
+  try {
+    const isNativeApp = !!window.Capacitor;
+    const redirectTo = isNativeApp ? 'capacitor://localhost' : `${window.location.origin}/map.html`;
+    console.log('OAuth environment:', isNativeApp ? 'Capacitor App' : 'Web Browser');
+    console.log('Using redirect:', redirectTo);
+
+    const { data, error } = await window.supabaseClient.auth.signInWithOAuth({
+      provider: 'google',
+      options: { redirectTo }
+    });
+
+    if (error) {
+      console.error('Google login error:', error);
+      alert('Google login failed: ' + error.message);
+      return;
+    }
+
+    if (!data?.url) return;
+
+    console.log('🟢 OAuth URL received:', data.url);
+
+    if (isNativeApp) {
+      const Browser = window.Capacitor?.Plugins?.Browser;
+      if (!Browser || typeof Browser.open !== 'function') {
+        console.error('❌ Browser plugin not available:', {
+          capacitor: !!window.Capacitor,
+          plugins: window.Capacitor?.Plugins,
+          browser: Browser
+        });
+        alert("ERROR: Browser plugin not available. Please ensure:\n1. You ran 'npx cap sync android'\n2. You rebuilt the app\n3. You're testing on an Android device");
+        return;
+      }
+      await Browser.open({ url: data.url });
+      console.log('✅ Browser.open() completed');
+    } else {
+      window.location.href = data.url;
+    }
+  } catch (err) {
+    alert('Google login failed: ' + (err?.message || JSON.stringify(err)));
+  }
+}
+
+document.addEventListener('DOMContentLoaded', function() {
+  // NOTE: Toolbar login button is handled by main.js
+  // NOTE: Google login button (googleLoginBtnNew) is handled by authModal.js
+  // NOTE: Modal close buttons are handled by authModal.js
+  // This block intentionally left minimal to avoid conflicts
+  
+  console.log('✅ map.html DOMContentLoaded - login handlers are in main.js and authModal.js');
+});
+</script>
+
+<!-- NOTE: Login handlers removed - now handled by main.js (toolbar button) and authModal.js (modal buttons) -->
+
+<script type="module">
+import { initTracking } from './JS/trackingModule.js';
+document.addEventListener('DOMContentLoaded', () => {
+  if (!window.WITD?.map) return;
+  initTracking(window.WITD.map);
+
+  const show = (idHide, idShow) => {
+    document.getElementById(idHide).style.display = 'none';
+    document.getElementById(idShow).style.display = 'block';
+  };
+
+  // Track action button handlers
+  const startTrackingBtn = document.getElementById('startTrackingBtn');
+  if (startTrackingBtn) {
+    startTrackingBtn.addEventListener('click', () => {
+      if (window.WITD?.tracking?.startTracking) {
+        window.WITD.tracking.startTracking();
+      }
+    });
+  }
+
+  const stopTrackingBtn = document.getElementById('stopTrackingBtn');
+  if (stopTrackingBtn) {
+    stopTrackingBtn.addEventListener('click', () => {
+      if (window.WITD?.tracking?.stopTracking) {
+        window.WITD.tracking.stopTracking();
+      }
+    });
+  }
+
+  const saveTrackBtn = document.getElementById('saveTrackBtn');
+  if (saveTrackBtn) {
+    saveTrackBtn.addEventListener('click', () => {
+      if (window.WITD?.tracking?.saveTrack) {
+        window.WITD.tracking.saveTrack();
+      }
+    });
+  }
+
+  const toggleFollowBtn = document.getElementById('toggleFollowBtn');
+  if (toggleFollowBtn) {
+    toggleFollowBtn.addEventListener('click', () => {
+      if (window.WITD?.tracking?.toggleFollow) {
+        window.WITD.tracking.toggleFollow();
+      }
+    });
+  }
+});
+</script>
+
+<script>
+// ======= MOBILE DEBUG CONSOLE OVERLAY =======
+(function() {
+  let isMinimized = false;
+  
+  const debugContainer = document.createElement('div');
+  debugContainer.id = 'debugConsole';
+  debugContainer.style.cssText = `
+    position: fixed;
+    bottom: 0;
+    left: 0;
+    width: 100%;
+    max-height: 40vh;
+    overflow-y: auto;
+    background: rgba(0,0,0,0.85);
+    color: #00ff88;
+    font-family: monospace;
+    font-size: 12px;
+    padding: 8px;
+    z-index: 99999;
+    white-space: pre-wrap;
+    transition: all 0.3s ease;
+  `;
+  
+  // Create toggle button
+  const toggleBtn = document.createElement('button');
+  toggleBtn.id = 'debugToggle';
+  toggleBtn.innerHTML = '📱';
+  toggleBtn.style.cssText = `
+    position: fixed;
+    bottom: 10px;
+    right: 10px;
+    width: 50px;
+    height: 50px;
+    border-radius: 50%;
+    background: #007bff;
+    color: white;
+    border: none;
+    font-size: 20px;
+    cursor: pointer;
+    z-index: 100000;
+    box-shadow: 0 4px 12px rgba(0,0,0,0.3);
+    transition: all 0.3s ease;
+  `;
+  
+  // Add hover effect
+  toggleBtn.addEventListener('mouseenter', () => {
+    toggleBtn.style.transform = 'scale(1.1)';
+    toggleBtn.style.background = '#0056b3';
+  });
+  toggleBtn.addEventListener('mouseleave', () => {
+    toggleBtn.style.transform = 'scale(1)';
+    toggleBtn.style.background = '#007bff';
+  });
+  
+  // Toggle functionality
+  toggleBtn.addEventListener('click', () => {
+    isMinimized = !isMinimized;
+    if (isMinimized) {
+      debugContainer.style.maxHeight = '0px';
+      debugContainer.style.padding = '0px 8px';
+      toggleBtn.innerHTML = '📱';
+      toggleBtn.style.background = '#28a745';
+    } else {
+      debugContainer.style.maxHeight = '40vh';
+      debugContainer.style.padding = '8px';
+      toggleBtn.innerHTML = '📱';
+      toggleBtn.style.background = '#007bff';
+    }
+  });
+  
+  document.body.appendChild(debugContainer);
+  document.body.appendChild(toggleBtn);
+
+  function safeSerialize(a) {
+    if (a === null || a === undefined) return String(a);
+    if (typeof a !== 'object') return String(a);
+    try {
+      return JSON.stringify(a, null, 2);
+    } catch (e) {
+      return '[Object — cannot serialize (e.g. Mapbox map with circular refs)]';
+    }
+  }
+
+  function logToScreen(type, ...args) {
+    const msg = args.map(a => safeSerialize(a)).join(' ');
+    const line = document.createElement('div');
+    line.textContent = `[${type.toUpperCase()}] ${msg}`;
+    if (type === 'error') line.style.color = '#ff6b6b';
+    if (type === 'warn') line.style.color = '#ffd166';
+    debugContainer.appendChild(line);
+    debugContainer.scrollTop = debugContainer.scrollHeight;
+  }
+
+  // Intercept all console logs
+  ['log', 'warn', 'error', 'info'].forEach(type => {
+    const original = console[type];
+    console[type] = function(...args) {
+      original.apply(console, args);
+      logToScreen(type, ...args);
+    };
+  });
+
+  console.log('🟢 On-screen debug console active');
+})();
+</script>
+
+</body>
+</html>

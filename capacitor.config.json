@@ -1,0 +1,28 @@
+{
+  "appId": "com.whereisthedeer.app",
+  "appName": "WhereIsTheDeer",
+  "webDir": "www",
+  "bundledWebRuntime": false,
+  "server": {
+    "androidScheme": "https",
+    "hostname": "whereisthedeer.com.au",
+    "allowNavigation": [
+      "https://api.mapbox.com",
+      "https://cdn.jsdelivr.net",
+      "https://auth.whereisthedeer.com.au"
+    ]
+  },
+  "_comment": "TODO: Supabase Dashboard → URL Configuration → Redirect URLs → ensure capacitor://localhost is added",
+  "plugins": {
+    "SplashScreen": {
+      "launchShowDuration": 2000,
+      "launchAutoHide": true,
+      "backgroundColor": "#1f7a27",
+      "androidSplashResourceName": "splash",
+      "androidScaleType": "CENTER_CROP",
+      "showSpinner": false,
+      "splashFullScreen": true,
+      "splashImmersive": true
+    }
+  }
+}

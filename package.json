@@ -1,0 +1,22 @@
+{
+  "name": "whereisthedeer",
+  "version": "2.0.0",
+  "description": "A custom hunting map for deer hunters in Victoria, Australia",
+  "scripts": {
+    "build": "node copy-to-www.js",
+    "cap:sync": "npm run build && npx cap sync",
+    "cap:copy": "npm run build && npx cap copy",
+    "cap:update": "npx cap update",
+    "cap:open:android": "npx cap open android",
+    "cap:run:android": "npx cap run android",
+    "cap:add:android": "npx cap add android",
+    "cap:ls": "npx cap ls"
+  },
+  "dependencies": {
+    "@capacitor/android": "^8.0.0",
+    "@capacitor/app": "^8.0.0",
+    "@capacitor/browser": "^8.0.0",
+    "@capacitor/cli": "^8.0.0",
+    "@capacitor/core": "^8.0.0"
+  }
+}

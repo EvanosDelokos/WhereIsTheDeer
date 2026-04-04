@@ -54,7 +54,7 @@ npm start
 The frontend should send the Supabase access token in the Authorization header:
 
 ```javascript
-const session = await supabase.auth.getSession();
+const session = await window.supabaseClient.auth.getSession();
 const token = session?.data?.session?.access_token;
 
 fetch('/upload-gpx', {
