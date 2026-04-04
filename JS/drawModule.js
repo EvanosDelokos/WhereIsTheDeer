@@ -226,8 +226,8 @@
 
   // Get elevation from Mapbox Terrain API
   async function getMapboxElevation(lat, lng) {
-    const token = (typeof window !== 'undefined' && window.MAPBOX_TOKEN) ? window.MAPBOX_TOKEN : '';
-
+    const MAPBOX_TOKEN = 'pk.eyJ1IjoiZXZhbmtva2EiLCJhIjoiY21lNWJmY3F2MHJzOTJrb2h1MWl4eDZpMCJ9.5ZEQqD207yalsIQLX5tpdg';
+    
     try {
       // Method 1: Try map.queryTerrainElevation first (most accurate)
       if (map && typeof map.queryTerrainElevation === 'function' && map.isStyleLoaded()) {
@@ -243,7 +243,7 @@
       }
       
       // Method 2: Use Mapbox Terrain-RGB API
-      const url = `https://api.mapbox.com/v4/mapbox.terrain-rgb/${Math.floor(lng*100)/100},${Math.floor(lat*100)/100}.json?access_token=${token}`;
+      const url = `https://api.mapbox.com/v4/mapbox.terrain-rgb/${Math.floor(lng*100)/100},${Math.floor(lat*100)/100}.json?access_token=${MAPBOX_TOKEN}`;
       
       const response = await fetch(url);
       if (!response.ok) {
