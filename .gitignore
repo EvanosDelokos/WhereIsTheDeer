@@ -23,3 +23,6 @@ Thumbs.db
 
 # Environment variables
 .env
+
+*.zip
+Species Zones files/
