@@ -309,6 +309,8 @@ function initSpeciesLayer(map) {
         layout: { visibility: 'none' },
         paint: { 'fill-opacity': 0 }
       });
+
+      console.log('Zones base source added to map');
     });
 
     console.log("Zones loaded");
@@ -531,13 +533,28 @@ window.handleSpeciesClick = function(species) {
 };
 
 window.switchSpeciesLayer = function(name) {
-  const map = window.WITD.map;
+  const map = window.WITD && window.WITD.map;
+  if (!map) {
+    console.warn('switchSpeciesLayer: map is not available yet.');
+    return;
+  }
   const speciesData = window.WITD.speciesData;
 
   // Defensive check for speciesData
   if (!speciesData || typeof speciesData !== 'object') {
     console.warn('switchSpeciesLayer: window.WITD.speciesData is not initialized.');
     return;
+  }
+
+  // Detach species layer listeners before removing layers
+  if (map.getLayer('species-fill') && window.WITD._speciesFillClickHandler) {
+    map.off('click', 'species-fill', window.WITD._speciesFillClickHandler);
+  }
+  if (map.getLayer('species-fill') && window.WITD._speciesFillMouseEnterHandler) {
+    map.off('mouseenter', 'species-fill', window.WITD._speciesFillMouseEnterHandler);
+  }
+  if (map.getLayer('species-fill') && window.WITD._speciesFillMouseLeaveHandler) {
+    map.off('mouseleave', 'species-fill', window.WITD._speciesFillMouseLeaveHandler);
   }
 
   // Remove existing species layers first to prevent duplicates
@@ -552,6 +569,7 @@ window.switchSpeciesLayer = function(name) {
   }
 
   if (name === "OFF") {
+    window.WITD._speciesZonesWaitAttempts = 0;
     setClosedOverlayVisibility(map, false);
     console.log("Species layer turned OFF.");
     window.WITD.currentSpeciesLayer = null;
@@ -562,19 +580,26 @@ window.switchSpeciesLayer = function(name) {
   }
 
   if (!map.getSource('zones-source')) {
-    console.warn("Zones not loaded yet — skipping species apply");
+    const n = (window.WITD._speciesZonesWaitAttempts = (window.WITD._speciesZonesWaitAttempts || 0) + 1);
+    if (n > 60) {
+      window.WITD._speciesZonesWaitAttempts = 0;
+      console.warn('Zones not loaded yet — skipping species apply');
+      return;
+    }
+    setTimeout(() => window.switchSpeciesLayer(name), 80);
     return;
   }
+  window.WITD._speciesZonesWaitAttempts = 0;
 
   if (speciesData[name]) {
-    // Add the data as a source
+    // Register source, layers, and map events only after safeAddToMap runs so species-fill exists
+    // when map.on() is used (avoids race when the style was still loading).
     window.safeAddToMap(map, () => {
       map.addSource('species-source', {
         type: 'geojson',
         data: speciesData[name]
       });
 
-      // Add fill layer with the style from the original Leaflet version
       map.addLayer({
         id: 'species-fill',
         type: 'fill',
@@ -585,9 +610,8 @@ window.switchSpeciesLayer = function(name) {
         }
       });
 
-      // Add line layer
       map.addLayer({
-        id: 'species-line', 
+        id: 'species-line',
         type: 'line',
         source: 'species-source',
         paint: {
@@ -595,71 +619,56 @@ window.switchSpeciesLayer = function(name) {
           'line-width': 1
         }
       });
+
+      window.WITD._speciesFillClickHandler = (e) => {
+        console.log('[species] Species layer click detected, pinMode:', window.WITD?.pinMode, 'processingPinPlacement:', window.WITD?.processingPinPlacement, 'drawing active:', window.WITD?.draw?.isActive?.(), 'target:', e.originalEvent?.target?.tagName);
+
+        if ((window.WITD?.draw?.isActive && window.WITD.draw.isActive()) || window.WITD?.pinMode || window.WITD?.processingPinPlacement) {
+          console.log('[species] Skipping popup - user is drawing or placing pin');
+          return;
+        }
+
+        if (map.getLayer('closed-areas-fill')) {
+          const closedUnder = map.queryRenderedFeatures(e.point, { layers: ['closed-areas-fill'] });
+          if (closedUnder.length) return;
+        }
+
+        if (e.features.length > 0) {
+          const feature = e.features[0];
+          const props = feature.properties;
+          const html = buildSambarZonePopupHtml(props);
+          new mapboxgl.Popup({ maxWidth: '400px' })
+            .setLngLat(e.lngLat)
+            .setHTML(html)
+            .addTo(map);
+        }
+      };
+
+      window.WITD._speciesFillMouseEnterHandler = () => {
+        if ((window.WITD?.draw?.isActive && window.WITD.draw.isActive()) || window.WITD?.pinMode || window.WITD?.processingPinPlacement) {
+          return;
+        }
+        map.getCanvas().style.cursor = 'pointer';
+      };
+
+      window.WITD._speciesFillMouseLeaveHandler = () => {
+        if ((window.WITD?.draw?.isActive && window.WITD.draw.isActive()) || window.WITD?.pinMode || window.WITD?.processingPinPlacement) {
+          return;
+        }
+        map.getCanvas().style.cursor = '';
+      };
+
+      map.on('click', 'species-fill', window.WITD._speciesFillClickHandler);
+      map.on('mouseenter', 'species-fill', window.WITD._speciesFillMouseEnterHandler);
+      map.on('mouseleave', 'species-fill', window.WITD._speciesFillMouseLeaveHandler);
+
+      setClosedOverlayVisibility(map, closedOverlayOnForSpecies(name));
+      console.log(`Species layer "${name}" ON.`);
+      window.WITD.currentSpeciesLayer = name;
+      currentSpecies = name;
+      window.currentSpecies = currentSpecies;
+      console.log('Current species state:', currentSpecies);
     });
-
-    // Add popup functionality (only when not drawing or placing pins)
-    if (window.WITD._speciesFillClickHandler) {
-      map.off('click', 'species-fill', window.WITD._speciesFillClickHandler);
-    }
-    if (window.WITD._speciesFillMouseEnterHandler) {
-      map.off('mouseenter', 'species-fill', window.WITD._speciesFillMouseEnterHandler);
-    }
-    if (window.WITD._speciesFillMouseLeaveHandler) {
-      map.off('mouseleave', 'species-fill', window.WITD._speciesFillMouseLeaveHandler);
-    }
-
-    window.WITD._speciesFillClickHandler = (e) => {
-      console.log('[species] Species layer click detected, pinMode:', window.WITD?.pinMode, 'processingPinPlacement:', window.WITD?.processingPinPlacement, 'drawing active:', window.WITD?.draw?.isActive?.(), 'target:', e.originalEvent?.target?.tagName);
-      
-      // Skip species popup if user is drawing or placing pins
-      if ((window.WITD?.draw?.isActive && window.WITD.draw.isActive()) || window.WITD?.pinMode || window.WITD?.processingPinPlacement) {
-        console.log('[species] Skipping popup - user is drawing or placing pin');
-        return;
-      }
-
-      if (map.getLayer('closed-areas-fill')) {
-        const closedUnder = map.queryRenderedFeatures(e.point, { layers: ['closed-areas-fill'] });
-        if (closedUnder.length) return;
-      }
-
-      if (e.features.length > 0) {
-        const feature = e.features[0];
-        const props = feature.properties;
-        const html = buildSambarZonePopupHtml(props);
-        new mapboxgl.Popup({ maxWidth: '400px' })
-          .setLngLat(e.lngLat)
-          .setHTML(html)
-          .addTo(map);
-      }
-    };
-
-    // Change cursor on hover (only when not drawing or placing pins)
-    window.WITD._speciesFillMouseEnterHandler = () => {
-      // Don't change cursor if user is drawing or placing pins
-      if ((window.WITD?.draw?.isActive && window.WITD.draw.isActive()) || window.WITD?.pinMode || window.WITD?.processingPinPlacement) {
-        return;
-      }
-      map.getCanvas().style.cursor = 'pointer';
-    };
-
-    window.WITD._speciesFillMouseLeaveHandler = () => {
-      // Don't change cursor if user is drawing or placing pins
-      if ((window.WITD?.draw?.isActive && window.WITD.draw.isActive()) || window.WITD?.pinMode || window.WITD?.processingPinPlacement) {
-        return;
-      }
-      map.getCanvas().style.cursor = '';
-    };
-
-    map.on('click', 'species-fill', window.WITD._speciesFillClickHandler);
-    map.on('mouseenter', 'species-fill', window.WITD._speciesFillMouseEnterHandler);
-    map.on('mouseleave', 'species-fill', window.WITD._speciesFillMouseLeaveHandler);
-
-    setClosedOverlayVisibility(map, closedOverlayOnForSpecies(name));
-    console.log(`Species layer "${name}" ON.`);
-    window.WITD.currentSpeciesLayer = name;
-    currentSpecies = name;
-    window.currentSpecies = currentSpecies;
-    console.log("Current species state:", currentSpecies);
   } else {
     setClosedOverlayVisibility(map, false);
     console.warn(`Species layer "${name}" not found.`);

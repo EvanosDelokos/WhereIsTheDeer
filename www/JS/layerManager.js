@@ -102,6 +102,7 @@ function initializeLayerManager() {
 }
 
 async function enableWind(map) {
+  console.log('[Wind] Wind ON requested');
   if (!window.planLoaded) {
     console.warn('[Wind] Blocked: plan not loaded yet');
     return;
@@ -165,7 +166,14 @@ function hookWindButtons(map) {
   // Delegate events from the stable popup container so button clone/replace
   // operations in map.html do not remove wind ON/OFF behavior.
   layersDropdown.addEventListener('click', (event) => {
-    const button = event.target.closest('button');
+    const raw = event.target;
+    const el =
+      raw && raw.nodeType === 1
+        ? raw
+        : raw && raw.nodeType === 3
+          ? raw.parentElement
+          : null;
+    const button = el && typeof el.closest === 'function' ? el.closest('button') : null;
     if (!button) return;
 
     if (button.id === 'windOnBtn') {
