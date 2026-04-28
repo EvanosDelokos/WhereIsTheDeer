@@ -179,6 +179,10 @@
   background: #f0f0f0;
 }
 
+#windIndicator {
+  top: 72px !important;
+}
+
 .sidebar {
   position: absolute;
   top: 50%;
@@ -2416,6 +2420,13 @@ button[data-layer].active {
   .help-icon {
     font-size: 16px;
   }
+
+  #windIndicator {
+    top: 64px !important;
+    font-size: 12px !important;
+    padding: 7px 10px !important;
+    max-width: calc(100vw - 16px) !important;
+  }
   
   .search-marker-popup {
     padding: 10px 12px;
@@ -2508,6 +2519,12 @@ button[data-layer].active {
   
   .help-icon {
     font-size: 14px;
+  }
+
+  #windIndicator {
+    top: 58px !important;
+    font-size: 11px !important;
+    padding: 6px 9px !important;
   }
   
   .search-marker-popup {

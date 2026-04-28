@@ -117,20 +117,28 @@ export class WindModal {
     const indicator = document.createElement('div');
     indicator.id = 'windIndicator';
     indicator.style.position = 'absolute';
-    indicator.style.top = '12px';
-    indicator.style.right = '12px';
-    indicator.style.zIndex = '7';
+    indicator.style.top = '72px';
+    indicator.style.left = '50%';
+    indicator.style.transform = 'translateX(-50%)';
+    indicator.style.zIndex = '1000';
     indicator.style.pointerEvents = 'none';
-    indicator.style.padding = '8px 10px';
-    indicator.style.borderRadius = '10px';
-    indicator.style.background = 'rgba(14, 18, 28, 0.72)';
-    indicator.style.border = '1px solid rgba(255,255,255,0.2)';
-    indicator.style.boxShadow = '0 4px 12px rgba(0,0,0,0.2)';
-    indicator.style.color = 'rgba(255,255,255,0.92)';
+    indicator.style.padding = '8px 12px';
+    indicator.style.borderRadius = '999px';
+    indicator.style.background = 'rgba(10, 15, 28, 0.82)';
+    indicator.style.backdropFilter = 'blur(6px)';
+    indicator.style.border = '1px solid rgba(255,255,255,0.26)';
+    indicator.style.boxShadow = '0 6px 14px rgba(0,0,0,0.24)';
+    indicator.style.color = 'rgba(255,255,255,0.97)';
     indicator.style.fontFamily = 'system-ui, -apple-system, Segoe UI, sans-serif';
-    indicator.style.fontSize = '12px';
+    indicator.style.fontSize = '13px';
+    indicator.style.fontWeight = '600';
     indicator.style.lineHeight = '1.25';
-    indicator.textContent = 'Wind: -- km/h (-- kt)';
+    indicator.style.letterSpacing = '0.1px';
+    indicator.style.whiteSpace = 'nowrap';
+    indicator.style.maxWidth = 'calc(100vw - 24px)';
+    indicator.style.overflow = 'hidden';
+    indicator.style.textOverflow = 'ellipsis';
+    indicator.textContent = '💨 Wind: -- km/h (-- kt)';
     mapContainer.appendChild(indicator);
     this.indicatorEl = indicator;
   }
@@ -141,7 +149,7 @@ export class WindModal {
     const wind = this.getWind(center.lng, center.lat);
     const speedKmh = Math.sqrt(wind.u * wind.u + wind.v * wind.v);
     const speedKnots = speedKmh * 0.539957;
-    this.indicatorEl.textContent = `Wind: ${speedKmh.toFixed(1)} km/h (${speedKnots.toFixed(1)} kt)`;
+    this.indicatorEl.textContent = `💨 Wind: ${speedKmh.toFixed(1)} km/h (${speedKnots.toFixed(1)} kt)`;
   }
 
   setupMouseWindListener() {
@@ -167,10 +175,10 @@ export class WindModal {
 
       if (this.indicatorEl) {
         if (speedKmh < 0.5) {
-          this.indicatorEl.textContent = 'Wind: calm';
+          this.indicatorEl.textContent = '💨 Wind: calm';
         } else {
           this.indicatorEl.textContent =
-            `Wind: ${speedKmh.toFixed(1)} km/h (${speedKnots.toFixed(1)} kt) ${dirStr} (${Math.round(direction)}°)`;
+            `💨 Wind: ${speedKmh.toFixed(1)} km/h (${speedKnots.toFixed(1)} kt) ${dirStr} (${Math.round(direction)}°)`;
         }
       }
     };
