@@ -159,25 +159,35 @@
     <div>
       <h2>Disclaimer</h2>
       <p>
-        Note: Hunters are personally responsible for acting in accordance with the Firearms Act 1996 and the Firearm Safety Code, including informing themselves about any prohibited locations within the areas shown on this map and other relevant laws; obtaining the required hunting licence; and for hunting only within season. The Firearm Safety Code Rules 4 (identify your target beyond all doubt) and 5 (check your firing zone) are of particular relevance.
+        Hunters are solely responsible for complying with all applicable laws and regulations, including but not limited to the Firearms Act 1996, the Firearm Safety Code, and all hunting licence and seasonal requirements.
       </p>
       <p>
-        This map is provided for general reference only. Public land boundaries, hunting zones, and seasonal restrictions may change. Always verify with official sources before hunting.
+        This map is provided for general informational purposes only. While efforts are made to ensure accuracy, public land boundaries, hunting zones, permitted methods, and seasonal restrictions may be incomplete, outdated, or subject to change at any time.
       </p>
       <p>
+        Users must independently verify all information with official sources before hunting. This includes confirming current regulations, access permissions, seasonal dates, and any temporary closures.
+      </p>
+      <p>
+        WhereIsTheDeer accepts no liability for any errors, omissions, or reliance on the information presented.
+      </p>
+      <p>
+        <strong>Official Resources</strong><br>
         <a href="https://www.gma.vic.gov.au/hunting/hunting-maps" target="_blank">Game Management Authority – Hunting Maps</a><br>
         <a href="https://mapshare.vic.gov.au/mapsharevic/" target="_blank">MapShareVic (Interactive)</a><br>
         <a href="https://www.land.vic.gov.au/maps-and-spatial/spatial-data/vicmap-catalogue/vicmap-planning" target="_blank">Land.Vic Maps & Data</a><br>
-        <a href="https://www.gma.vic.gov.au/__data/assets/pdf_file/0019/652419/Firearms-Safety-Code.pdf" target="_blank">Firearm Safety Code PDF</a>
+        <a href="https://www.police.vic.gov.au/sites/default/files/2024-04/Firearm-Safety-Code-Booklet-2020.pdf" target="_blank">Firearm Safety Code PDF</a>
       </p>
       <p>
-        <strong>Data Sources:</strong> Vicmap Planning, MapShareVic, DataShareVic, and the "Hunting Area Dataset for More To Explore App" (DEECA, Game Management Authority).
+        <strong>Data Sources</strong><br>
+        Vicmap Planning, MapShareVic, DataShareVic, and the "Hunting Area Dataset for More To Explore App" (DEECA, Game Management Authority).
       </p>
       <p>
-        © Government of Victoria, licensed under <a href="https://creativecommons.org/licenses/by/4.0/" target="_blank">CC BY 4.0</a>. Data reused with attribution and for reference only. No guarantee is made regarding accuracy or legal validity.
+        © Government of Victoria, licensed under <a href="https://creativecommons.org/licenses/by/4.0/" target="_blank">CC BY 4.0</a>. Data reused with attribution.
       </p>
       <p>
-        Disclaimer: WhereIsTheDeer is not affiliated with the Victorian Government.
+        WhereIsTheDeer is not affiliated with the Victorian Government.
+        <br>
+        Use of this map is entirely at your own risk.
       </p>
       <button id="agreeDisclaimer" class="sidebar-content">Agree and enter map</button>
     </div>
@@ -421,9 +431,9 @@ if (speciesFilter) {
   <div style="width:100%;margin:10px 0 0 0;text-align:left;font-weight:600;font-size:1em;">🦌 Species list</div>
   <div class="popup-grid" style="margin-top:6px;">
     <button class="species-btn popup-btn disabled" data-species="OFF">OFF</button>
-    <button class="species-btn popup-btn disabled" data-species="Deer">Deer</button>
-    <button class="species-btn popup-btn disabled" data-species="Hog Deer">Hog Deer</button>
-    <button class="species-btn popup-btn disabled" data-species="Duck">Duck</button>
+    <button class="species-btn popup-btn disabled" data-species="Deer">Sambar Deer</button>
+    <button class="species-btn popup-btn disabled species-ui-disabled" data-species="Hog Deer" disabled aria-disabled="true">Hog Deer</button>
+    <button class="species-btn popup-btn disabled species-ui-disabled" data-species="Duck" disabled aria-disabled="true">Duck</button>
     <!-- <button class="species-btn popup-btn disabled" data-species="Stubble Quail">Stubble Quail</button> -->
     <!-- <button class="species-btn popup-btn disabled" data-species="Pest">Pest</button> -->
   </div>
@@ -821,6 +831,31 @@ window.addEventListener('scroll', () => {
 // Tools Dropdown
 const toolsBtn = document.getElementById('toolbarToolsBtn');
 const toolsDropdown = document.getElementById('toolsDropdown');
+const layersDropdown = document.getElementById('layersDropdown');
+
+/** Sambar (Deer) / OFF remain interactive; Hog Deer and Duck are visible but not selectable. */
+function applySpeciesUiAvailability() {
+  if (!layersDropdown) return;
+  layersDropdown.querySelectorAll('.species-btn').forEach((btn) => {
+    const sp = btn.getAttribute('data-species');
+    if (sp === 'Hog Deer' || sp === 'Duck') {
+      btn.classList.remove('disabled');
+      btn.classList.add('species-ui-disabled');
+      btn.setAttribute('disabled', 'disabled');
+      btn.setAttribute('aria-disabled', 'true');
+      btn.style.opacity = '0.4';
+      btn.style.filter = 'grayscale(0.4)';
+      btn.style.pointerEvents = 'none';
+    } else {
+      btn.classList.remove('disabled', 'species-ui-disabled');
+      btn.removeAttribute('disabled');
+      btn.removeAttribute('aria-disabled');
+      btn.style.opacity = '1';
+      btn.style.filter = 'none';
+      btn.style.pointerEvents = '';
+    }
+  });
+}
 if (toolsBtn && toolsDropdown) {
   toolsBtn.addEventListener('click', e => {
     e.stopPropagation();
@@ -867,21 +902,20 @@ if (toolsBtn && toolsDropdown) {
 applyUnifiedGating('toolbarLayersBtn', 'layersDropdown');
 
 // Set up layers functionality - Species overlay now available for all users
-// Remove disabled class for species buttons (now available for free users)
-const speciesButtons = layersDropdown.querySelectorAll('.species-btn');
-speciesButtons.forEach(btn => {
-  btn.classList.remove('disabled');
-  btn.removeAttribute('disabled');
-  btn.style.opacity = '1';
-  btn.style.filter = 'none';
-});
+if (layersDropdown) {
+  applySpeciesUiAvailability();
+}
 
 // Set up species button functionality for all users
-layersDropdown.querySelectorAll('.species-btn').forEach(btn => {
-  btn.onclick = () => {
-    const value = btn.getAttribute('data-species');
-    
-    // Check if the new species layer system is ready
+if (layersDropdown) {
+  layersDropdown.querySelectorAll('.species-btn').forEach(btn => {
+    btn.onclick = () => {
+      if (btn.classList.contains('species-ui-disabled') || btn.hasAttribute('disabled')) {
+        return;
+      }
+      const value = btn.getAttribute('data-species');
+      
+      // Check if the new species layer system is ready
     if (!window.WITD?.species?.ready) {
       console.log('Species layers not ready yet, waiting...');
       // Wait a bit then try again
@@ -901,7 +935,8 @@ layersDropdown.querySelectorAll('.species-btn').forEach(btn => {
       }
     }
   };
-});
+  });
+}
 
 // Set up layers functionality for premium users only
 if (currentUserPlan === 'premium') {
@@ -1601,14 +1636,8 @@ function applyPremiumStyling() {
     // Free user - apply protection to premium features
     console.log('[Styling] Free user - applying protection to premium features');
     
-    // Species layers remain free for all users
-    const speciesButtons = document.querySelectorAll('.species-btn');
-    speciesButtons.forEach(btn => {
-      btn.classList.remove('disabled');
-      btn.removeAttribute('disabled');
-      btn.style.opacity = '1';
-      btn.style.filter = 'none';
-    });
+    // Species layers remain free for all users (Hog Deer / Duck stay UI-disabled)
+    applySpeciesUiAvailability();
     
     // Disable premium layer features (Terrain, Satellite, Contours, Hybrid)
     const layerButtons = document.querySelectorAll('button[data-layer]');
@@ -2163,6 +2192,9 @@ function restoreOriginalButtonFunctionality() {
     const newBtn = btn.cloneNode(true);
     btn.parentNode.replaceChild(newBtn, btn);
     newBtn.onclick = () => {
+      if (newBtn.classList.contains('species-ui-disabled') || newBtn.hasAttribute('disabled')) {
+        return;
+      }
       console.log(`🦌 Species button clicked: ${species}`);
       // Switch the species layer
       if (window.handleSpeciesClick) {
@@ -2170,6 +2202,7 @@ function restoreOriginalButtonFunctionality() {
       }
     };
   });
+  applySpeciesUiAvailability();
   
 
   
@@ -2237,6 +2270,7 @@ function restoreOriginalButtonFunctionality() {
   // }
   
   console.log("✅ Button functionality restored");
+  applySpeciesUiAvailability();
 }
 
 // Global function for testing - can be called from console
@@ -2601,6 +2635,7 @@ window.testPremium = function() {
   
   // Restore functionality for specific buttons
   restoreButtonFunctionality();
+  applySpeciesUiAvailability();
   
   // Check if buttons are enabled
   const disabledButtons = document.querySelectorAll('.popup-btn.disabled');
@@ -2685,6 +2720,9 @@ function restoreButtonFunctionality() {
   const speciesButtons = document.querySelectorAll('.species-btn');
   speciesButtons.forEach(btn => {
     btn.addEventListener('click', () => {
+      if (btn.classList.contains('species-ui-disabled') || btn.hasAttribute('disabled')) {
+        return;
+      }
       const species = btn.getAttribute('data-species');
       console.log(`🦌 Species button clicked: ${species}`);
       
@@ -2694,6 +2732,7 @@ function restoreButtonFunctionality() {
       }
     });
   });
+  applySpeciesUiAvailability();
   
 
   

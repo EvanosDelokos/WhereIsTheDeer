@@ -191,6 +191,44 @@ function buildClosedAreaPopupHtml(props) {
   return witdMapPopupWrap(header, rows.join(''));
 }
 
+function getSeasonText(props, rule) {
+  if (!rule || !rule.seasonal) return null;
+
+  const name = (props.NAME || "").toUpperCase();
+  const plm = String(props.PLM_ID || "");
+
+  // --- PLM_ID based mapping (preferred) ---
+  // (structure ready, even if not fully populated yet)
+
+  const SEASON_BY_PLM = {
+    // Example:
+    // "12345": "First Saturday after Easter → 30 Nov"
+  };
+
+  if (SEASON_BY_PLM[plm]) {
+    return SEASON_BY_PLM[plm];
+  }
+
+  // --- NAME fallback (temporary safe method) ---
+
+  if (name.includes("EILDON")) {
+    return "First Saturday after Easter → 30 Nov";
+  }
+
+  if (
+    name.includes("ALPINE") ||
+    name.includes("BAW BAW") ||
+    name.includes("SNOWY") ||
+    name.includes("ERRINUNDRA") ||
+    name.includes("MITCHELL") ||
+    name.includes("TARA")
+  ) {
+    return "15 Feb → 15 Dec";
+  }
+
+  return "Seasonal restrictions apply";
+}
+
 function buildSambarZonePopupHtml(props) {
   const zoneName = props.NAME ?? props.Name ?? 'Unknown';
   const header =
@@ -210,6 +248,8 @@ function buildSambarZonePopupHtml(props) {
     code && window.huntRules && typeof window.huntRules === 'object'
       ? window.huntRules[code]
       : undefined;
+
+  const seasonText = getSeasonText(props, rule);
 
   const rows = [];
 
@@ -237,6 +277,9 @@ function buildSambarZonePopupHtml(props) {
       )
     );
     rows.push(witdMapPopupInfoRow('📅', 'Seasonal', escapeHtml(rule.seasonal ? 'Yes' : 'No'), 'purple'));
+    if (seasonText) {
+      rows.push(witdMapPopupInfoRow('📅', 'Season', escapeHtml(seasonText), 'purple'));
+    }
   }
 
   if (closedPopupValuePresent(props.LGA_NAME)) {

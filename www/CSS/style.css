@@ -1026,28 +1026,37 @@
   display: flex;
   justify-content: center;
   align-items: center;
+  --disclaimer-toolbar-clearance: 88px;
+  padding: 12px 12px calc(12px + var(--disclaimer-toolbar-clearance));
+  box-sizing: border-box;
 }
 
 #disclaimerOverlay div {
   background: white;
   padding: 20px;
   border-radius: 10px;
-  max-width: 600px;
-  max-height: 90vh;
+  border: 3px solid #d32f2f;
+  box-shadow: 0 16px 40px rgba(0, 0, 0, 0.45);
+  width: min(600px, calc(100vw - 24px));
+  max-height: calc(100vh - var(--disclaimer-toolbar-clearance) - 24px);
   overflow-y: auto;
-  margin-bottom: 72px; /* leave space for toolbar */
+  box-sizing: border-box;
 }
 @media (max-width: 600px) {
+  #disclaimerOverlay {
+    --disclaimer-toolbar-clearance: 102px;
+  }
   #disclaimerOverlay div {
-    max-width: 98vw;
-    max-height: 96vh;
+    width: calc(100vw - 24px);
     padding: 10px;
-    margin-bottom: 84px; /* extra space for mobile toolbars */
   }
 }
 @media (max-width: 400px) {
+  #disclaimerOverlay {
+    --disclaimer-toolbar-clearance: 112px;
+  }
   #disclaimerOverlay div {
-    margin-bottom: 100px;
+    width: calc(100vw - 16px);
   }
 }
 
@@ -2005,6 +2014,16 @@ body, html {
   font-weight: 500;
   text-align: center;
   width: 100%;
+}
+
+/* Species not yet offered in UI (Hog Deer, Duck) — not clickable, distinct from premium gating */
+.species-btn.species-ui-disabled,
+.species-btn:disabled.species-ui-disabled {
+  opacity: 0.4 !important;
+  pointer-events: none;
+  cursor: not-allowed !important;
+  filter: grayscale(0.4);
+  transition: opacity 0.2s ease;
 }
 
 /* Disabled button styling for premium features */
@@ -3823,4 +3842,9 @@ body #journalModal.modern-popup .close-modal {
   width: 100% !important;
   max-width: none !important;
   min-width: 0 !important;
+}
+
+.species-btn[data-species="Hog Deer"],
+.species-btn[data-species="Duck"] {
+display: none !important;
 }
