@@ -138,7 +138,14 @@ function initGpxManager(map) {
 
   let gpxFiles = [];
   let gpxSourceId = 'gpx-tracks';
-  let gpxLayerId = 'gpx-tracks-layer';
+  let gpxLayerId = 'gpx-line';
+  const gpxOutlineLayerId = 'gpx-outline';
+  const ELEVATION_THRESHOLD_METERS = 1.5;
+  const GPX_UPHILL_COLOR = '#ff0000';
+  const GPX_DOWNHILL_COLOR = '#0066ff';
+  const GPX_FLAT_COLOR = '#888888';
+  const GPX_DEFAULT_COLOR = '#000000';
+  let gpxPopup = null;
 
   // Setting up GPX manager for map
 
@@ -166,6 +173,9 @@ function initGpxManager(map) {
           if (map.getLayer(gpxLayerId)) {
             map.removeLayer(gpxLayerId);
           }
+          if (map.getLayer(gpxOutlineLayerId)) {
+            map.removeLayer(gpxOutlineLayerId);
+          }
           // Remove existing source
           map.removeSource(gpxSourceId);
         }
@@ -181,7 +191,28 @@ function initGpxManager(map) {
           }
         });
 
-        // Add layer
+        // Add outline layer first for better visual contrast
+        map.addLayer({
+          id: gpxOutlineLayerId,
+          type: 'line',
+          source: gpxSourceId,
+          layout: {
+            'line-join': 'round',
+            'line-cap': 'round'
+          },
+          paint: {
+            'line-color': '#000000',
+            'line-width': [
+              'interpolate', ['linear'], ['zoom'],
+              10, 4,
+              14, 6,
+              18, 8
+            ],
+            'line-opacity': 0.2
+          }
+        });
+
+        // Add main colored line on top
         map.addLayer({
           id: gpxLayerId,
           type: 'line',
@@ -191,9 +222,14 @@ function initGpxManager(map) {
             'line-cap': 'round'
           },
           paint: {
-            'line-color': '#333333',
-            'line-width': 4,
-            'line-opacity': 1 
+            'line-color': ['coalesce', ['get', 'color'], GPX_DEFAULT_COLOR],
+            'line-width': [
+              'interpolate', ['linear'], ['zoom'],
+              10, 3,
+              14, 5,
+              18, 7
+            ],
+            'line-opacity': 1
           }
         });
 
@@ -202,6 +238,7 @@ function initGpxManager(map) {
           id: 'gpx-track-labels',
           type: 'symbol',
           source: 'gpx-tracks',
+        filter: ['!=', ['get', 'isSegment'], true],
           layout: {
             'text-field': ['get', 'name'],
             'text-size': 12,
@@ -216,6 +253,7 @@ function initGpxManager(map) {
         });
 
         // Mapbox source and layer created successfully
+        setupGpxInteractionHandlers();
         
         // Add GPX waypoint icons to the map
         addGpxIcons();
@@ -256,6 +294,74 @@ function initGpxManager(map) {
     } catch (error) {
       console.error("[GPX Icons] Error adding GPX icons:", error);
     }
+  }
+
+  function setupGpxInteractionHandlers() {
+    map.off('mousemove', gpxLayerId, handleGpxHover);
+    map.off('click', gpxLayerId, handleGpxClick);
+    map.off('mouseleave', gpxLayerId, handleGpxMouseLeave);
+
+    map.on('mousemove', gpxLayerId, handleGpxHover);
+    map.on('click', gpxLayerId, handleGpxClick);
+    map.on('mouseleave', gpxLayerId, handleGpxMouseLeave);
+  }
+
+  function handleGpxHover(e) {
+    const features = e.features && e.features.length
+      ? e.features
+      : map.queryRenderedFeatures(e.point, { layers: [gpxLayerId] });
+
+    if (!features.length) return;
+
+    const f = features[0];
+    const props = f.properties || {};
+
+    const elevation = props.elevation;
+    const type = props.type || 'flat';
+    const distanceFromStart = Number(props.distanceFromStart || 0);
+    const gainFromStart = Number(props.gainFromStart || 0);
+    const slope = props.slope || '0.0';
+
+    showGpxTooltip(e.lngLat, {
+      elevation,
+      type,
+      distanceFromStart,
+      gainFromStart,
+      slope
+    });
+  }
+
+  function handleGpxClick(e) {
+    handleGpxHover(e);
+  }
+
+  function handleGpxMouseLeave() {
+    if (gpxPopup) {
+      gpxPopup.remove();
+    }
+  }
+
+  function showGpxTooltip(lngLat, data) {
+    if (!gpxPopup) {
+      gpxPopup = new mapboxgl.Popup({
+        closeButton: false,
+        closeOnClick: false,
+        className: 'gpx-hover-popup'
+      });
+    }
+
+    gpxPopup
+      .setLngLat(lngLat)
+      .setHTML(`
+        <div class="gpx-tooltip">
+          <div><b>${data.type}</b></div>
+          <div>Elevation: ${data.elevation !== null && data.elevation !== undefined ? Math.round(data.elevation) : 'N/A'} m</div>
+          <div>Distance: ${(data.distanceFromStart / 1000).toFixed(2)} km</div>
+          <div>Gain: +${Math.round(data.gainFromStart)} m</div>
+          <div>Slope: ${data.slope}%</div>
+        </div>
+      `)
+      .addTo(map);
   }
 
   function setupFileInput() {
@@ -351,6 +457,19 @@ function initGpxManager(map) {
         return null;
       }
 
+      const toRad = d => d * Math.PI / 180;
+      const getDistance = (a, b) => {
+        const R = 6371000;
+        const dLat = toRad(b.lat - a.lat);
+        const dLng = toRad(b.lng - a.lng);
+        const lat1 = toRad(a.lat);
+        const lat2 = toRad(b.lat);
+
+        const x = dLng * Math.cos((lat1 + lat2) / 2);
+        const y = dLat;
+        return Math.sqrt((x * x) + (y * y)) * R;
+      };
+
       const trackFeatures = [];
       
       // Parse tracks
@@ -359,8 +478,8 @@ function initGpxManager(map) {
         const trackSegments = track.getElementsByTagName('trkseg');
         console.log(`[GPX] Track ${i + 1} has ${trackSegments.length} segments`);
         
-        // Merge all segments into one continuous LineString
-        const allCoordinates = [];
+        // Build point list including elevation so we can color per segment.
+        const allPoints = [];
 
         for (let j = 0; j < trackSegments.length; j++) {
           const segment = trackSegments[j];
@@ -370,24 +489,149 @@ function initGpxManager(map) {
             const point = trackPoints[k];
             const lat = parseFloat(point.getAttribute('lat'));
             const lon = parseFloat(point.getAttribute('lon'));
+            const eleNode = point.getElementsByTagName('ele')[0];
+            const ele = eleNode ? parseFloat(eleNode.textContent) : null;
             if (!isNaN(lat) && !isNaN(lon)) {
-              allCoordinates.push([lon, lat]);
+              allPoints.push({
+                lat,
+                lng: lon,
+                ele: Number.isFinite(ele) ? ele : null
+              });
             }
           }
         }
 
-        if (allCoordinates.length > 1) {
-          trackFeatures.push({
-            type: 'Feature',
-            properties: {
-              name: fileName || `Track ${i + 1}`,
-              type: 'gpx-track'
-            },
-            geometry: {
-              type: 'LineString',
-              coordinates: allCoordinates
+        if (allPoints.length > 1) {
+          const trackName = fileName || `Track ${i + 1}`;
+          const hasAnyElevation = allPoints.some(p => Number.isFinite(p.ele));
+          let totalDistance = 0;
+          let totalGain = 0;
+          let totalDescent = 0;
+
+          for (let pointIndex = 0; pointIndex < allPoints.length - 1; pointIndex++) {
+            const currentPoint = allPoints[pointIndex];
+            const nextPoint = allPoints[pointIndex + 1];
+            totalDistance += getDistance(currentPoint, nextPoint);
+
+            if (Number.isFinite(currentPoint.ele) && Number.isFinite(nextPoint.ele)) {
+              const diff = nextPoint.ele - currentPoint.ele;
+              if (diff > 0) totalGain += diff;
+              if (diff < 0) totalDescent += Math.abs(diff);
             }
-          });
+          }
+
+          const distanceKm = (totalDistance / 1000).toFixed(2);
+          const gainM = Math.round(totalGain);
+          const descentM = Math.round(totalDescent);
+          const baseTrackProperties = {
+            name: trackName,
+            type: 'gpx-track',
+            trackIndex: i,
+            distanceKm,
+            gainM,
+            descentM
+          };
+
+          // Fallback path: missing elevation data keeps a single default-colored line.
+          if (!hasAnyElevation) {
+            trackFeatures.push({
+              type: 'Feature',
+              properties: {
+                ...baseTrackProperties,
+                color: '#333333'
+              },
+              geometry: {
+                type: 'LineString',
+                coordinates: allPoints.map(p => [p.lng, p.lat])
+              }
+            });
+            continue;
+          }
+
+          let cumulativeDistance = 0;
+          let cumulativeGain = 0;
+          let currentGroup = null;
+          for (let pointIndex = 0; pointIndex < allPoints.length - 1; pointIndex++) {
+            const currentPoint = allPoints[pointIndex];
+            const nextPoint = allPoints[pointIndex + 1];
+
+            const dist = getDistance(currentPoint, nextPoint);
+            if (dist < 2) continue;
+            cumulativeDistance += dist;
+
+            const currentEle = currentPoint.ele;
+            const nextEle = nextPoint.ele;
+            if (currentEle !== null && nextEle !== null) {
+              const diff = nextEle - currentEle;
+              if (diff > 0) cumulativeGain += diff;
+            }
+
+            let slope = 0;
+            if (currentEle !== null && nextEle !== null && dist > 0) {
+              slope = ((nextEle - currentEle) / dist) * 100;
+            }
+
+            let segmentType = 'flat';
+
+            if (nextEle !== null && currentEle !== null) {
+              const diff = nextEle - currentEle;
+
+              if (diff > ELEVATION_THRESHOLD_METERS) {
+                segmentType = 'uphill';
+              } else if (diff < -ELEVATION_THRESHOLD_METERS) {
+                segmentType = 'downhill';
+              }
+            }
+
+            let color = '#bbbbbb';
+            if (segmentType === 'uphill') color = '#ff3b30';
+            if (segmentType === 'downhill') color = '#007aff';
+
+            // START NEW GROUP
+            if (!currentGroup || currentGroup.properties.type !== segmentType) {
+              if (currentGroup) {
+                trackFeatures.push(currentGroup);
+              }
+
+              const segmentElevation = Number.isFinite(nextEle)
+                ? nextEle
+                : (Number.isFinite(currentEle) ? currentEle : null);
+              currentGroup = {
+                type: 'Feature',
+                properties: {
+                  ...baseTrackProperties,
+                  isSegment: true,
+                  color: color,
+                  type: segmentType,
+                  elevation: Number.isFinite(segmentElevation) ? segmentElevation : null,
+                  distanceFromStart: cumulativeDistance,
+                  gainFromStart: cumulativeGain,
+                  slope: slope.toFixed(1),
+                  segmentIndex: pointIndex
+                },
+                geometry: {
+                  type: 'LineString',
+                  coordinates: [
+                    [currentPoint.lng, currentPoint.lat],
+                    [nextPoint.lng, nextPoint.lat]
+                  ]
+                }
+              };
+              continue;
+            }
+
+            // EXTEND CURRENT GROUP
+            currentGroup.geometry.coordinates.push([nextPoint.lng, nextPoint.lat]);
+            currentGroup.properties.elevation = Number.isFinite(nextEle) ? nextEle : currentGroup.properties.elevation;
+            currentGroup.properties.distanceFromStart = cumulativeDistance;
+            currentGroup.properties.gainFromStart = cumulativeGain;
+            currentGroup.properties.slope = slope.toFixed(1);
+          }
+
+          // PUSH LAST GROUP
+          if (currentGroup) {
+            trackFeatures.push(currentGroup);
+          }
         }
       }
 
@@ -835,6 +1079,7 @@ function initGpxManager(map) {
   function addStartEndPinsToMap(map, trackFeatures, fileName) {
     try {
       console.log(`[GPX Pins] Adding clustered start/end pins for ${fileName}`);
+      const normalizedTrackFeatures = normalizeTrackFeaturesForPins(trackFeatures);
       
       // Check if pins for this track already exist to prevent duplicates
       const existingPins = gpxPinsData.features.filter(feature => 
@@ -848,7 +1093,7 @@ function initGpxManager(map) {
       
       // Collect all pins for this track
       const pins = [];
-      trackFeatures.forEach((track, trackIndex) => {
+      normalizedTrackFeatures.forEach((track, trackIndex) => {
         const coordinates = track.geometry.coordinates;
         if (coordinates.length >= 2) {
           const startCoord = coordinates[0];
@@ -902,8 +1147,8 @@ function initGpxManager(map) {
       }
 
       // Add track name label at the middle of the track
-      if (trackFeatures.length > 0) {
-        const track = trackFeatures[0]; // Get the first (and only) track
+      if (normalizedTrackFeatures.length > 0) {
+        const track = normalizedTrackFeatures[0];
         const coordinates = track.geometry.coordinates;
         if (coordinates.length > 0) {
           const middleIndex = Math.floor(coordinates.length / 2);
@@ -913,6 +1158,10 @@ function initGpxManager(map) {
           const trackLabelEl = document.createElement('div');
           trackLabelEl.className = 'track-label-container';
           trackLabelEl.setAttribute('data-file-name', fileName);
+          const trackStats = track.properties || {};
+          const distanceKmText = trackStats.distanceKm ?? '0.00';
+          const gainMText = trackStats.gainM ?? 0;
+          const descentMText = trackStats.descentM ?? 0;
           trackLabelEl.innerHTML = `
             <div class="track-label-popup">
               <div class="track-label-header">
@@ -925,6 +1174,11 @@ function initGpxManager(map) {
                     <line x1="14" y1="11" x2="14" y2="17"></line>
                   </svg>
                 </button>
+              </div>
+              <div class="gpx-stats">
+                <div>Distance: ${distanceKmText} km</div>
+                <div>Elevation Gain: ${gainMText} m</div>
+                <div>Descent: ${descentMText} m</div>
               </div>
             </div>
           `;
@@ -975,6 +1229,64 @@ function initGpxManager(map) {
     } catch (error) {
       console.error("[GPX Pins] Error adding start/end pins:", error);
     }
+  }
+
+  function normalizeTrackFeaturesForPins(trackFeatures) {
+    const nonSegmentTracks = trackFeatures.filter(track => !track?.properties?.isSegment);
+    if (nonSegmentTracks.length > 0) {
+      return nonSegmentTracks;
+    }
+
+    const segmentTracksByIndex = new Map();
+    trackFeatures
+      .filter(track => track?.properties?.isSegment)
+      .forEach(track => {
+        const key = Number.isInteger(track.properties.trackIndex) ? track.properties.trackIndex : 0;
+        if (!segmentTracksByIndex.has(key)) {
+          segmentTracksByIndex.set(key, []);
+        }
+        segmentTracksByIndex.get(key).push(track);
+      });
+
+    const rebuiltTracks = [];
+    segmentTracksByIndex.forEach((segments, trackIndex) => {
+      const orderedSegments = segments
+        .slice()
+        .sort((a, b) => (a.properties.segmentIndex || 0) - (b.properties.segmentIndex || 0));
+
+      if (orderedSegments.length === 0) {
+        return;
+      }
+
+      const rebuiltCoordinates = [];
+      orderedSegments.forEach((segment, index) => {
+        const coords = segment.geometry?.coordinates || [];
+        if (coords.length < 2) {
+          return;
+        }
+        if (index === 0) {
+          rebuiltCoordinates.push(coords[0]);
+        }
+        rebuiltCoordinates.push(coords[1]);
+      });
+
+      if (rebuiltCoordinates.length > 1) {
+        rebuiltTracks.push({
+          type: 'Feature',
+          properties: {
+            ...orderedSegments[0].properties,
+            isSegment: false,
+            trackIndex
+          },
+          geometry: {
+            type: 'LineString',
+            coordinates: rebuiltCoordinates
+          }
+        });
+      }
+    });
+
+    return rebuiltTracks;
   }
 
   // Debug function
