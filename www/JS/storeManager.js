@@ -1036,6 +1036,7 @@ export async function loadTracks(map, drawnTracks, drawTrackLabel) {
 export function saveGpxFiles(gpxFiles) {
   localStorage.setItem('witd_gpx_files', JSON.stringify(gpxFiles));
 }
+window.saveGpxFiles = saveGpxFiles;
 
 export async function loadGpxFiles(map, gpxFiles, addGpxToMap) {
   // Check if user is logged in before loading data
@@ -1051,6 +1052,7 @@ export async function loadGpxFiles(map, gpxFiles, addGpxToMap) {
     gpxFiles.push(file);
   });
 }
+window.loadGpxFiles = loadGpxFiles;
 
 // --- Clear All ---
 export function clearAll() {

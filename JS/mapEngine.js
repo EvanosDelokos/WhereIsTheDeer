@@ -1,5 +1,44 @@
 // Map engine module loaded
 
+const safeAddQueueByMap = new WeakMap();
+
+function safeAddToMap(map, callback) {
+  if (map.isStyleLoaded()) {
+    callback();
+    return;
+  }
+
+  let state = safeAddQueueByMap.get(map);
+  if (!state) {
+    state = { queue: [], waiting: false };
+    safeAddQueueByMap.set(map, state);
+  }
+
+  state.queue.push(callback);
+
+  if (state.waiting) {
+    return;
+  }
+
+  state.waiting = true;
+  console.log("⏳ Waiting for map style before executing queued callbacks...");
+
+  const flushWhenReady = () => {
+    if (!map.isStyleLoaded()) {
+      map.once('idle', flushWhenReady);
+      return;
+    }
+
+    state.waiting = false;
+    const queued = state.queue.splice(0);
+    queued.forEach((cb) => cb());
+  };
+
+  map.once('idle', flushWhenReady);
+}
+
+window.safeAddToMap = safeAddToMap;
+
 // Utility function to safely add sources and layers
 window.safeMapOperation = function(operation, retryDelay = 100) {
   if (!window.WITD?.map) {
@@ -278,6 +317,12 @@ document.addEventListener("DOMContentLoaded", () => {
       if (this.is3D) {
         // Switch to 3D view with terrain (use standard-satellite for better terrain compatibility)
         this.map.setStyle('mapbox://styles/mapbox/standard-satellite');
+        this.map.once('idle', () => {
+          console.log("✅ Map fully idle — safe to rehydrate");
+          if (typeof window.rehydrateMapLayers === 'function') {
+            window.rehydrateMapLayers();
+          }
+        });
         
         // Wait for style to load, then add terrain
         this.map.once('style.load', () => {
@@ -308,6 +353,12 @@ document.addEventListener("DOMContentLoaded", () => {
       } else {
         // Switch to 2D view (high resolution + labels)
         this.map.setStyle('mapbox://styles/mapbox/standard-satellite');
+        this.map.once('idle', () => {
+          console.log("✅ Map fully idle — safe to rehydrate");
+          if (typeof window.rehydrateMapLayers === 'function') {
+            window.rehydrateMapLayers();
+          }
+        });
         
         // Wait for style to load, then remove terrain
         this.map.once('style.load', () => {
@@ -527,6 +578,7 @@ document.addEventListener("DOMContentLoaded", () => {
   // Expose map globally
   window.WITD = window.WITD || {};
   window.WITD.map = map;
+  window.dispatchEvent(new CustomEvent('witd:map-ready', { detail: { map } }));
 
   // Wait for map style to be fully loaded before initializing modules
   map.on('load', () => {

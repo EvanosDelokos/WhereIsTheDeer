@@ -12,6 +12,7 @@ console.log("Module loaded: measurementModule");
   let measurementSource = null;
   let measurementLayers = [];
   let layersChecked = false;
+  let styleReloadListenerAttached = false;
 
   // Measurement settings
   const settings = {
@@ -49,126 +50,129 @@ console.log("Module loaded: measurementModule");
 
   function setupMeasurementLayers() {
     console.log('[measurement] Setting up measurement layers');
-    
-    // Create source for measurement data
-    if (!map.getSource('measurement-source')) {
-      map.addSource('measurement-source', {
-        type: 'geojson',
-        data: {
-          type: 'FeatureCollection',
-          features: []
+    window.safeAddToMap(map, () => {
+      // Create source for measurement data
+      if (!map.getSource('measurement-source')) {
+        map.addSource('measurement-source', {
+          type: 'geojson',
+          data: {
+            type: 'FeatureCollection',
+            features: []
+          }
+        });
+      }
+
+      // Create layers for different measurement types
+      const layers = [
+        // Points layer
+        {
+          id: 'measurement-points',
+          type: 'circle',
+          source: 'measurement-source',
+          filter: ['==', ['get', 'type'], 'point'],
+          paint: {
+            'circle-radius': 8,
+            'circle-color': '#ff4444',
+            'circle-stroke-color': '#ffffff',
+            'circle-stroke-width': 3
+          }
+        },
+        // Lines layer for distance
+        {
+          id: 'measurement-lines',
+          type: 'line',
+          source: 'measurement-source',
+          filter: ['==', ['get', 'type'], 'line'],
+          layout: {
+            'line-join': 'round',
+            'line-cap': 'round'
+          },
+          paint: {
+            'line-color': '#ff4444',
+            'line-width': 4,
+            'line-dasharray': [2, 1]
+          }
+        },
+        // Labels layer for measurements
+        {
+          id: 'measurement-labels',
+          type: 'symbol',
+          source: 'measurement-source',
+          filter: ['==', ['get', 'type'], 'label'],
+          layout: {
+            'text-field': ['get', 'label'],
+            'text-font': ['Open Sans Semibold', 'Arial Unicode MS Bold'],
+            'text-offset': [0, 1.5],
+            'text-anchor': 'top',
+            'text-size': 14
+          },
+          paint: {
+            'text-color': '#333333',
+            'text-halo-color': '#ffffff',
+            'text-halo-width': 3
+          }
+        }
+      ];
+
+      layers.forEach(layer => {
+        if (!map.getLayer(layer.id)) {
+          map.addLayer(layer);
+          measurementLayers.push(layer.id);
         }
       });
-    }
 
-    // Create layers for different measurement types
-    const layers = [
-      // Points layer
-      {
-        id: 'measurement-points',
-        type: 'circle',
-        source: 'measurement-source',
-        filter: ['==', ['get', 'type'], 'point'],
-        paint: {
-          'circle-radius': 8,
-          'circle-color': '#ff4444',
-          'circle-stroke-color': '#ffffff',
-          'circle-stroke-width': 3
-        }
-      },
-      // Lines layer for distance
-      {
-        id: 'measurement-lines',
-        type: 'line',
-        source: 'measurement-source',
-        filter: ['==', ['get', 'type'], 'line'],
-        layout: {
-          'line-join': 'round',
-          'line-cap': 'round'
-        },
-        paint: {
-          'line-color': '#ff4444',
-          'line-width': 4,
-          'line-dasharray': [2, 1]
-        }
-      },
-      // Labels layer for measurements
-      {
-        id: 'measurement-labels',
-        type: 'symbol',
-        source: 'measurement-source',
-        filter: ['==', ['get', 'type'], 'label'],
-        layout: {
-          'text-field': ['get', 'label'],
-          'text-font': ['Open Sans Semibold', 'Arial Unicode MS Bold'],
-          'text-offset': [0, 1.5],
-          'text-anchor': 'top',
-          'text-size': 14
-        },
-        paint: {
-          'text-color': '#333333',
-          'text-halo-color': '#ffffff',
-          'text-halo-width': 3
-        }
-      }
-    ];
-
-    layers.forEach(layer => {
-      if (!map.getLayer(layer.id)) {
-        map.addLayer(layer);
-        measurementLayers.push(layer.id);
-      }
+      layersChecked = true;
     });
 
-    layersChecked = true;
-
-    // Listen for style changes and re-setup layers if needed
-    map.on('styledata', () => {
-      console.log('[measurement] Style changed, resetting layer check flag...');
-      layersChecked = false;
-      setTimeout(() => {
+    // Listen for full style reloads only once, not every styledata tick
+    if (!styleReloadListenerAttached) {
+      styleReloadListenerAttached = true;
+      map.on('style.load', () => {
+        console.log('[measurement] Style reloaded, resetting layer check flag...');
+        layersChecked = false;
         ensureMeasurementLayers();
         // Re-display current measurement if we have one
         if (measurementPoints.length > 0) {
           updateDistanceMeasurement();
         }
-      }, 100);
-    });
+      });
+    }
 
     console.log('[measurement] Measurement layers setup complete');
   }
 
   function ensureMeasurementLayers() {
     console.log('[measurement] Ensuring measurement layers exist');
-    
-    // Check if source exists, if not create it
-    if (!map.getSource('measurement-source')) {
-      console.log('[measurement] Creating measurement source');
-      map.addSource('measurement-source', {
-        type: 'geojson',
-        data: {
-          type: 'FeatureCollection',
-          features: []
-        }
-      });
-    }
+    window.safeAddToMap(map, () => {
+      // Check if source exists, if not create it
+      if (!map.getSource('measurement-source')) {
+        console.log('[measurement] Creating measurement source');
+        map.addSource('measurement-source', {
+          type: 'geojson',
+          data: {
+            type: 'FeatureCollection',
+            features: []
+          }
+        });
+      }
 
-    // Check if layers exist and create only missing ones
-    const layerIds = ['measurement-points', 'measurement-lines', 'measurement-labels'];
-    layerIds.forEach(layerId => {
-      if (!map.getLayer(layerId)) {
-        console.log(`[measurement] Creating layer: ${layerId}`);
-        const layerConfig = getLayerConfig(layerId);
-        if (layerConfig) {
-          map.addLayer(layerConfig);
-          if (!measurementLayers.includes(layerId)) {
-            measurementLayers.push(layerId);
+      // Check if layers exist and create only missing ones
+      const layerIds = ['measurement-points', 'measurement-lines', 'measurement-labels'];
+      layerIds.forEach(layerId => {
+        if (!map.getLayer(layerId)) {
+          console.log(`[measurement] Creating layer: ${layerId}`);
+          const layerConfig = getLayerConfig(layerId);
+          if (layerConfig) {
+            map.addLayer(layerConfig);
+            if (!measurementLayers.includes(layerId)) {
+              measurementLayers.push(layerId);
+            }
           }
         }
-      }
+      });
+      
+      layersChecked = true;
     });
-    
-    layersChecked = true;
   }
 
   function getLayerConfig(layerId) {
@@ -252,12 +256,7 @@ console.log("Module loaded: measurementModule");
     console.log('[measurement] Starting distance measurement');
     
     // Check if map is ready
-    if (!map || !map.isStyleLoaded()) {
-      console.log('[measurement] Map not ready, waiting...');
-      map.on('styleload', () => {
-        console.log('[measurement] Map style loaded, starting measurement');
-        startDistanceMeasurement();
-      });
+    if (!map) {
       return;
     }
     
@@ -392,9 +391,8 @@ console.log("Module loaded: measurementModule");
       console.log(`[measurement] Updated measurement data with ${features.length} features`);
     } else {
       console.warn('[measurement] Measurement source not found, recreating...');
-      ensureMeasurementLayers();
-      // Try again after recreating
-      setTimeout(() => {
+      window.safeAddToMap(map, () => {
+        ensureMeasurementLayers();
         const newSource = map.getSource('measurement-source');
         if (newSource) {
           newSource.setData({
@@ -403,7 +401,7 @@ console.log("Module loaded: measurementModule");
           });
           console.log(`[measurement] Updated measurement data after recreation with ${features.length} features`);
         }
-      }, 50);
+      });
     }
   }
 
@@ -523,11 +521,15 @@ console.log("Module loaded: measurementModule");
   };
 
   // Initialize when map is ready
-  const checkMapReady = setInterval(() => {
-    if (window.WITD && window.WITD.map) {
-      clearInterval(checkMapReady);
-      init(window.WITD.map);
-    }
-  }, 100);
+  if (window.WITD && window.WITD.map) {
+    init(window.WITD.map);
+  } else {
+    window.addEventListener('witd:map-ready', (event) => {
+      const readyMap = event.detail?.map || window.WITD?.map;
+      if (readyMap) {
+        init(readyMap);
+      }
+    }, { once: true });
+  }
 
 })();

@@ -471,16 +471,6 @@
       return;
     }
 
-    // Check if map style is loaded
-    if (!map.isStyleLoaded()) {
-      console.log('[draw] Map style not loaded yet, waiting...');
-      map.once('styledata', () => {
-        // Map style now loaded, retrying source/layer creation
-        ensureSourceAndLayer();
-      });
-      return;
-    }
-
     // Prevent multiple simultaneous initialization attempts
     if (isInitializing) {
       // Initialization already in progress
@@ -517,62 +507,13 @@
     
     console.log('[draw] Creating new source and layer');
     isInitializing = true;
-    
-    // Use the safe map operation utility if available
-    if (window.safeMapOperation) {
-      window.safeMapOperation(() => {
-        try {
-          // Double-check that source doesn't exist before creating
-          if (map.getSource(SRC_ID)) {
-            console.log('[draw] Source already exists, skipping source creation');
-          } else {
-            map.addSource(SRC_ID, {
-              type: 'geojson',
-              data: featureCollection
-            });
-            console.log('[draw] Source created successfully');
-          }
 
-          // Double-check that layer doesn't exist before creating
-          if (map.getLayer(LINE_LAYER_ID)) {
-            console.log('[draw] Layer already exists, skipping layer creation');
-          } else {
-            map.addLayer({
-              id: LINE_LAYER_ID,
-              type: 'line',
-              source: SRC_ID,
-              layout: {
-                'line-join': 'round',
-                'line-cap': 'round'
-              },
-              paint: {
-                'line-color': ['coalesce', ['get', 'color'], '#ff6b35'],
-                'line-width': ['coalesce', ['get', 'thickness'], currentDrawThickness],
-                'line-dasharray': ['case',
-                  ['==', ['get', 'style'], 'dashed'], [2, 2],
-                  ['==', ['get', 'style'], 'dotted'], [1, 3],
-                  [1, 0]  // solid line - very short dash with no gap
-                ]
-              }
-            });
-            console.log('[draw] Layer created successfully');
-          }
-          
-          console.log('[draw] Source and layer setup complete');
-          console.log('[draw] Current source data:', map.getSource(SRC_ID));
-          console.log('[draw] Current layer:', map.getLayer(LINE_LAYER_ID));
-        } catch (error) {
-          console.error('[draw] Error in safe map operation:', error);
-        } finally {
-          isInitializing = false;
-        }
-      });
-    } else {
-      // Fallback to direct operation with error handling
+    window.safeAddToMap(map, () => {
       try {
-        
         // Double-check that source doesn't exist before creating
-        if (!map.getSource(SRC_ID)) {
+        if (map.getSource(SRC_ID)) {
+          console.log('[draw] Source already exists, skipping source creation');
+        } else {
           map.addSource(SRC_ID, {
             type: 'geojson',
             data: featureCollection
@@ -581,7 +522,9 @@
         }
 
         // Double-check that layer doesn't exist before creating
-        if (!map.getLayer(LINE_LAYER_ID)) {
+        if (map.getLayer(LINE_LAYER_ID)) {
+          console.log('[draw] Layer already exists, skipping layer creation');
+        } else {
           map.addLayer({
             id: LINE_LAYER_ID,
             type: 'line',
@@ -608,17 +551,10 @@
         console.log('[draw] Current layer:', map.getLayer(LINE_LAYER_ID));
       } catch (error) {
         console.error('[draw] Error creating source/layer:', error);
-        // Retry after a short delay, but only if not already initializing
-        if (!isInitializing) {
-          setTimeout(() => {
-            console.log('[draw] Retrying source/layer creation...');
-            ensureSourceAndLayer();
-          }, 100);
-        }
       } finally {
         isInitializing = false;
       }
-    }
+    });
   }
 
   // --- Mode control (toolbar) ---
@@ -2753,51 +2689,43 @@
         // Restore the map reference
         map = previousMap;
         
-        // Wait for the map style to be loaded, then create source and layer
-        const waitForStyleAndCreate = () => {
-          if (map.isStyleLoaded()) {
-            console.log('[draw] Map style loaded, creating source and layer...');
-            ensureSourceAndLayer();
+        window.safeAddToMap(map, () => {
+          console.log('[draw] Map style loaded, creating source and layer...');
+          ensureSourceAndLayer();
+          
+          // Wait longer for the source and layer to be created and map to be fully ready
+          setTimeout(() => {
+            console.log('[draw] Checking source and layer after restoration...');
+            const source = map.getSource(SRC_ID);
+            const layer = map.getLayer(LINE_LAYER_ID);
+            console.log('[draw] Source exists:', !!source);
+            console.log('[draw] Layer exists:', !!layer);
             
-            // Wait longer for the source and layer to be created and map to be fully ready
-            setTimeout(() => {
-              console.log('[draw] Checking source and layer after restoration...');
-              const source = map.getSource(SRC_ID);
-              const layer = map.getLayer(LINE_LAYER_ID);
-              console.log('[draw] Source exists:', !!source);
-              console.log('[draw] Layer exists:', !!layer);
+            if (savedFeatures.length > 0) {
+              console.log(`[draw] Features should already be in source (${featureCollection.features.length} features)`);
               
-              if (savedFeatures.length > 0) {
-                console.log(`[draw] Features should already be in source (${featureCollection.features.length} features)`);
+              // Wait a bit more before restoring labels to ensure map is fully ready
+              setTimeout(() => {
+                // Restore track labels for all features
+                console.log('[draw] Restoring track labels...');
+                savedFeatures.forEach(feature => {
+                  addDrawnTrackLabel(feature, false, true); // Third parameter: startMinimized
+                });
+                console.log(`[draw] Restored ${savedFeatures.length} track labels`);
                 
-                // Wait a bit more before restoring labels to ensure map is fully ready
-                setTimeout(() => {
-                  // Restore track labels for all features
-                  console.log('[draw] Restoring track labels...');
-                  savedFeatures.forEach(feature => {
-                    addDrawnTrackLabel(feature, false, true); // Third parameter: startMinimized
-                  });
-                  console.log(`[draw] Restored ${savedFeatures.length} track labels`);
-                  
-                  // Force a map update to ensure the features are rendered
-                  map.triggerRepaint();
-                  console.log('[draw] Triggered map repaint');
-                }, 200);
-              } else {
-                // If no local features, try to reload from Supabase
-                console.log('[draw] No local features, reloading from Supabase...');
-                setTimeout(() => {
-                  loadDrawnTracksFromSupabase();
-                }, 500);
-              }
-            }, 200); // Increased delay
-          } else {
-            console.log('[draw] Map style not loaded yet, waiting...');
-            setTimeout(waitForStyleAndCreate, 100);
-          }
-        };
-        
-        waitForStyleAndCreate();
+                // Force a map update to ensure the features are rendered
+                map.triggerRepaint();
+                console.log('[draw] Triggered map repaint');
+              }, 200);
+            } else {
+              // If no local features, try to reload from Supabase
+              console.log('[draw] No local features, reloading from Supabase...');
+              setTimeout(() => {
+                loadDrawnTracksFromSupabase();
+              }, 500);
+            }
+          }, 200); // Increased delay
+        });
         
         // Reset restoration flag
         isRestoring = false;
@@ -2912,18 +2840,12 @@
     init(window.WITD.map);
     console.log("Drawing module auto-initialized");
   } else {
-    console.log('[draw] Map not ready yet, waiting for it...');
-    // Wait for map to be available
-    const waitForMap = () => {
-      if (window.WITD && window.WITD.map) {
-        console.log('[draw] Map now available, initializing');
-        init(window.WITD.map);
+    window.addEventListener('witd:map-ready', (event) => {
+      const readyMap = event.detail?.map || window.WITD?.map;
+      if (readyMap) {
+        init(readyMap);
         console.log("Drawing module auto-initialized");
-      } else {
-        console.log('[draw] Still waiting for map...');
-        setTimeout(waitForMap, 100);
       }
-    };
-    waitForMap();
+    }, { once: true });
   }
 })();

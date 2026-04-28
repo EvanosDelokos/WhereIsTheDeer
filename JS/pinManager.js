@@ -1136,15 +1136,13 @@ async function persistPins(pins = []) {
     console.error("❌ Error writing pins to localStorage:", err);
   }
 
-  if (window.savePins) {
-    try {
-      // Use cleaned pins for Supabase sync as well
-      const cleanPins = pins.length > 0 ? cleanPinDataForSerialization(pins) : pins;
-      await window.savePins(cleanPins);
-      console.log("☁️ Synced pins to Supabase");
-    } catch (err) {
-      console.error("❌ Error syncing pins to Supabase:", err);
-    }
+  try {
+    // Use cleaned pins for Supabase sync as well
+    const cleanPins = pins.length > 0 ? cleanPinDataForSerialization(pins) : pins;
+    await savePins(cleanPins);
+    console.log("☁️ Synced pins to Supabase");
+  } catch (err) {
+    console.error("❌ Error syncing pins to Supabase:", err);
   }
 }
 

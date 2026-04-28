@@ -9,7 +9,7 @@ function saveGpxFiles(files) {
     if (window.saveGpxFiles) {
       window.saveGpxFiles(files);
     } else {
-      localStorage.setItem('gpxFiles', JSON.stringify(files));
+      localStorage.setItem('witd_gpx_files', JSON.stringify(files));
       // Saved to localStorage
     }
   } catch (error) {
@@ -22,7 +22,7 @@ function loadGpxFiles() {
     if (window.loadGpxFiles) {
       return window.loadGpxFiles();
     } else {
-      const saved = localStorage.getItem('gpxFiles');
+      const saved = localStorage.getItem('witd_gpx_files');
       return saved ? JSON.parse(saved) : [];
     }
   } catch (error) {
@@ -117,20 +117,16 @@ window.initGPXManager = function() {
 // Always wait for the map to be ready - don't check immediately
 // GPX Manager loaded, waiting for map to be ready
 
-// Function to wait for map and initialize
-function waitForMapAndInit() {
-  // Checking for map
-  if (window.WITD && window.WITD.map) {
-    // Map found, initializing GPX manager
-    initGpxManager(window.WITD.map);
-  } else {
-    // Map not ready yet, retrying in 100ms
-    setTimeout(waitForMapAndInit, 100);
-  }
+if (window.WITD && window.WITD.map) {
+  initGpxManager(window.WITD.map);
+} else {
+  window.addEventListener('witd:map-ready', (event) => {
+    const readyMap = event.detail?.map || window.WITD?.map;
+    if (readyMap) {
+      initGpxManager(readyMap);
+    }
+  }, { once: true });
 }
-
-// Start waiting for the map
-waitForMapAndInit();
 
 function initGpxManager(map) {
   // initGpxManager called with map
@@ -146,24 +142,8 @@ function initGpxManager(map) {
 
   // Setting up GPX manager for map
 
-  // Wait for map style to be fully loaded before adding sources/layers
-  function waitForStyleAndInit() {
-    // Checking map style status
-    
-    if (map.isStyleLoaded()) {
-      // Map style loaded, creating source and layer
-      createGpxSourceAndLayer();
-    } else {
-      // Map style not ready yet, waiting for 'styledata' event
-      map.once('styledata', () => {
-        // 'styledata' event fired, creating source and layer
-        createGpxSourceAndLayer();
-      });
-    }
-  }
-
-  // Start the style loading process
-  waitForStyleAndInit();
+  // Start source/layer creation; safeAddToMap handles style readiness.
+  createGpxSourceAndLayer();
 
   // Listen for style changes (like switching between 2D/3D modes)
   let styleChangeInProgress = false;
@@ -174,79 +154,78 @@ function initGpxManager(map) {
   // });
 
   function createGpxSourceAndLayer() {
-    try {
-      // Check if source/layer already exist
-      if (map.getSource(gpxSourceId)) {
-        // GPX source already exists, removing old source and layer first
-        // Remove existing layers first
-        if (map.getLayer('gpx-track-labels')) {
-          map.removeLayer('gpx-track-labels');
+    window.safeAddToMap(map, () => {
+      try {
+        // Check if source/layer already exist
+        if (map.getSource(gpxSourceId)) {
+          // GPX source already exists, removing old source and layer first
+          // Remove existing layers first
+          if (map.getLayer('gpx-track-labels')) {
+            map.removeLayer('gpx-track-labels');
+          }
+          if (map.getLayer(gpxLayerId)) {
+            map.removeLayer(gpxLayerId);
+          }
+          // Remove existing source
+          map.removeSource(gpxSourceId);
         }
-        if (map.getLayer(gpxLayerId)) {
-          map.removeLayer(gpxLayerId);
-        }
-        // Remove existing source
-        map.removeSource(gpxSourceId);
+
+        // Creating new GPX source and layer
+        
+        // Add source
+        map.addSource(gpxSourceId, {
+          type: 'geojson',
+          data: {
+            type: 'FeatureCollection',
+            features: []
+          }
+        });
+
+        // Add layer
+        map.addLayer({
+          id: gpxLayerId,
+          type: 'line',
+          source: gpxSourceId,
+          layout: {
+            'line-join': 'round',
+            'line-cap': 'round'
+          },
+          paint: {
+            'line-color': '#333333',
+            'line-width': 4,
+            'line-opacity': 1 
+          }
+        });
+
+        // Add GPX track labels layer
+        map.addLayer({
+          id: 'gpx-track-labels',
+          type: 'symbol',
+          source: 'gpx-tracks',
+          layout: {
+            'text-field': ['get', 'name'],
+            'text-size': 12,
+            'text-anchor': 'center',
+            'visibility': 'visible'
+          },
+          paint: {
+            'text-color': '#ffffff',
+            'text-halo-color': '#000000',
+            'text-halo-width': 1
+          }
+        });
+
+        // Mapbox source and layer created successfully
+        
+        // Add GPX waypoint icons to the map
+        addGpxIcons();
+        
+        // Now set up the file input
+        setupFileInput();
+      } catch (error) {
+        console.error("[GPX] Error creating source/layer:", error);
       }
-
-      // Creating new GPX source and layer
-      
-      // Add source
-      map.addSource(gpxSourceId, {
-        type: 'geojson',
-        data: {
-          type: 'FeatureCollection',
-          features: []
-        }
-      });
-
-      // Add layer
-      map.addLayer({
-        id: gpxLayerId,
-        type: 'line',
-        source: gpxSourceId,
-        layout: {
-          'line-join': 'round',
-          'line-cap': 'round'
-        },
-        paint: {
-          'line-color': '#ff6b35',
-          'line-width': 3,
-          'line-opacity': 0.8
-        }
-      });
-
-      // Add GPX track labels layer
-      map.addLayer({
-        id: 'gpx-track-labels',
-        type: 'symbol',
-        source: 'gpx-tracks',
-        layout: {
-          'text-field': ['get', 'name'],
-          'text-size': 12,
-          'text-anchor': 'center',
-          'visibility': 'visible'
-        },
-        paint: {
-          'text-color': '#ffffff',
-          'text-halo-color': '#000000',
-          'text-halo-width': 1
-        }
-      });
-
-      // Mapbox source and layer created successfully
-      
-      // Add GPX waypoint icons to the map
-      addGpxIcons();
-      
-      // Now set up the file input
-      setupFileInput();
-      
-    } catch (error) {
-      console.error("[GPX] Error creating source/layer:", error);
-      // Retry after a short delay
-      setTimeout(createGpxSourceAndLayer, 1000);
-    }
+    });
   }
 
   function addGpxIcons() {
@@ -710,117 +689,119 @@ function initGpxManager(map) {
   };
 
   function initializeClusteredPinsSource(map) {
-    // Add the clustered source if it doesn't exist
-    if (!map.getSource(gpxPinsSourceId)) {
-      map.addSource(gpxPinsSourceId, {
-        type: 'geojson',
-        data: gpxPinsData,
-        cluster: true,
-        clusterMaxZoom: 14, // Max zoom to cluster points on
-        clusterRadius: 50 // Radius of each cluster when clustering points
-      });
-
-      // Add cluster circles
-      map.addLayer({
-        id: 'gpx-clusters',
-        type: 'circle',
-        source: gpxPinsSourceId,
-        filter: ['has', 'point_count'],
-        paint: {
-          'circle-color': [
-            'step',
-            ['get', 'point_count'],
-            '#51bbd6',
-            100,
-            '#f1f075',
-            750,
-            '#f28cb1'
-          ],
-          'circle-radius': [
-            'step',
-            ['get', 'point_count'],
-            20,
-            100,
-            30,
-            750,
-            40
-          ]
-        }
-      });
-
-      // Add cluster count labels
-      map.addLayer({
-        id: 'gpx-cluster-count',
-        type: 'symbol',
-        source: gpxPinsSourceId,
-        filter: ['has', 'point_count'],
-        layout: {
-          'text-field': '{point_count_abbreviated}',
-          'text-font': ['DIN Offc Pro Medium', 'Arial Unicode MS Bold'],
-          'text-size': 12
-        }
-      });
-
-      // Add unclustered pins
-      map.addLayer({
-        id: 'gpx-unclustered-points',
-        type: 'symbol',
-        source: gpxPinsSourceId,
-        filter: ['!', ['has', 'point_count']],
-        layout: {
-          'icon-image': [
-            'case',
-            ['==', ['get', 'type'], 'start'],
-            'StartPin',
-            'RedMarkerPin'
-          ],
-          'icon-size': 0.05,
-          'text-field': ['get', 'title'],
-          'text-offset': [0, 1.4],
-          'text-anchor': 'top',
-          'text-allow-overlap': true
-        }
-      });
-
-      // Add click handlers for clusters and pins
-      map.on('click', 'gpx-clusters', (e) => {
-        const features = map.queryRenderedFeatures(e.point, {
-          layers: ['gpx-clusters']
+    window.safeAddToMap(map, () => {
+      // Add the clustered source if it doesn't exist
+      if (!map.getSource(gpxPinsSourceId)) {
+        map.addSource(gpxPinsSourceId, {
+          type: 'geojson',
+          data: gpxPinsData,
+          cluster: true,
+          clusterMaxZoom: 14, // Max zoom to cluster points on
+          clusterRadius: 50 // Radius of each cluster when clustering points
         });
-        const clusterId = features[0].properties.cluster_id;
-        map.getSource(gpxPinsSourceId).getClusterExpansionZoom(clusterId, (err, zoom) => {
-          if (err) return;
-          map.easeTo({
-            center: features[0].geometry.coordinates,
-            zoom: zoom
+
+        // Add cluster circles
+        map.addLayer({
+          id: 'gpx-clusters',
+          type: 'circle',
+          source: gpxPinsSourceId,
+          filter: ['has', 'point_count'],
+          paint: {
+            'circle-color': [
+              'step',
+              ['get', 'point_count'],
+              '#51bbd6',
+              100,
+              '#f1f075',
+              750,
+              '#f28cb1'
+            ],
+            'circle-radius': [
+              'step',
+              ['get', 'point_count'],
+              20,
+              100,
+              30,
+              750,
+              40
+            ]
+          }
+        });
+
+        // Add cluster count labels
+        map.addLayer({
+          id: 'gpx-cluster-count',
+          type: 'symbol',
+          source: gpxPinsSourceId,
+          filter: ['has', 'point_count'],
+          layout: {
+            'text-field': '{point_count_abbreviated}',
+            'text-font': ['DIN Offc Pro Medium', 'Arial Unicode MS Bold'],
+            'text-size': 12
+          }
+        });
+
+        // Add unclustered pins
+        map.addLayer({
+          id: 'gpx-unclustered-points',
+          type: 'symbol',
+          source: gpxPinsSourceId,
+          filter: ['!', ['has', 'point_count']],
+          layout: {
+            'icon-image': [
+              'case',
+              ['==', ['get', 'type'], 'start'],
+              'StartPin',
+              'RedMarkerPin'
+            ],
+            'icon-size': 0.05,
+            'text-field': ['get', 'title'],
+            'text-offset': [0, 1.4],
+            'text-anchor': 'top',
+            'text-allow-overlap': true
+          }
+        });
+
+        // Add click handlers for clusters and pins
+        map.on('click', 'gpx-clusters', (e) => {
+          const features = map.queryRenderedFeatures(e.point, {
+            layers: ['gpx-clusters']
+          });
+          const clusterId = features[0].properties.cluster_id;
+          map.getSource(gpxPinsSourceId).getClusterExpansionZoom(clusterId, (err, zoom) => {
+            if (err) return;
+            map.easeTo({
+              center: features[0].geometry.coordinates,
+              zoom: zoom
+            });
           });
         });
-      });
 
-      map.on('click', 'gpx-unclustered-points', (e) => {
-        const features = map.queryRenderedFeatures(e.point, {
-          layers: ['gpx-unclustered-points']
+        map.on('click', 'gpx-unclustered-points', (e) => {
+          const features = map.queryRenderedFeatures(e.point, {
+            layers: ['gpx-unclustered-points']
+          });
+          if (features.length > 0) {
+            const feature = features[0];
+            console.log(`[GPX] Pin clicked: ${feature.properties.title} (${feature.properties.fileName})`);
+          }
         });
-        if (features.length > 0) {
-          const feature = features[0];
-          console.log(`[GPX] Pin clicked: ${feature.properties.title} (${feature.properties.fileName})`);
-        }
-      });
 
-      // Change cursor on hover
-      map.on('mouseenter', 'gpx-clusters', () => {
-        map.getCanvas().style.cursor = 'pointer';
-      });
-      map.on('mouseleave', 'gpx-clusters', () => {
-        map.getCanvas().style.cursor = '';
-      });
-      map.on('mouseenter', 'gpx-unclustered-points', () => {
-        map.getCanvas().style.cursor = 'pointer';
-      });
-      map.on('mouseleave', 'gpx-unclustered-points', () => {
-        map.getCanvas().style.cursor = '';
-      });
-    }
+        // Change cursor on hover
+        map.on('mouseenter', 'gpx-clusters', () => {
+          map.getCanvas().style.cursor = 'pointer';
+        });
+        map.on('mouseleave', 'gpx-clusters', () => {
+          map.getCanvas().style.cursor = '';
+        });
+        map.on('mouseenter', 'gpx-unclustered-points', () => {
+          map.getCanvas().style.cursor = 'pointer';
+        });
+        map.on('mouseleave', 'gpx-unclustered-points', () => {
+          map.getCanvas().style.cursor = '';
+        });
+      }
+    });
   }
 
   function addPinsToClusteredSource(map, pins) {
@@ -1031,38 +1012,30 @@ function initGpxManager(map) {
     // Clear existing pins data to prevent duplicates
     gpxPinsData.features = [];
     
-    // Wait for map style to be loaded before creating source and layer
-    const waitForStyleAndRestore = () => {
-      if (map.isStyleLoaded()) {
-        console.log('[GPX] Map style loaded, creating source and layer...');
-        try {
-          // Re-create the source and layer
-          createGpxSourceAndLayer();
-          
-          // Wait longer for source/layer to be created and map to be fully ready
-          setTimeout(() => {
-            try {
-              if (gpxFiles.length > 0) {
-                // Use the restore function instead of re-adding each file
-                restoreGpxTracksAfterStyleChange();
-                console.log(`[GPX] Restored ${gpxFiles.length} GPX files`);
-              } else {
-                console.log('[GPX] No GPX files to restore, but source and layer are ready for future uploads');
-              }
-            } catch (error) {
-              console.error('[GPX] Error during track restoration:', error);
+    window.safeAddToMap(map, () => {
+      console.log('[GPX] Map style loaded, creating source and layer...');
+      try {
+        // Re-create the source and layer
+        createGpxSourceAndLayer();
+        
+        // Wait longer for source/layer to be created and map to be fully ready
+        setTimeout(() => {
+          try {
+            if (gpxFiles.length > 0) {
+              // Use the restore function instead of re-adding each file
+              restoreGpxTracksAfterStyleChange();
+              console.log(`[GPX] Restored ${gpxFiles.length} GPX files`);
+            } else {
+              console.log('[GPX] No GPX files to restore, but source and layer are ready for future uploads');
             }
-          }, 300); // Increased delay
-        } catch (error) {
-          console.error('[GPX] Error creating source and layer:', error);
-        }
-      } else {
-        console.log('[GPX] Map style not loaded yet, waiting...');
-        setTimeout(waitForStyleAndRestore, 100);
+          } catch (error) {
+            console.error('[GPX] Error during track restoration:', error);
+          }
+        }, 300); // Increased delay
+      } catch (error) {
+        console.error('[GPX] Error creating source and layer:', error);
       }
-    };
-    
-    waitForStyleAndRestore();
+    });
   };
 
   // GPX Zoom-based Visibility - Now handled by Mapbox clustering

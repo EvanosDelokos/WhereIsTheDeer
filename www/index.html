@@ -142,7 +142,11 @@
 
   <script>
   // ======= MOBILE DEBUG CONSOLE OVERLAY =======
+  // Set true to mount the bottom console + float toggle and mirror console to screen.
   (function() {
+    const MOBILE_DEBUG_CONSOLE_ENABLED = false;
+    if (!MOBILE_DEBUG_CONSOLE_ENABLED) return;
+
     let isMinimized = false;
     
     const debugContainer = document.createElement('div');

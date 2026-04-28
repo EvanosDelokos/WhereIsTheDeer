@@ -18,11 +18,13 @@
   <script>
     // 🎯 Global variables - declare at the top to avoid ReferenceError
     let loggedInUser = null;
-    let currentUserPlan = 'free';
+    let currentUserPlan = null;
     let planLoaded = false; // Flag to prevent multiple plan fetches
     
     // Initialize global window variables
-    window.currentUserPlan = currentUserPlan;
+    window.userPlan = null;
+    window.currentUserPlan = null;
+    window.planLoaded = false;
 
     const supabase = window.supabase.createClient(
       'https://auth.whereisthedeer.com.au',
@@ -77,9 +79,13 @@
           console.log("🟢 Session restored from URL:", data.session.user.email);
           loggedInUser = data.session.user;
           currentUserPlan = 'free'; // fallback
+          window.currentUserPlan = currentUserPlan;
+          window.userPlan = currentUserPlan;
           // Fetch user plan and apply styling
           if (typeof fetchUserPlan === 'function') {
-            fetchUserPlan();
+            fetchUserPlan().then((plan) => {
+              window.userPlan = plan || 'free';
+            });
           }
           // Optional: redirect to clean URL
           window.history.replaceState({}, document.title, window.location.pathname);
@@ -93,10 +99,14 @@
       if (session) {
         loggedInUser = session.user;
         currentUserPlan = 'free'; // fallback
+        window.currentUserPlan = currentUserPlan;
+        window.userPlan = currentUserPlan;
         console.log("✅ Session restored in <head>:", session.user.email);
         // Fetch user plan and apply styling
         if (typeof fetchUserPlan === 'function') {
-          fetchUserPlan();
+          fetchUserPlan().then((plan) => {
+            window.userPlan = plan || 'free';
+          });
         }
       }
     });
@@ -241,11 +251,11 @@ if (speciesFilter) {
         }
 
         if (selected === "All" || selected === "OFF") {
-          switchSpeciesLayer("OFF");
+          handleSpeciesClick("OFF");
         } else if (selected === "Deer (All Year)" || selected === "Deer") {
-          switchSpeciesLayer("Deer");
+          handleSpeciesClick("Deer");
         } else {
-          switchSpeciesLayer(selected);
+          handleSpeciesClick(selected);
         }
 
         speciesDropdown.style.display = "none";
@@ -402,6 +412,11 @@ if (speciesFilter) {
     <button data-layer="Satellite" class="popup-btn disabled">🛰️<br><span>Satellite</span></button>
     <button data-layer="Contours" class="popup-btn disabled">🗻<br><span>Contours</span></button>
     <button data-layer="Hybrid" class="popup-btn disabled">🌐<br><span>Hybrid</span></button>
+  </div>
+  <div style="width:100%;margin:10px 0 0 0;text-align:left;font-weight:600;font-size:1em;">💨 Wind overlay</div>
+  <div class="popup-grid" style="margin-top:6px;">
+    <button id="windOnBtn" class="popup-btn">💨<br><span>Wind ON</span></button>
+    <button id="windOffBtn" class="popup-btn">⏹️<br><span>Wind OFF</span></button>
   </div>
   <div style="width:100%;margin:10px 0 0 0;text-align:left;font-weight:600;font-size:1em;">🦌 Species list</div>
   <div class="popup-grid" style="margin-top:6px;">
@@ -871,18 +886,18 @@ layersDropdown.querySelectorAll('.species-btn').forEach(btn => {
       console.log('Species layers not ready yet, waiting...');
       // Wait a bit then try again
       setTimeout(() => {
-        if (window.switchSpeciesLayer) {
-          window.switchSpeciesLayer(value);
+        if (window.handleSpeciesClick) {
+          window.handleSpeciesClick(value);
         } else {
-          console.error('switchSpeciesLayer function not available');
+          console.error('handleSpeciesClick function not available');
         }
       }, 500);
     } else {
       // Species layers ready, switch immediately
-      if (window.switchSpeciesLayer) {
-        window.switchSpeciesLayer(value);
+      if (window.handleSpeciesClick) {
+        window.handleSpeciesClick(value);
       } else {
-        console.error('switchSpeciesLayer function not available');
+        console.error('handleSpeciesClick function not available');
       }
     }
   };
@@ -1439,114 +1454,57 @@ function applyModalProtection(modalId) {
 }
 
 async function fetchUserPlan() {
-  // Prevent multiple simultaneous plan fetches
-  if (planLoaded) {
-    console.log("📡 fetchUserPlan() skipped - plan already loaded");
-    console.log("📊 Current plan state:", { currentUserPlan, planLoaded });
-    return;
-  }
-  
-  console.log("📡 fetchUserPlan() running...");
-  planLoaded = true; // Set flag immediately to prevent concurrent calls
-  
-  try {
-    const { data: { user } } = await window.supabaseClient.auth.getUser();
-    if (!user) {
-      console.log("❌ No user found in fetchUserPlan");
-      planLoaded = false; // Reset flag on error
-      return;
-    }
-    
-    console.log("🔍 Fetching plan for user:", user.id);
-    
-    const { data, error } = await supabase
-      .from('profiles')
-      .select('plan')
-      .eq('id', user.id)
-      .single();
-      
-    console.log("📊 Database response:", { data, error });
-    
-    if (data) {
-      currentUserPlan = data.plan || 'free';
-      window.currentUserPlan = currentUserPlan; // Make it globally accessible
-      console.log("✅ User plan fetched:", data.plan);
-      applyPremiumStyling(); // Apply premium styling to UI
-      
-      // Apply modal protection logic AFTER plan is determined
-      console.log("[Plan] Current user plan:", currentUserPlan);
-        if (currentUserPlan === 'premium') {
-    console.log("[Plan] Premium user - restoring button functionality");
-    restoreOriginalButtonFunctionality();
-    
-    // Load saved GPX files for premium users
-    // DISABLED: Using new Mapbox GPX manager instead
-    // setTimeout(() => {
-    //   if (typeof loadGpxFiles === 'function' && !window.gpxCleared) {
-    //     loadGpxFiles();
-    //   }
-    // }, 1000);
-        } else {
-        console.log("[Plan] Free user - applying modal protection (species now free)");
-        applyModalProtection('gpxModal');
-        applyModalProtection('journalModal');
-        // applyModalProtection('sssModal'); // SSS not in use currently
-        applyToolbarProtection();
-        applyToolsProtection();
-      }
-    } else {
-      console.warn("⚠️ No profile found for user, creating one...");
-      // If no profile found, try to create one with default 'free' plan
-      const { error: insertError } = await supabase
-        .from('profiles')
-        .insert([{ id: user.id, plan: 'free' }]);
-      if (insertError) {
-        console.warn("⚠️ Failed to create profile:", insertError.message);
-        // Set to free as fallback
-        currentUserPlan = 'free';
-        window.currentUserPlan = currentUserPlan; // Make it globally accessible
-        applyPremiumStyling();
-        console.log("[Plan] Free user (fallback) - applying modal protection (species now free)");
-        applyModalProtection('gpxModal');
-        applyModalProtection('journalModal');
-        // applyModalProtection('sssModal'); // SSS not in use currently
-      } else {
-        console.log("✅ Profile created with free plan");
-        currentUserPlan = 'free';
-        window.currentUserPlan = currentUserPlan; // Make it globally accessible
-        applyPremiumStyling();
-        console.log("[Plan] Free user (new profile) - applying modal protection (species now free)");
-        applyModalProtection('gpxModal');
-        applyModalProtection('journalModal');
-        // applyModalProtection('sssModal'); // SSS not in use currently
-      }
-    }
+  const { data: { user } } = await supabase.auth.getUser();
 
-    if (currentUserPlan !== 'premium') {
-      const hidden = document.getElementById('uiHidden');
-      if (hidden) hidden.remove();
-    }
-  } catch (error) {
-    console.error("❌ Error in fetchUserPlan:", error);
-    // Set to free as fallback
+  if (!user) {
+    window.userPlan = 'free';
+    window.currentUserPlan = 'free';
+    window.planLoaded = true;
     currentUserPlan = 'free';
-    window.currentUserPlan = currentUserPlan; // Make it globally accessible
+    planLoaded = true;
+    console.log('[Plan] Loaded:', 'free');
     applyPremiumStyling();
-    console.log("[Plan] Free user (error fallback) - applying modal protection (species now free)");
+    return 'free';
+  }
+
+  const { data } = await supabase
+    .from('profiles')
+    .select('plan')
+    .eq('id', user.id)
+    .single();
+
+  const plan = data?.plan || 'free';
+
+  window.userPlan = plan;
+  window.currentUserPlan = plan;
+  window.planLoaded = true;
+  currentUserPlan = plan;
+  planLoaded = true;
+
+  console.log('[Plan] Loaded:', plan);
+  applyPremiumStyling();
+
+  if (plan === 'premium') {
+    restoreOriginalButtonFunctionality();
+  } else {
     applyModalProtection('gpxModal');
     applyModalProtection('journalModal');
-    // applyModalProtection('sssModal'); // SSS not in use currently
-    planLoaded = false; // Reset flag on error
-    if (currentUserPlan !== 'premium') {
-      const hidden = document.getElementById('uiHidden');
-      if (hidden) hidden.remove();
-    }
+    applyToolbarProtection();
+    applyToolsProtection();
   }
+
+  if (plan !== 'premium') {
+    const hidden = document.getElementById('uiHidden');
+    if (hidden) hidden.remove();
+  }
+
+  return plan;
 }
 
 // Function to reset plan loading flag (useful for logout/login scenarios)
 function resetPlanLoaded() {
   planLoaded = false;
+  window.planLoaded = false;
   console.log("🔄 Plan loading flag reset");
 }
 
@@ -1588,6 +1546,15 @@ function applyPremiumStyling() {
     // Enable all layer buttons (Terrain, Satellite, Contours, Hybrid)
     const layerButtons = document.querySelectorAll('button[data-layer]');
     layerButtons.forEach(btn => {
+      btn.classList.remove('disabled');
+      btn.removeAttribute('disabled');
+      btn.style.opacity = '1';
+      btn.style.filter = 'none';
+    });
+
+    // Enable wind buttons
+    const windButtons = document.querySelectorAll('#windOnBtn, #windOffBtn');
+    windButtons.forEach(btn => {
       btn.classList.remove('disabled');
       btn.removeAttribute('disabled');
       btn.style.opacity = '1';
@@ -1650,6 +1617,22 @@ function applyPremiumStyling() {
       btn.style.opacity = '0.5';
       btn.style.filter = 'grayscale(0.5)';
     });
+
+    // Wind ON is premium-gated; Wind OFF stays available so users can always clear overlay
+    const windOnBtn = document.getElementById('windOnBtn');
+    if (windOnBtn) {
+      windOnBtn.classList.add('disabled');
+      windOnBtn.style.opacity = '0.5';
+      windOnBtn.style.filter = 'grayscale(0.5)';
+    }
+
+    const windOffBtn = document.getElementById('windOffBtn');
+    if (windOffBtn) {
+      windOffBtn.classList.remove('disabled');
+      windOffBtn.removeAttribute('disabled');
+      windOffBtn.style.opacity = '1';
+      windOffBtn.style.filter = 'none';
+    }
     
     // Disable GPX features
     const gpxButtons = document.querySelectorAll('#gpxModal .popup-btn:not(.close-modal)');
@@ -1776,8 +1759,17 @@ function restoreOriginalButtonFunctionality() {
     btn.classList.remove('disabled');
     btn.removeAttribute('disabled');
     btn.style.opacity = '1';
+    btn.style.filter = 'none';
     btn.style.cursor = 'pointer';
     btn.style.pointerEvents = 'auto';
+  });
+
+  // Remove any previously attached disabled-intercept listeners from layer popup
+  // buttons by replacing nodes before rebinding normal behavior.
+  const layerPopupButtons = document.querySelectorAll('#layersDropdown .popup-btn, #layersDropdown button[data-layer], #layersDropdown .species-btn');
+  layerPopupButtons.forEach((btn) => {
+    const cleanBtn = btn.cloneNode(true);
+    btn.parentNode.replaceChild(cleanBtn, btn);
   });
   
   // --- Helper to robustly replace button handlers (handles clones) ---
@@ -2173,8 +2165,8 @@ function restoreOriginalButtonFunctionality() {
     newBtn.onclick = () => {
       console.log(`🦌 Species button clicked: ${species}`);
       // Switch the species layer
-      if (window.switchSpeciesLayer) {
-        window.switchSpeciesLayer(species);
+      if (window.handleSpeciesClick) {
+        window.handleSpeciesClick(species);
       }
     };
   });
@@ -2439,7 +2431,9 @@ window.addEventListener('DOMContentLoaded', function() {
   // Initialize session and user state after all functions are defined
   if (loggedInUser) {
     console.log("🔄 Initializing user state for:", loggedInUser.email);
-    fetchUserPlan();
+    fetchUserPlan().then((plan) => {
+      window.userPlan = plan || 'free';
+    });
     updateLoginModalContent();
     
     // If returning from OAuth, show login modal to confirm login
@@ -2695,8 +2689,8 @@ function restoreButtonFunctionality() {
       console.log(`🦌 Species button clicked: ${species}`);
       
       // Switch the species layer
-      if (window.switchSpeciesLayer) {
-        window.switchSpeciesLayer(species);
+      if (window.handleSpeciesClick) {
+        window.handleSpeciesClick(species);
       }
     });
   });
@@ -3128,7 +3122,11 @@ document.addEventListener('DOMContentLoaded', () => {
 
 <script>
 // ======= MOBILE DEBUG CONSOLE OVERLAY =======
+// Set true to mount the bottom console + float toggle and mirror console to screen.
 (function() {
+  const MOBILE_DEBUG_CONSOLE_ENABLED = false;
+  if (!MOBILE_DEBUG_CONSOLE_ENABLED) return;
+
   let isMinimized = false;
   
   const debugContainer = document.createElement('div');

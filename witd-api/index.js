@@ -100,6 +100,7 @@ const supabaseClient = createClient(supabaseUrl, supabaseServiceKey);
 // Database setup
 const dbPath = '/data/addresses.sqlite';
 const zonesPath = '/data/zones.json';
+const rulesPath = '/data/rules.json';
 
 let db;
 if (fs.existsSync(dbPath)) {
@@ -216,6 +217,14 @@ async function requirePremium(req, res, next) {
 app.get('/zones', (req, res) => {
   fs.readFile(zonesPath, 'utf8', (err, data) => {
     if (err) return res.status(500).send('zones.json not found');
+    res.setHeader('Content-Type', 'application/json');
+    res.send(data);
+  });
+});
+
+app.get('/rules', (req, res) => {
+  fs.readFile(rulesPath, 'utf8', (err, data) => {
+    if (err) return res.status(500).send('rules.json not found');
     res.setHeader('Content-Type', 'application/json');
     res.send(data);
   });

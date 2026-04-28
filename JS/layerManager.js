@@ -1,5 +1,45 @@
 console.log("Module loaded: layerManager (Mapbox GL JS)");
 
+let windInstance = null;
+let WindModalClass = null;
+
+function userHasWindAccess() {
+  const plan = window.userPlan || window.currentUserPlan;
+  return plan === 'premium';
+}
+
+function showWindUpgradeMessage() {
+  if (typeof window.showUpgradeMessage === 'function') {
+    window.showUpgradeMessage();
+    return;
+  }
+
+  console.warn('showUpgradeMessage() not found; using fallback alert');
+  window.alert('Wind overlay is a Premium feature. Upgrade to unlock it.');
+}
+
+async function ensurePlanLoadedForWind() {
+  const existingPlan = window.userPlan || window.currentUserPlan;
+  if (typeof existingPlan !== 'undefined' && existingPlan !== null) {
+    return existingPlan;
+  }
+
+  if (typeof window.fetchUserPlan === 'function') {
+    try {
+      const fetchedPlan = await window.fetchUserPlan();
+      if (typeof fetchedPlan !== 'undefined' && fetchedPlan !== null) {
+        window.userPlan = fetchedPlan;
+        window.currentUserPlan = fetchedPlan;
+        return fetchedPlan;
+      }
+    } catch (error) {
+      console.warn('[Wind] Failed to fetch user plan before gating wind:', error);
+    }
+  }
+
+  return window.userPlan || window.currentUserPlan || null;
+}
+
 document.addEventListener("DOMContentLoaded", () => {
   // Wait for map to be initialized
   const waitForMap = () => {
@@ -47,13 +87,115 @@ function initializeLayerManager() {
 
   // Add terrain source and layer for contours if needed
   map.once('style.load', () => {
-    // Add terrain source for contours
-    if (!map.getSource('mapbox-terrain')) {
-      map.addSource('mapbox-terrain', {
-        type: 'raster-dem',
-        url: 'mapbox://mapbox.terrain-rgb'
-      });
+    window.safeAddToMap(map, () => {
+      // Add terrain source for contours
+      if (!map.getSource('mapbox-terrain')) {
+        map.addSource('mapbox-terrain', {
+          type: 'raster-dem',
+          url: 'mapbox://mapbox.terrain-rgb'
+        });
+      }
+    });
+  });
+
+  hookWindButtons(map);
+}
+
+async function enableWind(map) {
+  if (!window.planLoaded) {
+    console.warn('[Wind] Blocked: plan not loaded yet');
+    return;
+  }
+
+  if (windInstance) return;
+
+  if (!userHasWindAccess()) {
+    console.log('[Security] Wind overlay blocked for free user');
+    showWindUpgradeMessage();
+    return;
+  }
+
+  const targetMap = map || window.WITD?.map;
+  if (!targetMap) {
+    console.warn('Map not available for wind overlay');
+    return;
+  }
+
+  const LoadedWindModal = await loadWindModalClass();
+  if (!LoadedWindModal) {
+    console.error('Wind overlay unavailable: failed to load WindModal.js');
+    return;
+  }
+
+  windInstance = new LoadedWindModal(targetMap);
+  try {
+    await windInstance.init();
+    console.log('Wind overlay enabled');
+  } catch (error) {
+    console.error('Failed to enable wind overlay:', error);
+    windInstance.destroy?.();
+    windInstance = null;
+  }
+}
+
+async function loadWindModalClass() {
+  if (WindModalClass) return WindModalClass;
+
+  try {
+    const module = await import('/JS/WindModal.js');
+    WindModalClass = module.WindModal;
+    return WindModalClass;
+  } catch (error) {
+    console.error('Failed to dynamically import WindModal module:', error);
+    return null;
+  }
+}
+
+function disableWind() {
+  if (!windInstance) return;
+  windInstance.destroy();
+  windInstance = null;
+  console.log('Wind overlay disabled');
+}
+
+function hookWindButtons(map) {
+  const layersDropdown = document.getElementById('layersDropdown');
+  if (!layersDropdown || layersDropdown.dataset.windBound) return;
+
+  // Delegate events from the stable popup container so button clone/replace
+  // operations in map.html do not remove wind ON/OFF behavior.
+  layersDropdown.addEventListener('click', (event) => {
+    const button = event.target.closest('button');
+    if (!button) return;
+
+    if (button.id === 'windOnBtn') {
+      enableWind(map);
+    } else if (button.id === 'windOffBtn') {
+      disableWind();
     }
+  });
+
+  layersDropdown.dataset.windBound = 'true';
+}
+
+window.enableWind = () => enableWind(window.WITD?.map);
+window.disableWind = disableWind;
+
+let rehydrateAfterStyleSwitchPending = false;
+
+function scheduleRehydrateAfterStyleSwitch(map) {
+  if (rehydrateAfterStyleSwitchPending) {
+    return;
+  }
+  rehydrateAfterStyleSwitchPending = true;
+
+  map.once('idle', () => {
+    rehydrateAfterStyleSwitchPending = false;
+    console.log("♻️ Rehydrating map layers after style switch...");
+    if (typeof window.rehydrateMapLayers === 'function') {
+      window.rehydrateMapLayers();
+    }
+    restoreUserTracksAfterStyleSwitch();
   });
 }
 
@@ -130,11 +272,9 @@ window.switchBaseLayer = function(name) {
       map.setPitch(currentPitch);
       map.setBearing(currentBearing);
       
-      // Restore user tracks after style switch
-      restoreUserTracksAfterStyleSwitch();
-      
       // Add contour functionality when switching to contours layer
       if (layerName === 'contours') {
+        window.safeAddToMap(map, () => {
         // Add terrain source
         if (!map.getSource('mapbox-terrain')) {
           map.addSource('mapbox-terrain', {
@@ -204,10 +344,36 @@ window.switchBaseLayer = function(name) {
             }
           });
         }
+
+        // Add 10m labels (only visible when zoomed in)
+        if (!map.getLayer('contour-labels-10m')) {
+          map.addLayer({
+            id: 'contour-labels-10m',
+            type: 'symbol',
+            source: 'terrain-data',
+            'source-layer': 'contour',
+            filter: ['==', ['%', ['get', 'ele'], 10], 0],
+            minzoom: 15,
+            layout: {
+              'symbol-placement': 'line',
+              'symbol-spacing': 700,
+              'text-field': ['concat', ['get', 'ele'], ' m'],
+              'text-size': 10,
+              'text-font': ['Open Sans Regular', 'Arial Unicode MS Regular']
+            },
+            paint: {
+              'text-color': '#333333',
+              'text-halo-color': '#ffffff',
+              'text-halo-width': 1
+            }
+          });
+        }
+        });
       }
       
       // Handle hybrid layer - add DEM and contour sources
       if (layerName === 'hybrid') {
+        window.safeAddToMap(map, () => {
         // Add raster-dem source for terrain
         if (!map.getSource('mapbox-dem')) {
           map.addSource('mapbox-dem', {
@@ -306,20 +472,47 @@ window.switchBaseLayer = function(name) {
             }
           });
         }
+
+        // Add 10m labels (only visible when zoomed in)
+        if (!map.getLayer('contour-labels-10m')) {
+          map.addLayer({
+            id: 'contour-labels-10m',
+            type: 'symbol',
+            source: 'terrain-data',
+            'source-layer': 'contour',
+            filter: ['==', ['%', ['get', 'ele'], 10], 0],
+            minzoom: 15,
+            layout: {
+              'symbol-placement': 'line',
+              'symbol-spacing': 700,
+              'text-field': ['concat', ['get', 'ele'], ' m'],
+              'text-size': 10,
+              'text-font': ['Open Sans Regular', 'Arial Unicode MS Regular']
+            },
+            paint: {
+              'text-color': '#ffffff',
+              'text-halo-color': '#000000',
+              'text-halo-width': 2
+            }
+          });
+        }
+        });
       }
       
       // Remove contour layers when switching to non-contour layers
       if (layerName !== 'contours' && layerName !== 'hybrid') {
-        const contourLayers = ['contours-minor', 'contours-major', 'contour-labels-100m', 'contour-labels-50m'];
+        const contourLayers = ['contours-minor', 'contours-major', 'contour-labels-100m', 'contour-labels-50m', 'contour-labels-10m'];
         contourLayers.forEach(layerId => {
           if (map.getLayer(layerId)) {
             map.removeLayer(layerId);
           }
         });
       }
-      
+
       console.log(`Successfully switched to ${name} layer`);
     });
+
+    scheduleRehydrateAfterStyleSwitch(map);
   } else {
     console.warn(`Base layer "${name}" not found. Available layers:`, Object.keys(layers));
   }
@@ -358,6 +551,25 @@ function restoreUserTracksAfterStyleSwitch() {
   
   console.log('[LayerManager] User tracks restoration complete');
 }
+
+window.rehydrateMapLayers = function() {
+  console.log("♻️ Rehydrating map layers...");
+
+  if (typeof window.loadZonesLayer === "function") {
+    window.loadZonesLayer();
+  }
+
+  if (typeof window.loadClosedLayer === "function") {
+    console.log("Reloading closed layer...");
+    window.loadClosedLayer();
+  }
+
+  const speciesToApply = window.currentSpecies || "OFF";
+  if (typeof window.switchSpeciesLayer === "function" && speciesToApply !== "OFF") {
+    console.log("Reapplying species:", speciesToApply);
+    window.switchSpeciesLayer(speciesToApply);
+  }
+};
 
 // Global function to force refresh map tiles (useful for clearing cached imagery)
 window.refreshMapTiles = function() {
@@ -402,6 +614,7 @@ window.clearMapCache = function() {
   const currentStyle = map.getStyle();
   if (currentStyle && currentStyle.name) {
     map.setStyle(currentStyle.name);
+    scheduleRehydrateAfterStyleSwitch(map);
     console.log("Map style reloaded");
   }
 };
