@@ -3848,3 +3848,32 @@ body #journalModal.modern-popup .close-modal {
 .species-btn[data-species="Duck"] {
 display: none !important;
 }
+
+.mapboxgl-popup,
+.mapboxgl-popup-content,
+.modern-popup,
+.tool-submenu {
+  position: relative;
+  z-index: 9999 !important;
+}
+
+/* Fix saved pins, tracks, and custom elements appearing under wind */
+
+.mapboxgl-marker {
+  z-index: 2000 !important;
+}
+
+.custom-pin,
+.saved-pin,
+.track-point,
+.drawn-track,
+.gpx-layer,
+.leaflet-marker-icon {
+  position: relative;
+  z-index: 2000 !important;
+}
+
+/* If your popup cards for saved pins use this */
+.modern-popup {
+  z-index: 3000 !important;
+}

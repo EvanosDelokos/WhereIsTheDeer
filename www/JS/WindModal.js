@@ -97,10 +97,13 @@ export class WindModal {
     this.canvas.style.top = '0';
     this.canvas.style.left = '0';
     this.canvas.style.pointerEvents = 'none';
-    this.canvas.style.zIndex = '6';
 
     const mapContainer = this.map.getContainer();
-    mapContainer.appendChild(this.canvas);
+    const canvasContainer = this.map.getCanvasContainer();
+
+    // Append wind canvas to the SAME container as the map canvas
+    // but AFTER the base map canvas so it sits above tiles
+    canvasContainer.appendChild(this.canvas);
     this.ctx = this.canvas.getContext('2d', { alpha: true });
 
     this.resize();
