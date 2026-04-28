@@ -21,6 +21,9 @@ witd-api/node_modules/
 # OS + editor junk
 Thumbs.db
 
+# OneDrive sync temp files
+.tmp.driveupload/
+
 # Environment variables
 .env
 
