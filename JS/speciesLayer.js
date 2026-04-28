@@ -105,10 +105,23 @@ function witdMapPopupWrap(headerHtml, bodyRowsHtml) {
       : '';
   return (
     '<div class="witd-info-popup">' +
+    '<button type="button" class="witd-info-popup-close" aria-label="Close zone info popup">×</button>' +
     '<div class="witd-info-header">' + headerHtml + '</div>' +
     body +
     '</div>'
   );
+}
+
+function bindPopupCloseButton(popup) {
+  if (!popup || typeof popup.getElement !== 'function') return;
+  const popupEl = popup.getElement();
+  const closeBtn = popupEl ? popupEl.querySelector('.witd-info-popup-close') : null;
+  if (!closeBtn) return;
+  closeBtn.addEventListener('click', (ev) => {
+    ev.preventDefault();
+    ev.stopPropagation();
+    popup.remove();
+  });
 }
 
 /** @param {'green'|'blue'|'amber'|'purple'|'red'|'neutral'} tint */
@@ -455,10 +468,11 @@ function initSpeciesLayer(map) {
             }
             if (!e.features.length) return;
             const props = e.features[0].properties;
-            new mapboxgl.Popup({ maxWidth: '400px' })
+            const popup = new mapboxgl.Popup({ maxWidth: '400px' })
               .setLngLat(e.lngLat)
               .setHTML(buildClosedAreaPopupHtml(props))
               .addTo(map);
+            bindPopupCloseButton(popup);
           };
 
           window.WITD._closedAreasMouseEnterHandler = () => {
@@ -680,10 +694,11 @@ window.switchSpeciesLayer = function(name) {
           const feature = e.features[0];
           const props = feature.properties;
           const html = buildSambarZonePopupHtml(props);
-          new mapboxgl.Popup({ maxWidth: '400px' })
+          const popup = new mapboxgl.Popup({ maxWidth: '400px' })
             .setLngLat(e.lngLat)
             .setHTML(html)
             .addTo(map);
+          bindPopupCloseButton(popup);
         }
       };
 

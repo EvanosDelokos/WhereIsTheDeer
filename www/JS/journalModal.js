@@ -3,6 +3,220 @@
 if (!window.journalDataKey) {
   window.journalDataKey = 'witd_journal_entries';
 }
+if (!window.journalDraftKey) {
+  window.journalDraftKey = 'witd_journal_draft';
+}
+
+let journalDraftSaveTimer = null;
+let journalDraftStatusTimer = null;
+
+function setJournalDraftStatus(text, tone = 'muted', autoClearMs = 0) {
+  const statusEl = document.getElementById('journalDraftStatus');
+  if (!statusEl) return;
+
+  statusEl.textContent = text || '';
+  statusEl.style.opacity = text ? '1' : '0';
+  statusEl.style.color =
+    tone === 'success' ? '#2e7d32'
+      : tone === 'warn' ? '#b26a00'
+        : '#6b7280';
+
+  if (journalDraftStatusTimer) {
+    clearTimeout(journalDraftStatusTimer);
+    journalDraftStatusTimer = null;
+  }
+  if (autoClearMs > 0) {
+    journalDraftStatusTimer = setTimeout(() => {
+      const el = document.getElementById('journalDraftStatus');
+      if (el) {
+        el.textContent = '';
+        el.style.opacity = '0';
+      }
+      journalDraftStatusTimer = null;
+    }, autoClearMs);
+  }
+}
+
+function getJournalDraftFromForm() {
+  const titleEl = document.getElementById('journalTitle');
+  const noteEl = document.getElementById('journalNote');
+  const coordsEl = document.getElementById('journalCoords');
+  return {
+    title: titleEl ? titleEl.value : '',
+    note: noteEl ? noteEl.value : '',
+    coords: coordsEl ? coordsEl.value : '',
+    updatedAt: new Date().toISOString()
+  };
+}
+
+function normalizeJournalDraft(raw) {
+  if (!raw || typeof raw !== 'object') return null;
+  return {
+    title: typeof raw.title === 'string' ? raw.title : '',
+    note: typeof raw.note === 'string' ? raw.note : '',
+    coords: typeof raw.coords === 'string' ? raw.coords : '',
+    updatedAt: typeof raw.updatedAt === 'string' ? raw.updatedAt : null
+  };
+}
+
+function isDraftEmpty(draft) {
+  if (!draft) return true;
+  return !String(draft.title || '').trim() && !String(draft.note || '').trim() && !String(draft.coords || '').trim();
+}
+
+function loadJournalDraftLocal() {
+  try {
+    const raw = localStorage.getItem(window.journalDraftKey);
+    if (!raw) return null;
+    return normalizeJournalDraft(JSON.parse(raw));
+  } catch (err) {
+    console.warn('[Journal] Failed to parse local draft:', err);
+    return null;
+  }
+}
+
+function saveJournalDraftLocal(draft) {
+  try {
+    if (!draft || isDraftEmpty(draft)) {
+      localStorage.removeItem(window.journalDraftKey);
+      setJournalDraftStatus('', 'muted');
+      return;
+    }
+    localStorage.setItem(window.journalDraftKey, JSON.stringify(draft));
+    setJournalDraftStatus('Saving draft...', 'muted');
+  } catch (err) {
+    console.warn('[Journal] Failed to save local draft:', err);
+    setJournalDraftStatus('Draft save issue', 'warn');
+  }
+}
+
+function applyDraftToForm(draft) {
+  if (!draft) return;
+  const titleEl = document.getElementById('journalTitle');
+  const noteEl = document.getElementById('journalNote');
+  const coordsEl = document.getElementById('journalCoords');
+  if (titleEl) titleEl.value = draft.title || '';
+  if (noteEl) noteEl.value = draft.note || '';
+  if (coordsEl) coordsEl.value = draft.coords || '';
+}
+
+async function saveJournalDraftToSupabase(draft) {
+  try {
+    if (!window.supabaseClient?.auth) return;
+
+    const { data: { user }, error: authError } = await window.supabaseClient.auth.getUser();
+    if (authError || !user) return;
+
+    const empty = isDraftEmpty(draft);
+
+    if (empty) {
+      const { error } = await window.supabaseClient
+        .from('user_settings')
+        .delete()
+        .eq('user_id', user.id)
+        .eq('setting_key', 'journal_draft');
+      if (error && error.code !== '42P01') {
+        console.warn('[Journal] Failed clearing remote draft:', error.message);
+        setJournalDraftStatus('Draft stored locally', 'warn');
+      } else {
+        setJournalDraftStatus('', 'muted');
+      }
+      return;
+    }
+
+    const { error } = await window.supabaseClient
+      .from('user_settings')
+      .upsert({
+        user_id: user.id,
+        setting_key: 'journal_draft',
+        setting_value: JSON.stringify(draft),
+        updated_at: new Date().toISOString()
+      }, {
+        onConflict: 'user_id,setting_key'
+      });
+
+    if (error) {
+      if (error.code === '42P01') {
+        console.log('[Journal] user_settings table missing, draft kept locally only');
+        setJournalDraftStatus('Draft saved locally', 'warn');
+      } else {
+        console.warn('[Journal] Failed saving draft to Supabase:', error.message);
+        setJournalDraftStatus('Draft stored locally', 'warn');
+      }
+    } else {
+      setJournalDraftStatus('Draft saved', 'success', 2000);
+    }
+  } catch (err) {
+    console.warn('[Journal] Error saving draft to Supabase:', err);
+    setJournalDraftStatus('Draft stored locally', 'warn');
+  }
+}
+
+async function loadJournalDraftFromSupabase() {
+  try {
+    if (!window.supabaseClient?.auth) return null;
+
+    const { data: { user }, error: authError } = await window.supabaseClient.auth.getUser();
+    if (authError || !user) return null;
+
+    const { data, error } = await window.supabaseClient
+      .from('user_settings')
+      .select('setting_value')
+      .eq('user_id', user.id)
+      .eq('setting_key', 'journal_draft')
+      .single();
+
+    if (error) {
+      if (error.code === 'PGRST116' || error.code === '42P01') return null;
+      console.warn('[Journal] Failed loading draft from Supabase:', error.message);
+      return null;
+    }
+
+    if (!data?.setting_value) return null;
+
+    const parsed = typeof data.setting_value === 'string'
+      ? JSON.parse(data.setting_value)
+      : data.setting_value;
+    return normalizeJournalDraft(parsed);
+  } catch (err) {
+    console.warn('[Journal] Error loading draft from Supabase:', err);
+    return null;
+  }
+}
+
+function scheduleDraftSave() {
+  const draft = getJournalDraftFromForm();
+  saveJournalDraftLocal(draft);
+
+  if (journalDraftSaveTimer) {
+    clearTimeout(journalDraftSaveTimer);
+  }
+  journalDraftSaveTimer = setTimeout(() => {
+    saveJournalDraftToSupabase(draft);
+  }, 700);
+}
+
+function clearDraftSaveTimer() {
+  if (!journalDraftSaveTimer) return;
+  clearTimeout(journalDraftSaveTimer);
+  journalDraftSaveTimer = null;
+}
+
+async function flushDraftSave() {
+  clearDraftSaveTimer();
+  const draft = getJournalDraftFromForm();
+  saveJournalDraftLocal(draft);
+  if (!isDraftEmpty(draft)) {
+    setJournalDraftStatus('Saving draft...', 'muted');
+  }
+  await saveJournalDraftToSupabase(draft);
+}
+
+async function clearJournalDraftEverywhere() {
+  clearDraftSaveTimer();
+  saveJournalDraftLocal(null);
+  await saveJournalDraftToSupabase(null);
+}
 
 // Fallback to localStorage for offline functionality
 function loadJournalEntries() {
@@ -369,6 +583,7 @@ async function handleJournalFormSubmit(e) {
   
   await addJournalEntry(entry);
   document.getElementById('journalForm').reset();
+  await clearJournalDraftEverywhere();
 }
 
 window.initJournal = () => {
@@ -394,6 +609,7 @@ window.initJournal = () => {
         <textarea id="journalNote" placeholder="Write your observation or thoughts..." rows="3" style="padding:8px;border-radius:8px;border:1px solid #ccc;box-sizing:border-box;"></textarea>
         <input type="text" id="journalCoords" placeholder="Coordinates (optional)" style="margin-top:6px;margin-bottom:8px;padding:8px;border-radius:8px;border:1px solid #ccc;box-sizing:border-box;" />
         <button type="submit" class="popup-btn" style="box-sizing:border-box;">➕ Add Entry</button>
+        <div id="journalDraftStatus" aria-live="polite" style="margin-top:6px;min-height:16px;font-size:12px;color:#6b7280;opacity:0;transition:opacity .2s ease;"></div>
       </form>
       <div style="flex:1;overflow-y:auto;min-height:0;">
         <div id="journalList" style="padding-top:8px;margin-top:12px;border-top:1px solid #ccc;"></div>
@@ -411,7 +627,8 @@ window.initJournal = () => {
   setTimeout(() => {
     const closeBtn = journalModal.querySelector('.close-modal');
     if (closeBtn) {
-      closeBtn.onclick = () => {
+      closeBtn.onclick = async () => {
+        await flushDraftSave();
         journalModal.style.display = 'none';
         window.openPopup = null;
         window.openButton = null;
@@ -419,7 +636,35 @@ window.initJournal = () => {
     }
   }, 0);
 
-  document.getElementById('journalForm').addEventListener('submit', handleJournalFormSubmit);
+  const form = document.getElementById('journalForm');
+  const titleInput = document.getElementById('journalTitle');
+  const noteInput = document.getElementById('journalNote');
+  const coordsInput = document.getElementById('journalCoords');
+
+  form.addEventListener('submit', handleJournalFormSubmit);
+  [titleInput, noteInput, coordsInput].forEach((el) => {
+    if (!el) return;
+    el.addEventListener('input', scheduleDraftSave);
+    el.addEventListener('change', scheduleDraftSave);
+  });
+
+  const localDraft = loadJournalDraftLocal();
+  if (localDraft && !isDraftEmpty(localDraft)) {
+    applyDraftToForm(localDraft);
+  }
+
+  // Prefer the newest draft between local and cloud.
+  loadJournalDraftFromSupabase().then((remoteDraft) => {
+    if (!remoteDraft || isDraftEmpty(remoteDraft)) return;
+    const latestLocal = loadJournalDraftLocal();
+    const localTs = latestLocal?.updatedAt ? Date.parse(latestLocal.updatedAt) : 0;
+    const remoteTs = remoteDraft.updatedAt ? Date.parse(remoteDraft.updatedAt) : 0;
+    if (!latestLocal || remoteTs > localTs) {
+      applyDraftToForm(remoteDraft);
+      saveJournalDraftLocal(remoteDraft);
+    }
+  });
+
   renderJournalList();
 };
 
