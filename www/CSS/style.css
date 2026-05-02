@@ -503,6 +503,7 @@
   transform: translateY(-1px);
 }
 
+/* Drawn-track popup: GPX + minimize (same pill pattern as other saved-pin buttons) */
 .saved-pin-btn.gpx-btn {
   background: #e0f2f1;
   color: #00695c;
@@ -523,6 +524,7 @@
   transform: translateY(-1px);
 }
 
+/* Drawn track title matches pin card (uppercase when not editing) */
 .saved-pin-popup.track-label-popup .saved-pin-header .track-label-title.saved-pin-name:not(.editing) {
   text-transform: uppercase;
   letter-spacing: 0.035em;
@@ -919,9 +921,10 @@
   position: relative;
 }
 
+/* Pin name chips + drawn-track minimized name — shared map label styling */
 .marker-text-box .label-inner {
   position: absolute;
-  top: calc(100% + 8px);
+  top: calc(100% + 8px); /* below anchor graphic when present; pin-only markers still align consistently */
   left: 50%;
   transform: translateX(-50%);
   background: #fff;
@@ -939,6 +942,7 @@
   letter-spacing: 0.04em;
 }
 
+/* Drawn track: pin icon + same label-inner chip as pins */
 .track-drawn-minimized.marker-text-box {
   flex-direction: column;
   align-items: center;
@@ -1357,6 +1361,7 @@ body, html {
   cursor: text;
 }
 
+/* Compact icon-only buttons (e.g. GPX file track labels without .saved-pin-popup) */
 .track-minimize-btn:not(.saved-pin-btn) {
   background: #28a745;
   color: white;

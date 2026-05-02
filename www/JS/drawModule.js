@@ -1771,7 +1771,7 @@
     const gpxBtnHtml = canExportGpx
       ? `<button type="button" class="saved-pin-btn gpx-btn track-download-gpx-btn" title="Download this track as GPX for Garmin or handheld GPS">⬇️ Download GPX</button>`
       : '';
-    
+
     trackLabelEl.innerHTML = `
         <div class="track-drawn-minimized marker-text-box" style="display: none;" title="Open track details">
           <div class="track-label-pin track-label-pin--newdraw">
@@ -1995,6 +1995,7 @@
       minimizeLabel();
     });
     
+    // Same behaviour as pin marker + name label: tap pin or name chip to open full card
     if (trackMinimized) {
       trackMinimized.addEventListener('click', (e) => {
         e.stopPropagation();
