@@ -1,5 +1,10 @@
-console.log('[SearchUI] ===== MODULE STARTING (Mapbox Version) =====');
-console.log('[SearchUI] Module loaded - Mapbox-based search initialization...');
+const SEARCH_DEBUG = false;
+const sulog = (...args) => {
+  if (SEARCH_DEBUG) console.log(...args);
+};
+
+sulog('[SearchUI] ===== MODULE STARTING (Mapbox Version) =====');
+sulog('[SearchUI] Module loaded - Mapbox-based search initialization...');
 
 // Global variables
 let searchInput = null;
@@ -9,12 +14,12 @@ let map = null; // Reference to Mapbox map
 
 // Initialize search when map is ready
 function initSearchBar() {
-  console.log('[SearchUI] Initializing search bar...');
+  sulog('[SearchUI] Initializing search bar...');
   
   // Get map reference
   map = window.WITD?.map;
   if (!map) {
-    console.error('[SearchUI] Map not available yet');
+    sulog('[SearchUI] Map not available yet');
     setTimeout(initSearchBar, 100); // Retry
     return;
   }
@@ -28,9 +33,9 @@ function initSearchBar() {
     return;
   }
   
-  console.log('[SearchUI] DOM elements found, setting up listeners...');
+  sulog('[SearchUI] DOM elements found, setting up listeners...');
   setupSearchListeners();
-  console.log('[SearchUI] Search listeners setup complete ✅');
+  sulog('[SearchUI] Search listeners setup complete ✅');
 }
 
 // Setup search input listeners
@@ -79,7 +84,7 @@ function setupSearchListeners() {
 
 // Handle search query
 async function handleSearch(query) {
-  console.log('[SearchUI] Searching for:', query);
+  sulog('[SearchUI] Searching for:', query);
   
   // Check if query looks like coordinates
   const coords = parseCoordinates(query);
@@ -117,7 +122,7 @@ async function performMapboxSearch(query) {
     }
     
     const data = await response.json();
-    console.log('[SearchUI] Mapbox API response:', data);
+    sulog('[SearchUI] Mapbox API response:', data);
     
     showMapboxSuggestions(data.features || []);
   } catch (error) {
@@ -165,7 +170,7 @@ function flyToCoords(lat, lng, placeName) {
     return;
   }
   
-  console.log('[SearchUI] Flying to:', lat, lng);
+  sulog('[SearchUI] Flying to:', lat, lng);
   
   // Remove old marker if exists
   if (searchMarker) {
@@ -349,11 +354,11 @@ function utmToLatLng(zone, band, easting, northing) {
 
 // Initialize when DOM is ready
 if (document.readyState === 'loading') {
-  console.log('[SearchUI] DOM still loading, adding event listener...');
+  sulog('[SearchUI] DOM still loading, adding event listener...');
   document.addEventListener('DOMContentLoaded', initSearchBar);
 } else {
-  console.log('[SearchUI] DOM already loaded, initializing search...');
+  sulog('[SearchUI] DOM already loaded, initializing search...');
   initSearchBar();
 }
 
-console.log('[SearchUI] ===== MODULE COMPLETE ====='); 
+sulog('[SearchUI] ===== MODULE COMPLETE =====');

@@ -2,7 +2,7 @@ const fs = require('fs');
 const path = require('path');
 
 const sourceDirs = ['JS', 'CSS', 'Images', 'Data'];
-const sourceFiles = ['index.html', 'map.html'];
+const sourceFiles = ['index.html', 'map.html', 'map'];
 
 const wwwDir = path.join(__dirname, 'www');
 

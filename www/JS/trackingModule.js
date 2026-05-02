@@ -23,6 +23,45 @@ let lastRecordedPosition = null;
 let smoothedHeading = null;
 const HEADING_SMOOTHING = 0.5; // Increased for faster heading response (was 0.3)
 let lastSpeed = 0;
+const TRACKING_DEBUG = false;
+const tlog = (...args) => {
+  if (TRACKING_DEBUG) console.log(...args);
+};
+
+async function getCachedSupabaseUser() {
+  const cache = window.__supabaseUserCache || {};
+  const now = Date.now();
+  const ttlMs = 5000;
+
+  if (cache.user && cache.ts && (now - cache.ts) < ttlMs) {
+    return { user: cache.user, error: null };
+  }
+
+  if (cache.promise) {
+    return await cache.promise;
+  }
+
+  const promise = (async () => {
+    const { data: { user }, error } = await window.supabaseClient.auth.getUser();
+    window.__supabaseUserCache = {
+      user: user || null,
+      error: error || null,
+      ts: Date.now(),
+      promise: null
+    };
+    return { user: user || null, error: error || null };
+  })();
+
+  window.__supabaseUserCache = { ...cache, promise };
+
+  try {
+    return await promise;
+  } finally {
+    if (window.__supabaseUserCache) {
+      window.__supabaseUserCache.promise = null;
+    }
+  }
+}
 
 // === FLOATING STOP BUTTON ===
 let floatingStopBtn = null;
@@ -122,7 +161,7 @@ export function initTracking(map) {
       console.log(`💾 Loaded ${window.WITD.tracking.savedTracks.length} saved tracks from localStorage`);
     } else {
       window.WITD.tracking.savedTracks = [];
-      console.log(`💾 No saved tracks found in localStorage, initializing empty array`);
+      tlog(`💾 No saved tracks found in localStorage, initializing empty array`);
     }
   } catch (error) {
     console.error(`❌ Failed to load saved tracks from localStorage:`, error);
@@ -134,8 +173,8 @@ export function initTracking(map) {
     loadTracksFromSupabase();
   }, 1000);
   
-  console.log("🧭 Tracking module initialized");
-  console.log("🧭 Saved tracks count:", window.WITD.tracking.savedTracks.length);
+  tlog("🧭 Tracking module initialized");
+  tlog("🧭 Saved tracks count:", window.WITD.tracking.savedTracks.length);
 }
 
 // === GPS SMOOTHING HELPERS ===
@@ -1328,18 +1367,18 @@ async function saveTracksToSupabase() {
   try {
     // Check if Supabase client is available
     if (!window.supabaseClient) {
-      console.log('[tracking] Supabase client not ready, skipping save');
+    tlog('[tracking] Supabase client not ready, skipping save');
       return;
     }
 
     // Check if user is authenticated
-    const { data: { user }, error: authError } = await window.supabaseClient.auth.getUser();
+    const { user, error: authError } = await getCachedSupabaseUser();
     if (authError || !user) {
-      console.log('[tracking] No authenticated user, skipping Supabase save');
+      tlog('[tracking] No authenticated user, skipping Supabase save');
       return;
     }
 
-    console.log('[tracking] Saving tracks to Supabase for user:', user.id);
+    tlog('[tracking] Saving tracks to Supabase for user:', user.id);
 
     // First, clear existing tracks for this user
     const { error: deleteError } = await window.supabaseClient
@@ -1350,7 +1389,7 @@ async function saveTracksToSupabase() {
     if (deleteError) {
       console.error('[tracking] Error clearing existing tracks:', deleteError);
     } else {
-      console.log('[tracking] Cleared existing tracks from Supabase');
+      tlog('[tracking] Cleared existing tracks from Supabase');
     }
 
     // Then insert all current tracks
@@ -1374,10 +1413,10 @@ async function saveTracksToSupabase() {
       if (insertError) {
         console.error('[tracking] Error saving tracks to Supabase:', insertError);
       } else {
-        console.log('[tracking] Successfully saved', tracksToSave.length, 'tracks to Supabase');
+        tlog('[tracking] Successfully saved', tracksToSave.length, 'tracks to Supabase');
       }
     } else {
-      console.log('[tracking] No tracks to save to Supabase');
+      tlog('[tracking] No tracks to save to Supabase');
     }
 
   } catch (error) {
@@ -1388,18 +1427,18 @@ async function saveTracksToSupabase() {
 // Load tracks from Supabase
 async function loadTracksFromSupabase() {
   try {
-    console.log('[tracking] Loading tracks from Supabase...');
+    tlog('[tracking] Loading tracks from Supabase...');
 
     // Check if Supabase client is available
     if (!window.supabaseClient) {
-      console.log('[tracking] Supabase client not ready, skipping load');
+      tlog('[tracking] Supabase client not ready, skipping load');
       return;
     }
 
     // Check if user is authenticated
-    const { data: { user }, error: authError } = await window.supabaseClient.auth.getUser();
+    const { user, error: authError } = await getCachedSupabaseUser();
     if (authError || !user) {
-      console.log('[tracking] No authenticated user, skipping Supabase load');
+      tlog('[tracking] No authenticated user, skipping Supabase load');
       return;
     }
 
@@ -1415,10 +1454,10 @@ async function loadTracksFromSupabase() {
       return;
     }
 
-    console.log('[tracking] Raw tracks from Supabase:', tracks);
+    tlog('[tracking] Raw tracks from Supabase:', tracks);
 
     if (tracks && tracks.length > 0) {
-      console.log('[tracking] Loading', tracks.length, 'tracks from Supabase');
+      tlog('[tracking] Loading', tracks.length, 'tracks from Supabase');
       
       // Convert Supabase format back to our internal format
       const loadedTracks = tracks.map(dbTrack => ({
@@ -1465,18 +1504,18 @@ async function loadTracksFromSupabase() {
         window.WITD.tracking.savedTracks.push(track);
       }
 
-      console.log('[tracking] Successfully loaded', loadedTracks.length, 'tracks from Supabase');
+      tlog('[tracking] Successfully loaded', loadedTracks.length, 'tracks from Supabase');
       
       // Update localStorage with loaded tracks
       try {
         localStorage.setItem('witd_saved_tracks', JSON.stringify(window.WITD.tracking.savedTracks));
-        console.log('[tracking] Updated localStorage with Supabase tracks');
+        tlog('[tracking] Updated localStorage with Supabase tracks');
       } catch (error) {
         console.error('[tracking] Failed to update localStorage:', error);
       }
       
     } else {
-      console.log('[tracking] No tracks found in Supabase');
+      tlog('[tracking] No tracks found in Supabase');
     }
 
   } catch (error) {
@@ -1489,18 +1528,18 @@ async function deleteTrackFromSupabase(trackId) {
   try {
     // Check if Supabase client is available
     if (!window.supabaseClient) {
-      console.log('[tracking] Supabase client not ready, skipping delete');
+      tlog('[tracking] Supabase client not ready, skipping delete');
       return { success: false, error: 'Supabase client not available' };
     }
 
     // Check if user is authenticated
-    const { data: { user }, error: authError } = await window.supabaseClient.auth.getUser();
+    const { user, error: authError } = await getCachedSupabaseUser();
     if (authError || !user) {
-      console.log('[tracking] No authenticated user, skipping Supabase delete');
+      tlog('[tracking] No authenticated user, skipping Supabase delete');
       return { success: false, error: 'User not authenticated' };
     }
 
-    console.log('[tracking] Deleting track from Supabase:', trackId, 'for user:', user.id);
+    tlog('[tracking] Deleting track from Supabase:', trackId, 'for user:', user.id);
 
     // First, get all tracks for this user to debug ID matching
     const { data: allTracks, error: listError } = await window.supabaseClient
@@ -1511,8 +1550,8 @@ async function deleteTrackFromSupabase(trackId) {
     if (listError) {
       console.error('[tracking] Error listing tracks:', listError);
     } else {
-      console.log('[tracking] All tracks in Supabase for this user:', allTracks);
-      console.log('[tracking] Looking for track_id:', trackId);
+      tlog('[tracking] All tracks in Supabase for this user:', allTracks);
+      tlog('[tracking] Looking for track_id:', trackId);
       const matchingTrack = allTracks?.find(t => t.track_id === trackId);
       if (!matchingTrack) {
         console.warn('[tracking] Track ID mismatch! Available track_ids:', allTracks?.map(t => t.track_id));
@@ -1537,7 +1576,7 @@ async function deleteTrackFromSupabase(trackId) {
       return { success: true, message: 'Track not found (already deleted?)' };
     }
 
-    console.log('[tracking] Found track to delete:', existingTracks[0]);
+    tlog('[tracking] Found track to delete:', existingTracks[0]);
 
     // Delete from Supabase
     const { data, error } = await window.supabaseClient
@@ -1554,7 +1593,7 @@ async function deleteTrackFromSupabase(trackId) {
 
     // Verify deletion
     if (data && data.length > 0) {
-      console.log('[tracking] Successfully deleted track from Supabase:', data[0]);
+      tlog('[tracking] Successfully deleted track from Supabase:', data[0]);
       return { success: true, deleted: data[0] };
     } else {
       console.warn('[tracking] Delete query executed but no rows were deleted. Track ID:', trackId);

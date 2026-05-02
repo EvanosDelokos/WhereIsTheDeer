@@ -1,4 +1,9 @@
-console.log("Module loaded: weatherModule");
+const WEATHER_DEBUG = false;
+const wlog = (...args) => {
+  if (WEATHER_DEBUG) console.log(...args);
+};
+
+wlog("Module loaded: weatherModule");
 
 document.addEventListener("DOMContentLoaded", () => {
   const map = window.WITD.map;
@@ -30,7 +35,7 @@ document.addEventListener("DOMContentLoaded", () => {
 
   // Function to fetch weather for a location by name
   function fetchWeatherForLocation(locationName) {
-    console.log(`Searching weather for: ${locationName}`);
+    wlog(`Searching weather for: ${locationName}`);
     const weatherOutputEl = document.getElementById("weatherOutput");
     if (weatherOutputEl) weatherOutputEl.innerHTML = "Searching for location...";
 
@@ -113,7 +118,7 @@ document.addEventListener("DOMContentLoaded", () => {
             });
         },
         (error) => {
-          console.log("Geolocation failed:", error);
+          wlog("Geolocation failed:", error);
           const weatherOutputEl = document.getElementById("weatherOutput");
           if (weatherOutputEl) weatherOutputEl.innerHTML = "Location access denied. Please search manually.";
         }
@@ -179,7 +184,7 @@ document.addEventListener("DOMContentLoaded", () => {
             });
         },
         (error) => {
-          console.log("Geolocation failed:", error);
+        wlog("Geolocation failed:", error);
           const weatherOutputEl = document.getElementById("weatherOutput");
           if (weatherOutputEl) weatherOutputEl.innerHTML = "Location access denied. Please search manually.";
         }
@@ -201,7 +206,7 @@ document.addEventListener("DOMContentLoaded", () => {
     fetch(weatherUrl)
       .then(res => res.json())
       .then(data => {
-        console.log(data);
+        wlog(data);
 
         const today = data.current_weather;
         const daily = data.daily;

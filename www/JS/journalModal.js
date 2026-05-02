@@ -1,4 +1,5 @@
 // JS/journalModal.js - Secure Journal with Premium API Integration
+window.__WITD_JOURNAL_MODAL_VERSION__ = '2026-04-30-journal-fix-v2';
 // Use window.journalDataKey to avoid redeclaration issues
 if (!window.journalDataKey) {
   window.journalDataKey = 'witd_journal_entries';
@@ -7,8 +8,10 @@ if (!window.journalDraftKey) {
   window.journalDraftKey = 'witd_journal_draft';
 }
 
-let journalDraftSaveTimer = null;
-let journalDraftStatusTimer = null;
+var journalDraftSaveTimer = window.journalDraftSaveTimer || null;
+window.journalDraftSaveTimer = journalDraftSaveTimer;
+var journalDraftStatusTimer = window.journalDraftStatusTimer || null;
+window.journalDraftStatusTimer = journalDraftStatusTimer;
 
 function setJournalDraftStatus(text, tone = 'muted', autoClearMs = 0) {
   const statusEl = document.getElementById('journalDraftStatus');

@@ -205,8 +205,12 @@ export class WindModal {
     if (this.canvas.width !== pixelWidth || this.canvas.height !== pixelHeight) {
       this.canvas.width = pixelWidth;
       this.canvas.height = pixelHeight;
-      this.canvas.style.width = `${cssWidth}px`;
-      this.canvas.style.height = `${cssHeight}px`;
+      if (Number.isFinite(cssWidth) && cssWidth > 0) {
+        this.canvas.style.width = `${cssWidth}px`;
+      }
+      if (Number.isFinite(cssHeight) && cssHeight > 0) {
+        this.canvas.style.height = `${cssHeight}px`;
+      }
       this.ctx.setTransform(this.dpr, 0, 0, this.dpr, 0, 0);
     }
   }
@@ -218,10 +222,7 @@ export class WindModal {
     }
 
     this.particles = [];
-    const zoom = this.map.getZoom();
-    if (zoom > 12) this.particleCount = 850;
-    else if (zoom > 9) this.particleCount = 580;
-    else this.particleCount = 380;
+    this.particleCount = this.getTargetParticleCount();
 
     const width = this.canvas.width / this.dpr;
     const height = this.canvas.height / this.dpr;
@@ -236,6 +237,17 @@ export class WindModal {
     }
   }
 
+  getTargetParticleCount() {
+    const zoom = this.map.getZoom();
+
+    // Zoomed out = more particles, zoomed in = fewer
+    if (zoom <= 6) return 850;
+    if (zoom <= 8) return 650;
+    if (zoom <= 10) return 450;
+    if (zoom <= 12) return 280;
+    return 160;
+  }
+
   respawnParticle(p) {
     const width = this.canvas.width / this.dpr;
     const height = this.canvas.height / this.dpr;
@@ -246,12 +258,12 @@ export class WindModal {
   }
 
   updateParticleDensity() {
-    const zoom = this.map.getZoom();
-    let newCount;
-    if (zoom > 12) newCount = 850;
-    else if (zoom > 9) newCount = 580;
-    else newCount = 380;
-    if (Math.abs(newCount - this.particleCount) > 120) {
+    if (!this.map || !this.canvas) return;
+
+    const newCount = this.getTargetParticleCount();
+
+    // Only update if meaningful change to avoid flicker
+    if (Math.abs(newCount - this.particleCount) > 80) {
       this.particleCount = newCount;
       this.createParticles();
     }

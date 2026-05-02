@@ -1,4 +1,9 @@
-console.log("Module loaded: layerManager (Mapbox GL JS)");
+const LAYER_DEBUG = false;
+const llog = (...args) => {
+  if (LAYER_DEBUG) console.log(...args);
+};
+
+llog("Module loaded: layerManager (Mapbox GL JS)");
 
 let windInstance = null;
 let WindModalClass = null;
@@ -73,8 +78,8 @@ function initializeLayerManager() {
   window.WITD.baseLayers = baseLayers;
   window.WITD.activeSpeciesLayer = null;
 
-  console.log("Layer Manager ready: Mapbox styles configured.");
-  console.log("Available base layers:", window.WITD.baseLayers);
+  llog("Layer Manager ready: Mapbox styles configured.");
+  llog("Available base layers:", window.WITD.baseLayers);
 
   // Set default active layer (Terrain)
   const layerButtons = document.querySelectorAll('button[data-layer]');
@@ -101,7 +106,7 @@ function initializeLayerManager() {
   hookWindButtons(map);
 }
 
-async function enableWind(map) {
+async function enableWindCore(map) {
   console.log('[Wind] Wind ON requested');
   if (!window.planLoaded) {
     console.warn('[Wind] Blocked: plan not loaded yet');
@@ -166,6 +171,7 @@ function hookWindButtons(map) {
   // Delegate events from the stable popup container so button clone/replace
   // operations in map.html do not remove wind ON/OFF behavior.
   layersDropdown.addEventListener('click', (event) => {
+    // Clicks on text inside a button can target a Text node — it has no .closest().
     const raw = event.target;
     const el =
       raw && raw.nodeType === 1
@@ -177,7 +183,7 @@ function hookWindButtons(map) {
     if (!button) return;
 
     if (button.id === 'windOnBtn') {
-      enableWind(map);
+      enableWindCore(map);
     } else if (button.id === 'windOffBtn') {
       disableWind();
     }
@@ -186,26 +192,42 @@ function hookWindButtons(map) {
   layersDropdown.dataset.windBound = 'true';
 }
 
-window.enableWind = () => enableWind(window.WITD?.map);
+window.enableWind = () => enableWindCore(window.WITD?.map);
 window.disableWind = disableWind;
 
 let rehydrateAfterStyleSwitchPending = false;
 
-function scheduleRehydrateAfterStyleSwitch(map) {
+function waitForMapReady(map) {
+  return new Promise((resolve) => {
+    if (map.isStyleLoaded()) {
+      resolve();
+      return;
+    }
+    map.once('idle', resolve);
+  });
+}
+
+function scheduleRehydrateAfterStyleSwitch(map, cycle = 'n/a', opts = {}) {
   if (rehydrateAfterStyleSwitchPending) {
+    console.log(`[STYLE ${cycle}] rehydrate already pending - skipping duplicate trigger`);
     return;
   }
   rehydrateAfterStyleSwitchPending = true;
 
-  map.once('idle', () => {
+  (async () => {
+    await waitForMapReady(map);
     rehydrateAfterStyleSwitchPending = false;
-    console.log("♻️ Rehydrating map layers after style switch...");
+    llog(`[STYLE ${cycle}] rehydrate start`);
     if (typeof window.rehydrateMapLayers === 'function') {
-      window.rehydrateMapLayers();
+      window.rehydrateMapLayers(cycle);
     }
-    restoreUserTracksAfterStyleSwitch();
-  });
+    restoreUserTracksAfterStyleSwitch(cycle, opts);
+    llog(`[STYLE ${cycle}] rehydrate complete`);
+  })();
 }
+
+// Expose the style-switch rehydrate scheduler for controls that call map.setStyle directly.
+window.scheduleRehydrateAfterStyleSwitch = scheduleRehydrateAfterStyleSwitch;
 
 // --- Base layer switch function ---
 window.switchBaseLayer = function(name) {
@@ -352,6 +374,30 @@ window.switchBaseLayer = function(name) {
             }
           });
         }
+
+        // Add 10m labels (only visible when zoomed in)
+        if (!map.getLayer('contour-labels-10m')) {
+          map.addLayer({
+            id: 'contour-labels-10m',
+            type: 'symbol',
+            source: 'terrain-data',
+            'source-layer': 'contour',
+            filter: ['==', ['%', ['get', 'ele'], 10], 0],
+            minzoom: 15,
+            layout: {
+              'symbol-placement': 'line',
+              'symbol-spacing': 700,
+              'text-field': ['concat', ['get', 'ele'], ' m'],
+              'text-size': 10,
+              'text-font': ['Open Sans Regular', 'Arial Unicode MS Regular']
+            },
+            paint: {
+              'text-color': '#333333',
+              'text-halo-color': '#ffffff',
+              'text-halo-width': 1
+            }
+          });
+        }
         });
       }
       
@@ -456,12 +502,36 @@ window.switchBaseLayer = function(name) {
             }
           });
         }
+
+        // Add 10m labels (only visible when zoomed in)
+        if (!map.getLayer('contour-labels-10m')) {
+          map.addLayer({
+            id: 'contour-labels-10m',
+            type: 'symbol',
+            source: 'terrain-data',
+            'source-layer': 'contour',
+            filter: ['==', ['%', ['get', 'ele'], 10], 0],
+            minzoom: 15,
+            layout: {
+              'symbol-placement': 'line',
+              'symbol-spacing': 700,
+              'text-field': ['concat', ['get', 'ele'], ' m'],
+              'text-size': 10,
+              'text-font': ['Open Sans Regular', 'Arial Unicode MS Regular']
+            },
+            paint: {
+              'text-color': '#ffffff',
+              'text-halo-color': '#000000',
+              'text-halo-width': 2
+            }
+          });
+        }
         });
       }
       
       // Remove contour layers when switching to non-contour layers
       if (layerName !== 'contours' && layerName !== 'hybrid') {
-        const contourLayers = ['contours-minor', 'contours-major', 'contour-labels-100m', 'contour-labels-50m'];
+        const contourLayers = ['contours-minor', 'contours-major', 'contour-labels-100m', 'contour-labels-50m', 'contour-labels-10m'];
         contourLayers.forEach(layerId => {
           if (map.getLayer(layerId)) {
             map.removeLayer(layerId);
@@ -479,48 +549,40 @@ window.switchBaseLayer = function(name) {
 };
 
 // Function to restore user tracks after style switch
-function restoreUserTracksAfterStyleSwitch() {
-  console.log('[LayerManager] Restoring user tracks after style switch...');
-  
-  // Restore draw tracks if draw module is available
-  if (window.WITD && window.WITD.draw && typeof window.WITD.draw.restoreAfterStyleSwitch === 'function') {
-    console.log('[LayerManager] Restoring draw tracks...');
+function restoreUserTracksAfterStyleSwitch(cycle = 'n/a', opts = {}) {
+  llog(`[STYLE ${cycle}] restore tracks start`);
+  const map = window.WITD?.map;
+
+  // Restore draw tracks if draw module is available (can be skipped when mapEngine already restored after terrain)
+  if (!opts.skipDrawRestore && window.WITD && window.WITD.draw && typeof window.WITD.draw.restoreAfterStyleSwitch === 'function') {
+    console.log(`[STYLE ${cycle}] restoring draw tracks`);
     window.WITD.draw.restoreAfterStyleSwitch();
   }
+
+  // Restore GPX tracks if GPX manager is available (skipped when mapEngine already restored after terrain)
+  if (!opts.skipGpxRestore && typeof window.restoreGPXTracksAfterStyleSwitch === 'function') {
+    console.log(`[STYLE ${cycle}] restoring GPX tracks`);
+    window.restoreGPXTracksAfterStyleSwitch(map, cycle);
+  }
   
-  // Wait a moment before restoring GPX tracks to prevent conflicts
-  setTimeout(() => {
-    // Restore GPX tracks if GPX manager is available
-    if (typeof window.restoreGPXTracksAfterStyleSwitch === 'function') {
-      console.log('[LayerManager] Restoring GPX tracks...');
-      window.restoreGPXTracksAfterStyleSwitch();
-    }
-  }, 500);
+  // Restore walking tracks if tracking module is available
+  if (window.WITD && window.WITD.tracking && typeof window.WITD.tracking.restoreTracksAfterStyleSwitch === 'function') {
+    console.log(`[STYLE ${cycle}] restoring walking tracks`);
+    window.WITD.tracking.restoreTracksAfterStyleSwitch();
+  }
   
-  // Wait a bit longer before restoring walking tracks to prevent conflicts
-  setTimeout(() => {
-    // Restore walking tracks if tracking module is available
-    if (window.WITD && window.WITD.tracking && typeof window.WITD.tracking.restoreTracksAfterStyleSwitch === 'function') {
-      console.log('[LayerManager] Restoring walking tracks...');
-      window.WITD.tracking.restoreTracksAfterStyleSwitch();
-    }
-  }, 1000);
-  
-  // Note: Saved tracks are handled by the draw module's restore function
-  // since they are part of the drawn tracks feature collection
-  
-  console.log('[LayerManager] User tracks restoration complete');
+  llog(`[STYLE ${cycle}] restore tracks complete`);
 }
 
-window.rehydrateMapLayers = function() {
-  console.log("♻️ Rehydrating map layers...");
+window.rehydrateMapLayers = function(cycle = 'n/a') {
+  llog(`[STYLE ${cycle}] rehydrate map layers`);
 
   if (typeof window.loadZonesLayer === "function") {
     window.loadZonesLayer();
   }
 
   if (typeof window.loadClosedLayer === "function") {
-    console.log("Reloading closed layer...");
+    llog("Reloading closed layer...");
     window.loadClosedLayer();
   }
 

@@ -1,10 +1,19 @@
 // Map engine module loaded
 
 const safeAddQueueByMap = new WeakMap();
+let styleCycleId = 0;
+const MAP_ENGINE_DEBUG = false;
+const medbg = (...args) => {
+  if (MAP_ENGINE_DEBUG) console.log(...args);
+};
 
 function safeAddToMap(map, callback) {
   if (map.isStyleLoaded()) {
-    callback();
+    try {
+      callback();
+    } catch (error) {
+      console.error('safeAddToMap callback failed:', error);
+    }
     return;
   }
 
@@ -21,23 +30,65 @@ function safeAddToMap(map, callback) {
   }
 
   state.waiting = true;
-  console.log("⏳ Waiting for map style before executing queued callbacks...");
+  medbg("⏳ Waiting for map style before executing queued callbacks...");
 
   const flushWhenReady = () => {
     if (!map.isStyleLoaded()) {
-      map.once('idle', flushWhenReady);
+      map.once('style.load', flushWhenReady);
       return;
     }
-
-    state.waiting = false;
-    const queued = state.queue.splice(0);
-    queued.forEach((cb) => cb());
+    map.once('idle', () => {
+      state.waiting = false;
+      const queued = state.queue.splice(0);
+      queued.forEach((cb) => {
+        try {
+          cb();
+        } catch (error) {
+          console.error('safeAddToMap callback failed:', error);
+        }
+      });
+    });
   };
 
-  map.once('idle', flushWhenReady);
+  map.once('style.load', flushWhenReady);
 }
 
 window.safeAddToMap = safeAddToMap;
+
+window.ensureSource = function(map, id, sourceDef) {
+  const existing = map.getSource(id);
+  if (existing) {
+    if (sourceDef?.type === 'geojson' && sourceDef.data && typeof existing.setData === 'function') {
+      existing.setData(sourceDef.data);
+    }
+    return existing;
+  }
+  try {
+    map.addSource(id, sourceDef);
+    return map.getSource(id);
+  } catch (error) {
+    const isDuplicate = String(error?.message || '').includes(`already a source with ID "${id}"`);
+    if (!isDuplicate) {
+      throw error;
+    }
+    const racedSource = map.getSource(id);
+    if (racedSource && sourceDef?.type === 'geojson' && sourceDef.data && typeof racedSource.setData === 'function') {
+      racedSource.setData(sourceDef.data);
+    }
+    return racedSource;
+  }
+};
+
+window.ensureLayer = function(map, layerDef, beforeId = null) {
+  if (map.getLayer(layerDef.id)) {
+    return;
+  }
+  if (beforeId && map.getLayer(beforeId)) {
+    map.addLayer(layerDef, beforeId);
+  } else {
+    map.addLayer(layerDef);
+  }
+};
 
 // Utility function to safely add sources and layers
 window.safeMapOperation = function(operation, retryDelay = 100) {
@@ -158,7 +209,7 @@ document.addEventListener("DOMContentLoaded", () => {
   
   // Log when location is found
   geolocateControl.on('geolocate', (position) => {
-    console.log('[GPS] Location found:', position.coords.latitude, position.coords.longitude);
+    medbg('[GPS] Location found:', position.coords.latitude, position.coords.longitude);
   });
   
   // Handle GPS errors
@@ -172,10 +223,10 @@ document.addEventListener("DOMContentLoaded", () => {
     const gpsButton = document.getElementById('gps-button');
     if (gpsButton) {
       gpsButton.addEventListener('click', () => {
-        console.log('[GPS] GPS button clicked');
+        medbg('[GPS] GPS button clicked');
         geolocateControl.trigger();
       });
-      console.log('[GPS] GPS button listener attached');
+      medbg('[GPS] GPS button listener attached');
     } else {
       console.warn('[GPS] GPS button not found');
     }
@@ -191,7 +242,7 @@ document.addEventListener("DOMContentLoaded", () => {
         attributionControl.style.bottom = '70px';
         attributionControl.style.marginBottom = '0';
         attributionControl.style.zIndex = '5000';
-        console.log('Attribution control repositioned');
+        medbg('Attribution control repositioned');
       }
       
       // Move scale control up
@@ -200,7 +251,7 @@ document.addEventListener("DOMContentLoaded", () => {
         scaleControl.style.bottom = '100px';
         scaleControl.style.marginBottom = '0';
         scaleControl.style.zIndex = '5000';
-        console.log('Scale control repositioned');
+        medbg('Scale control repositioned');
       }
     };
     
@@ -276,24 +327,24 @@ document.addEventListener("DOMContentLoaded", () => {
 
     toggleView() {
       // Check if user is premium before allowing 2D/3D toggle
-      console.log('[Debug] 2D/3D toggle clicked - currentUserPlan:', window.currentUserPlan);
-      console.log('[Debug] loggedInUser:', window.loggedInUser?.email);
-      console.log('[Debug] typeof currentUserPlan:', typeof window.currentUserPlan);
+      medbg('[Debug] 2D/3D toggle clicked - currentUserPlan:', window.currentUserPlan);
+      medbg('[Debug] loggedInUser:', window.loggedInUser?.email);
+      medbg('[Debug] typeof currentUserPlan:', typeof window.currentUserPlan);
       
       // If user plan is not loaded yet, try to fetch it
       if (typeof window.currentUserPlan === 'undefined' || window.currentUserPlan === null) {
-        console.log('[Debug] User plan not loaded, attempting to fetch...');
+        medbg('[Debug] User plan not loaded, attempting to fetch...');
         if (typeof window.fetchUserPlan === 'function') {
           window.fetchUserPlan();
         }
         // Wait a bit and check again
         setTimeout(() => {
-          console.log('[Debug] After fetch attempt - currentUserPlan:', window.currentUserPlan);
+          medbg('[Debug] After fetch attempt - currentUserPlan:', window.currentUserPlan);
           this.updateButtonStyle(); // Update button style after plan is fetched
           if (window.currentUserPlan === 'premium') {
             this.performToggle();
           } else {
-            console.log('[Security] 2D/3D toggle blocked for free user (after fetch)');
+            medbg('[Security] 2D/3D toggle blocked for free user (after fetch)');
             this.showUpgradeMessage();
           }
         }, 500);
@@ -301,91 +352,123 @@ document.addEventListener("DOMContentLoaded", () => {
       }
       
       if (window.currentUserPlan !== 'premium') {
-        console.log('[Security] 2D/3D toggle blocked for free user');
+        medbg('[Security] 2D/3D toggle blocked for free user');
         this.showUpgradeMessage();
         return;
       }
       
-      console.log('[Debug] 2D/3D toggle allowed for premium user');
+      medbg('[Debug] 2D/3D toggle allowed for premium user');
       this.performToggle();
     }
 
     performToggle() {
-      console.log('[Debug] Performing 2D/3D toggle');
+      medbg('[Debug] Performing 2D/3D toggle');
       this.is3D = !this.is3D;
+      const styleCycle = ++styleCycleId;
       
       if (this.is3D) {
         // Switch to 3D view with terrain (use standard-satellite for better terrain compatibility)
+        medbg(`[STYLE ${styleCycle}] setStyle -> mapbox://styles/mapbox/standard-satellite`);
         this.map.setStyle('mapbox://styles/mapbox/standard-satellite');
-        this.map.once('idle', () => {
-          console.log("✅ Map fully idle — safe to rehydrate");
-          if (typeof window.rehydrateMapLayers === 'function') {
-            window.rehydrateMapLayers();
-          }
-        });
         
         // Wait for style to load, then add terrain
         this.map.once('style.load', () => {
-          // Add terrain source using the working example format
-          this.map.addSource('mapbox-dem', {
-            'type': 'raster-dem',
-            'url': 'mapbox://mapbox.mapbox-terrain-dem-v1',
-            'tileSize': 512,
-            'maxzoom': 14
+          medbg(`[STYLE ${styleCycle}] style.load`);
+
+          if (this.is3D) {
+            this.map.addSource('mapbox-dem', {
+              'type': 'raster-dem',
+              'url': 'mapbox://mapbox.mapbox-terrain-dem-v1',
+              'tileSize': 512,
+              'maxzoom': 14
+            });
+            this.map.setTerrain({ 'source': 'mapbox-dem', 'exaggeration': 1.4 });
+          } else {
+            this.map.setTerrain(null);
+            if (this.map.getSource('mapbox-dem')) {
+              this.map.removeSource('mapbox-dem');
+            }
+          }
+
+          this.map.once('idle', () => {
+            medbg('[GPX] forcing restore after terrain ready');
+            this.map.resize();
+            if (typeof window.restoreGPXTracksAfterStyleSwitch === 'function') {
+              window.restoreGPXTracksAfterStyleSwitch(this.map, 'final-fix');
+            }
+            if (window.WITD?.draw && typeof window.WITD.draw.restoreAfterStyleSwitch === 'function') {
+              window.WITD.draw.restoreAfterStyleSwitch();
+            }
+            if (typeof window.scheduleRehydrateAfterStyleSwitch === 'function') {
+              window.scheduleRehydrateAfterStyleSwitch(this.map, styleCycle, { skipGpxRestore: true, skipDrawRestore: true });
+            } else if (typeof window.rehydrateMapLayers === 'function') {
+              window.rehydrateMapLayers();
+            }
           });
-          
-          // Set terrain with exaggerated height (like your working example)
-          this.map.setTerrain({ 
-            'source': 'mapbox-dem', 
-            'exaggeration': 1.4 
-          });
-          
+
           // Set 3D view parameters
           this.map.easeTo({
             pitch: 60,
             duration: 1000
           });
-          
+
           this.button.innerHTML = '🗺️';
           this.button.title = 'Switch to 2D View';
           this.button.style.background = '#e3f2fd';
         });
       } else {
         // Switch to 2D view (high resolution + labels)
+        medbg(`[STYLE ${styleCycle}] setStyle -> mapbox://styles/mapbox/standard-satellite`);
         this.map.setStyle('mapbox://styles/mapbox/standard-satellite');
-        this.map.once('idle', () => {
-          console.log("✅ Map fully idle — safe to rehydrate");
-          if (typeof window.rehydrateMapLayers === 'function') {
-            window.rehydrateMapLayers();
-          }
-        });
         
         // Wait for style to load, then remove terrain
         this.map.once('style.load', () => {
-          // Remove terrain
-          this.map.setTerrain(null);
-          
-          // Remove terrain source if it exists
-          if (this.map.getSource('mapbox-dem')) {
-            this.map.removeSource('mapbox-dem');
+          medbg(`[STYLE ${styleCycle}] style.load`);
+
+          if (this.is3D) {
+            this.map.addSource('mapbox-dem', {
+              'type': 'raster-dem',
+              'url': 'mapbox://mapbox.mapbox-terrain-dem-v1',
+              'tileSize': 512,
+              'maxzoom': 14
+            });
+            this.map.setTerrain({ 'source': 'mapbox-dem', 'exaggeration': 1.4 });
+          } else {
+            this.map.setTerrain(null);
+            if (this.map.getSource('mapbox-dem')) {
+              this.map.removeSource('mapbox-dem');
+            }
           }
-          
+
+          this.map.once('idle', () => {
+            medbg('[GPX] forcing restore after terrain ready');
+            this.map.resize();
+            if (typeof window.restoreGPXTracksAfterStyleSwitch === 'function') {
+              window.restoreGPXTracksAfterStyleSwitch(this.map, 'final-fix');
+            }
+            if (window.WITD?.draw && typeof window.WITD.draw.restoreAfterStyleSwitch === 'function') {
+              window.WITD.draw.restoreAfterStyleSwitch();
+            }
+            if (typeof window.scheduleRehydrateAfterStyleSwitch === 'function') {
+              window.scheduleRehydrateAfterStyleSwitch(this.map, styleCycle, { skipGpxRestore: true, skipDrawRestore: true });
+            } else if (typeof window.rehydrateMapLayers === 'function') {
+              window.rehydrateMapLayers();
+            }
+          });
+
           // Set 2D view parameters
           this.map.easeTo({
             pitch: 0,
             duration: 1000
           });
-          
+
           this.button.innerHTML = '🛩️';
           this.button.title = 'Switch to 2D View';
           this.button.style.background = 'white';
         });
       }
       
-      // Call map.resize() after view change
-      setTimeout(() => {
-        this.map.resize();
-      }, 1100);
+      // Resize now handled inside post-terrain idle callback to reduce race conditions.
     }
 
     showUpgradeMessage() {
@@ -461,18 +544,18 @@ document.addEventListener("DOMContentLoaded", () => {
 
     updateButtonStyle() {
       // Update button styling based on user plan
-      console.log('[Debug] updateButtonStyle called - currentUserPlan:', window.currentUserPlan);
+      medbg('[Debug] updateButtonStyle called - currentUserPlan:', window.currentUserPlan);
       
       if (window.currentUserPlan !== 'premium') {
         // Free user - show as disabled/premium
-        console.log('[Debug] Setting button style for FREE user');
+        medbg('[Debug] Setting button style for FREE user');
         this.button.style.opacity = '0.6';
         this.button.style.filter = 'grayscale(0.3)';
         this.button.style.cursor = 'pointer'; // Still clickable to show upgrade message
         this.button.title = 'Toggle 2D/3D View (Premium Feature)';
       } else {
         // Premium user - show as enabled
-        console.log('[Debug] Setting button style for PREMIUM user');
+        medbg('[Debug] Setting button style for PREMIUM user');
         this.button.style.opacity = '1';
         this.button.style.filter = 'none';
         this.button.style.cursor = 'pointer';
@@ -496,10 +579,10 @@ document.addEventListener("DOMContentLoaded", () => {
   // Add global function to manually refresh 2D/3D button styling (for testing)
   window.refresh2D3DButton = function() {
     if (window.viewModeControl) {
-      console.log('[Debug] Manually refreshing 2D/3D button styling');
+      medbg('[Debug] Manually refreshing 2D/3D button styling');
       window.viewModeControl.updateButtonStyle();
     } else {
-      console.log('[Debug] viewModeControl not found');
+      medbg('[Debug] viewModeControl not found');
     }
   };
 
@@ -582,17 +665,17 @@ document.addEventListener("DOMContentLoaded", () => {
 
   // Wait for map style to be fully loaded before initializing modules
   map.on('load', () => {
-    console.log("Map style fully loaded, initializing modules...");
+    medbg("Map style fully loaded, initializing modules...");
     
     // Initialize the drawing module
     if (window.WITD.draw) {
       window.WITD.draw.init(map);
-      console.log("Drawing module initialized");
+      medbg("Drawing module initialized");
     } else {
-      console.log("Drawing module not loaded yet");
+      medbg("Drawing module not loaded yet");
     }
 
-    console.log("Mapbox GL JS map initialized and ready.");
+    medbg("Mapbox GL JS map initialized and ready.");
     
     // Load saved GPX files for premium users after map is ready
     // DISABLED: Using new Mapbox GPX manager instead
@@ -607,14 +690,14 @@ document.addEventListener("DOMContentLoaded", () => {
 
   // Also handle the case where the map might already be loaded
   if (map.isStyleLoaded()) {
-    console.log("Map style already loaded, initializing modules immediately...");
+    medbg("Map style already loaded, initializing modules immediately...");
     
     // Initialize the drawing module
     if (window.WITD.draw) {
       window.WITD.draw.init(map);
-      console.log("Drawing module initialized");
+      medbg("Drawing module initialized");
     } else {
-      console.log("Drawing module not loaded yet");
+      medbg("Drawing module not loaded yet");
     }
   }
 });

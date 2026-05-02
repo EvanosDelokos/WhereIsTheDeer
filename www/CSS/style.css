@@ -503,6 +503,31 @@
   transform: translateY(-1px);
 }
 
+.saved-pin-btn.gpx-btn {
+  background: #e0f2f1;
+  color: #00695c;
+}
+
+.saved-pin-btn.gpx-btn:hover {
+  background: #b2dfdb;
+  transform: translateY(-1px);
+}
+
+.saved-pin-btn.minimize-btn {
+  background: #eceff1;
+  color: #546e7a;
+}
+
+.saved-pin-btn.minimize-btn:hover {
+  background: #cfd8dc;
+  transform: translateY(-1px);
+}
+
+.saved-pin-popup.track-label-popup .saved-pin-header .track-label-title.saved-pin-name:not(.editing) {
+  text-transform: uppercase;
+  letter-spacing: 0.035em;
+}
+
 /* === WITD MAP INFO POPUPS (Sambar zones, closed areas) — extends .saved-pin-popup design tokens === */
 .witd-info-popup {
   min-width: 280px;
@@ -896,18 +921,28 @@
 
 .marker-text-box .label-inner {
   position: absolute;
-  top: calc(100% + 8px); /* place label 8px below the pin */
+  top: calc(100% + 8px);
   left: 50%;
-  transform: translateX(-50%); /* only center horizontally */
-  background: white;
+  transform: translateX(-50%);
+  background: #fff;
   border: none;
-  padding: 4px 8px;
-  border-radius: 4px;
-  font-weight: bold;
+  padding: 6px 12px;
+  border-radius: 8px;
+  font-weight: 700;
+  font-size: 12px;
+  color: #111;
   text-align: center;
-  line-height: 1.2;
+  line-height: 1.25;
   white-space: nowrap;
-  box-shadow: 0 1px 3px rgba(0,0,0,0.2);
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.18);
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+}
+
+.track-drawn-minimized.marker-text-box {
+  flex-direction: column;
+  align-items: center;
+  cursor: pointer;
 }
 
 .weather-popup-box {
@@ -1215,12 +1250,12 @@ body, html {
   box-shadow: 0 4px 12px rgba(0,0,0,0.15);
 }
 
-/* === TRACK LABEL STYLES === */
+/* === TRACK LABEL STYLES (shell matches .saved-pin-popup) === */
 .track-label-container {
   position: relative;
   z-index: 1000;
   display: inline-block;
-  max-width: 200px;
+  max-width: 240px;
 }
 
 .track-label-pin {
@@ -1238,14 +1273,14 @@ body, html {
 }
 
 .track-label-popup {
-  background: white;
+  background: #fff;
   border-radius: 12px;
-  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
-  border: 2px solid #e0e0e0;
-  padding: 8px 12px;
-  width: auto;
-  min-width: fit-content;
-  max-width: 200px;
+  box-shadow: 0 8px 32px rgba(0, 0, 0, 0.15);
+  border: 1px solid #e0e0e0;
+  padding: 16px;
+  min-width: 200px;
+  max-width: 240px;
+  box-sizing: border-box;
   animation: trackLabelSlideIn 0.3s ease-out;
   position: relative;
   display: inline-block;
@@ -1322,7 +1357,7 @@ body, html {
   cursor: text;
 }
 
-.track-minimize-btn {
+.track-minimize-btn:not(.saved-pin-btn) {
   background: #28a745;
   color: white;
   border: none;
@@ -1338,13 +1373,13 @@ body, html {
   font-size: 12px;
 }
 
-.track-minimize-btn:hover {
+.track-minimize-btn:not(.saved-pin-btn):hover {
   background: #218838;
   transform: translateY(-1px);
   box-shadow: 0 2px 8px rgba(40, 167, 69, 0.3);
 }
 
-.track-rename-btn {
+.track-rename-btn:not(.saved-pin-btn) {
   background: #6c757d;
   color: white;
   border: none;
@@ -1359,18 +1394,18 @@ body, html {
   height: 24px;
 }
 
-.track-rename-btn:hover {
+.track-rename-btn:not(.saved-pin-btn):hover {
   background: #5a6268;
   transform: translateY(-1px);
   box-shadow: 0 2px 8px rgba(108, 117, 125, 0.3);
 }
 
-.track-rename-btn svg {
+.track-rename-btn:not(.saved-pin-btn) svg {
   width: 10px;
   height: 10px;
 }
 
-.track-delete-btn {
+.track-delete-btn:not(.saved-pin-btn) {
   background: #dc3545;
   color: white;
   border: none;
@@ -1385,13 +1420,13 @@ body, html {
   height: 24px;
 }
 
-.track-delete-btn:hover {
+.track-delete-btn:not(.saved-pin-btn):hover {
   background: #c82333;
   transform: translateY(-1px);
   box-shadow: 0 2px 8px rgba(220, 53, 69, 0.3);
 }
 
-.track-delete-btn svg {
+.track-delete-btn:not(.saved-pin-btn) svg {
   width: 10px;
   height: 10px;
 }

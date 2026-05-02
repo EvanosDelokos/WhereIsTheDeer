@@ -1,4 +1,9 @@
-console.log("Module loaded: speciesLayer");
+const SPECIES_DEBUG = false;
+const splog = (...args) => {
+  if (SPECIES_DEBUG) console.log(...args);
+};
+
+splog("Module loaded: speciesLayer");
 const ZONES_URL = "https://zones.whereisthedeer.com.au/zones";
 const CLOSED_URL = "https://zones.whereisthedeer.com.au/closed";
 const RULES_URL = "https://zones.whereisthedeer.com.au/rules";
@@ -341,35 +346,52 @@ function initSpeciesLayer(map) {
   window.loadZonesLayer = function() {
     const zonesData = window.WITD?.allZonesGeojson;
     if (!zonesData) {
-      console.warn("Zones data not loaded yet.");
       return;
     }
 
-    if (map.getLayer('zones-layer')) {
-      map.removeLayer('zones-layer');
-    }
-    if (map.getSource('zones-source')) {
-      map.removeSource('zones-source');
-    }
-
     window.safeAddToMap(map, () => {
-      map.addSource('zones-source', {
-        type: 'geojson',
-        data: zonesData
-      });
+      if (window.ensureSource) {
+        window.ensureSource(map, 'zones-source', {
+          type: 'geojson',
+          data: zonesData
+        });
+      } else {
+        const existingSource = map.getSource('zones-source');
+        if (existingSource && typeof existingSource.setData === 'function') {
+          existingSource.setData(zonesData);
+        } else if (!existingSource) {
+          try {
+            map.addSource('zones-source', {
+              type: 'geojson',
+              data: zonesData
+            });
+          } catch (err) {
+            // Rehydrate callbacks can race during style swaps; if another callback won,
+            // just update the source data instead of failing the whole rehydrate flow.
+            const msg = err && err.message ? String(err.message) : '';
+            if (msg.includes('already a source with ID "zones-source"')) {
+              const racedSource = map.getSource('zones-source');
+              if (racedSource && typeof racedSource.setData === 'function') {
+                racedSource.setData(zonesData);
+              }
+            } else {
+              throw err;
+            }
+          }
+        }
+      }
 
-      map.addLayer({
-        id: 'zones-layer',
-        type: 'fill',
-        source: 'zones-source',
-        layout: { visibility: 'none' },
-        paint: { 'fill-opacity': 0 }
-      });
+      if (!map.getLayer('zones-layer')) {
+        map.addLayer({
+          id: 'zones-layer',
+          type: 'fill',
+          source: 'zones-source',
+          layout: { visibility: 'none' },
+          paint: { 'fill-opacity': 0 }
+        });
+      }
 
-      console.log('Zones base source added to map');
     });
-
-    console.log("Zones loaded");
   };
 
   fetch(RULES_URL)
@@ -384,7 +406,7 @@ function initSpeciesLayer(map) {
         : rulesData && typeof rulesData === 'object'
           ? Object.keys(rulesData).length
           : 0;
-      console.log('[Rules] Loaded rules.json', ruleCount);
+      splog('[Rules] Loaded rules.json', ruleCount);
     })
     .catch(err => console.error('[Rules] Failed to load rules.json', err));
 
@@ -398,7 +420,7 @@ function initSpeciesLayer(map) {
     }
 
     closedLayerLoadInFlight = true;
-    console.log("📦 Loading closed.json...");
+    splog("📦 Loading closed.json...");
 
     fetch(CLOSED_URL)
       .then(res => {
@@ -492,8 +514,8 @@ function initSpeciesLayer(map) {
           map.on('click', 'closed-areas-fill', window.WITD._closedAreasClickHandler);
           map.on('mouseenter', 'closed-areas-fill', window.WITD._closedAreasMouseEnterHandler);
           map.on('mouseleave', 'closed-areas-fill', window.WITD._closedAreasMouseLeaveHandler);
-          console.log("Closed layer loaded");
-          console.log("✅ Closed layer added to map");
+          splog("Closed layer loaded");
+          splog("✅ Closed layer added to map");
         });
       })
       .catch(err => console.error('[Closed] Failed to load closed.json', err))
@@ -511,7 +533,7 @@ function initSpeciesLayer(map) {
   fetch(ZONES_URL)
     .then(res => res.json())
     .then(data => {
-      console.log(`Zones loaded: ${data.features.length} features`);
+      splog(`Zones loaded: ${data.features.length} features`);
 
       // Process each feature and categorize by species
       const speciesData = {
@@ -551,8 +573,8 @@ function initSpeciesLayer(map) {
         window.loadZonesLayer();
       }
       
-      console.log("Species layers grouped & ready.");
-      console.log("Species counts:", Object.keys(speciesData).map(key => 
+      splog("Species layers grouped & ready.");
+      splog("Species counts:", Object.keys(speciesData).map(key =>
         `${key}: ${speciesData[key].features.length}`
       ).join(", "));
     })

@@ -1,5 +1,10 @@
 // Auth modal module loaded
-console.log("📦 authModal.js script loading...");
+const AUTH_DEBUG = false;
+const alog = (...args) => {
+  if (AUTH_DEBUG) console.log(...args);
+};
+
+alog("📦 authModal.js script loading...");
 
 /**
  * Google OAuth: native app uses deep-link redirect; web uses current site origin (PKCE callback on map).
@@ -396,32 +401,32 @@ class AuthModal {
 
 // Initialize auth modal when DOM is ready
 function initializeAuthModal() {
-  console.log("🔧 Initializing AuthModal...");
+  alog("🔧 Initializing AuthModal...");
   try {
     // Create global instance
     window.authModal = new AuthModal();
-    console.log("✅ AuthModal instance created");
+    alog("✅ AuthModal instance created");
   } catch (err) {
     console.error("❌ Error creating AuthModal:", err);
     return;
   }
   
   // DIAGNOSTIC: Check Capacitor and Browser plugin availability
-  console.log("🔍 DIAGNOSTIC: Checking Capacitor environment...");
-  console.log("  - window.Capacitor exists:", !!window.Capacitor);
-  console.log("  - window.Capacitor.Plugins:", window.Capacitor?.Plugins);
-  console.log("  - window.Capacitor.isNativePlatform:", window.Capacitor?.isNativePlatform?.());
+  alog("🔍 DIAGNOSTIC: Checking Capacitor environment...");
+  alog("  - window.Capacitor exists:", !!window.Capacitor);
+  alog("  - window.Capacitor.Plugins:", window.Capacitor?.Plugins);
+  alog("  - window.Capacitor.isNativePlatform:", window.Capacitor?.isNativePlatform?.());
   
   // Listen for Browser finished event - when OAuth completes and browser closes
   if (window.Capacitor?.Plugins?.Browser) {
     const Browser = window.Capacitor.Plugins.Browser;
-    console.log("✅ Browser plugin found via Capacitor.Plugins");
-    console.log("  - Browser object:", Browser);
-    console.log("  - Browser.open exists:", typeof Browser.open === 'function');
+    alog("✅ Browser plugin found via Capacitor.Plugins");
+    alog("  - Browser object:", Browser);
+    alog("  - Browser.open exists:", typeof Browser.open === 'function');
     
     Browser.addListener('browserFinished', async () => {
       const { data, error } = await window.supabaseClient.auth.getSession();
-      console.log("OAuth returned to app, session:", data?.session, "error:", error);
+      alog("OAuth returned to app, session:", data?.session, "error:", error);
       if (data?.session) {
         // Close login modals
         const loginModal = document.getElementById('loginModal');
@@ -444,8 +449,8 @@ function initializeAuthModal() {
       }
     });
   } else {
-    console.error("❌ Browser plugin not available via window.Capacitor.Plugins");
-    console.error("  SOLUTION: Run 'npx cap sync android' and rebuild the app.");
+    alog("❌ Browser plugin not available via window.Capacitor.Plugins");
+    alog("  SOLUTION: Run 'npx cap sync android' and rebuild the app.");
   }
   
   // Handle OAuth deep link callback in Capacitor
@@ -454,7 +459,7 @@ function initializeAuthModal() {
     
     // Listen for app opening from deep link (OAuth callback)
     App.addListener('appUrlOpen', async (data) => {
-        console.log("🔗 App opened from deep link:", data.url);
+        alog("🔗 App opened from deep link:", data.url);
         
         // Check if this is our OAuth callback
         if (data.url && data.url.startsWith('capacitor://localhost')) {
@@ -472,7 +477,7 @@ function initializeAuthModal() {
             }
             
             if (code && state) {
-              console.log("🔄 Processing OAuth callback from deep link...");
+              alog("🔄 Processing OAuth callback from deep link...");
               // Exchange code for session
               const { data: sessionData, error: sessionError } = await window.supabaseClient.auth.exchangeCodeForSession({
                 code: code
@@ -485,7 +490,7 @@ function initializeAuthModal() {
               }
               
               if (sessionData?.session) {
-                console.log("✅ OAuth completed, session:", sessionData.session.user.email);
+                alog("✅ OAuth completed, session:", sessionData.session.user.email);
                 // Close login modals
                 const loginModal = document.getElementById('loginModal');
                 const registerModal = document.getElementById('registerModal');
@@ -511,23 +516,23 @@ function initializeAuthModal() {
           }
         }
       });
-  } else {
-    console.log("⚠️ App plugin not available via window.Capacitor.Plugins");
+  } else if (DEBUG) {
+    alog("⚠️ Capacitor not available (browser mode)");
   }
 
   // Add global functions for external access
   window.openLoginModal = () => {
-    console.log("🔓 window.openLoginModal() called");
-    console.log("  - window.authModal exists:", !!window.authModal);
+    alog("🔓 window.openLoginModal() called");
+    alog("  - window.authModal exists:", !!window.authModal);
     if (window.authModal) {
-      console.log("  - Calling authModal.openLoginModal()...");
+      alog("  - Calling authModal.openLoginModal()...");
       window.authModal.openLoginModal();
     } else {
       console.error("❌ ERROR: window.authModal is not initialized!");
       console.error("  - Attempting to find loginModal element directly...");
       const loginModal = document.getElementById('loginModal');
       if (loginModal) {
-        console.log("  - Found loginModal element, showing it directly...");
+        alog("  - Found loginModal element, showing it directly...");
         loginModal.classList.remove('hidden');
         loginModal.style.display = 'flex';
       } else {
@@ -560,7 +565,7 @@ function initializeAuthModal() {
     }
   };
   
-  console.log('✅ Auth modal initialized');
+  alog('✅ Auth modal initialized');
 }
 
 // Try multiple initialization strategies

@@ -2,6 +2,10 @@
 
 // Import unified pin builder functions
 import { createPinMarker, createPinPopup, createLabelElement, buildPinPopupHTML } from './pinManager.js';
+const STORE_DEBUG = false;
+const slog = (...args) => {
+  if (STORE_DEBUG) console.log(...args);
+};
 
 // ============================================================================
 // NEW PIN MANAGEMENT FUNCTIONS
@@ -271,7 +275,7 @@ export async function loadUserPinsFromSupabase(userId) {
           return [];
         }
         
-        console.log('[Pins] Created empty row for user');
+        slog('[Pins] Created empty row for user');
         return [];
       } else {
         console.error('[Pins] Error loading pins from Supabase:', error.message);
@@ -280,7 +284,7 @@ export async function loadUserPinsFromSupabase(userId) {
     }
 
     if (!data || !data.pins) {
-      console.log('[Pins] No pins data found, returning empty array');
+      slog('[Pins] No pins data found, returning empty array');
       return [];
     }
 
@@ -300,7 +304,7 @@ export async function loadUserPinsFromSupabase(userId) {
       return [];
     }
 
-    console.log('[Pins] Successfully loaded pins from Supabase:', pins.length);
+    slog('[Pins] Successfully loaded pins from Supabase:', pins.length);
     return pins;
 
   } catch (error) {
@@ -338,23 +342,23 @@ export async function savePins(customPins) {
       
       if (upsertError) {
         console.error('[Pins] Supabase UPSERT failed:', upsertError.message);
-        console.log('[Pins] Using localStorage fallback');
+        slog('[Pins] Using localStorage fallback');
       } else {
-        console.log('[Pins] Successfully saved all pins to Supabase:', saveData.length, 'pins');
+        slog('[Pins] Successfully saved all pins to Supabase:', saveData.length, 'pins');
       }
     }
   } catch (error) {
-    console.log('[Pins] Supabase save failed, using localStorage only:', error.message);
+    slog('[Pins] Supabase save failed, using localStorage only:', error.message);
   }
 }
 
 export async function loadPins(map, customPins, attachPopupActions) {
-  console.log('🚨 [loadPins] FUNCTION CALLED with map:', map, 'customPins:', customPins);
+  slog('🚨 [loadPins] FUNCTION CALLED with map:', map, 'customPins:', customPins);
   
   // Check if user is logged in before loading data
   const { data: { user } } = await window.supabaseClient.auth.getUser();
   if (!user) {
-    console.log('[Pins] No user logged in, skipping pin loading');
+    slog('[Pins] No user logged in, skipping pin loading');
     return;
   }
   
@@ -374,7 +378,7 @@ export async function loadPins(map, customPins, attachPopupActions) {
   
   // If localStorage was recently updated, prioritize it over Supabase
   if (isRecentLocalUpdate) {
-    console.log('[Pins] Recent localStorage update detected, skipping Supabase load');
+    slog('[Pins] Recent localStorage update detected, skipping Supabase load');
   } else {
     // Try to load from Supabase if user is authenticated
     try {
@@ -392,7 +396,7 @@ export async function loadPins(map, customPins, attachPopupActions) {
         if (error) {
           // Check if it's a table not found error
           if (error.code === 'PGRST116' || error.message.includes('relation') || error.message.includes('does not exist')) {
-            console.log('[Pins] user_pins table does not exist, creating it...');
+            slog('[Pins] user_pins table does not exist, creating it...');
             await createUserPinsTable(user.id);
             // Retry the query after table creation
             const { data: retryData, error: retryError } = await supabase
@@ -408,7 +412,7 @@ export async function loadPins(map, customPins, attachPopupActions) {
             if (retryData?.pins) {
               try {
                 savedPins = JSON.parse(retryData.pins);
-                console.log('[Pins] Loaded from Supabase after table creation:', savedPins.length, 'pins');
+                slog('[Pins] Loaded from Supabase after table creation:', savedPins.length, 'pins');
                 localStorage.setItem('witd_pins', JSON.stringify(savedPins));
               } catch (parseError) {
                 console.error('[Pins] Failed to parse Supabase pins:', parseError);
@@ -431,7 +435,7 @@ export async function loadPins(map, customPins, attachPopupActions) {
             }
             
             savedPins = pinsData;
-            console.log('[Pins] Loaded from Supabase:', savedPins.length, 'pins');
+            slog('[Pins] Loaded from Supabase:', savedPins.length, 'pins');
             
             // Update localStorage with Supabase data
             localStorage.setItem('witd_pins', JSON.stringify(savedPins));
@@ -441,7 +445,7 @@ export async function loadPins(map, customPins, attachPopupActions) {
           }
         } else if (!data) {
           // No existing row found for user — create empty one
-          console.log('[Pins] No existing row found for user — creating empty one');
+          slog('[Pins] No existing row found for user — creating empty one');
           try {
             const { error: insertError } = await supabase.from('user_pins').insert([
               {
@@ -454,7 +458,7 @@ export async function loadPins(map, customPins, attachPopupActions) {
             if (insertError) {
               console.error('[Pins] Failed to create empty row:', insertError.message);
             } else {
-              console.log('[Pins] Created empty row for user');
+              slog('[Pins] Created empty row for user');
               savedPins = []; // Set to empty array since we just created an empty row
             }
           } catch (insertException) {
@@ -462,18 +466,18 @@ export async function loadPins(map, customPins, attachPopupActions) {
           }
         }
       } catch (tableError) {
-        console.log('[Pins] Table operation failed, using localStorage:', tableError.message);
+        slog('[Pins] Table operation failed, using localStorage:', tableError.message);
       }
     }
     } catch (error) {
-      console.log('[Pins] Supabase load failed, using localStorage:', error.message);
+      slog('[Pins] Supabase load failed, using localStorage:', error.message);
     }
   }
   
   // Convert pins to Mapbox format and add them to the map using unified builder
-  console.log('🚨 [loadPins] Processing', savedPins.length, 'saved pins');
+  slog('🚨 [loadPins] Processing', savedPins.length, 'saved pins');
   savedPins.forEach((data, index) => {
-    console.log('🚨 [loadPins] Processing pin', index, ':', data);
+    slog('🚨 [loadPins] Processing pin', index, ':', data);
     try {
       // Create a unique ID for each pin
       const pinId = `custom-pin-${index}`;
@@ -524,7 +528,7 @@ export async function loadPins(map, customPins, attachPopupActions) {
       };
       customPins.push(pin);
         
-      console.log(`[Pins] Added pin: ${data.name} at [${data.lat}, ${data.lng}]`);
+      slog(`[Pins] Added pin: ${data.name} at [${data.lat}, ${data.lng}]`);
     } catch (error) {
       console.error(`[Pins] Error adding pin ${data.name}:`, error);
     }
@@ -533,7 +537,7 @@ export async function loadPins(map, customPins, attachPopupActions) {
 
 // Helper function to bind popup actions (copied from pinManager.js)
 function bindPopupActions(marker, pin) {
-  console.log('[bindPopupActions] Called for pin:', pin.name);
+  slog('[bindPopupActions] Called for pin:', pin.name);
   
   // Try to get popup element with retries
   let attempts = 0;
@@ -541,37 +545,37 @@ function bindPopupActions(marker, pin) {
   
   const tryBind = () => {
     attempts++;
-    console.log(`[bindPopupActions] Attempt ${attempts}/${maxAttempts} for pin:`, pin.name);
+    slog(`[bindPopupActions] Attempt ${attempts}/${maxAttempts} for pin:`, pin.name);
     
     const popup = marker.getPopup();
-    console.log('[bindPopupActions] Popup object:', popup);
+    slog('[bindPopupActions] Popup object:', popup);
     
     if (popup) {
       const popupElement = popup.getElement();
-      console.log('[bindPopupActions] Popup element:', popupElement);
+      slog('[bindPopupActions] Popup element:', popupElement);
       
       if (popupElement) {
-        console.log('[bindPopupActions] Popup element found, checking for buttons...');
+        slog('[bindPopupActions] Popup element found, checking for buttons...');
         const buttons = popupElement.querySelectorAll('button');
-        console.log('[bindPopupActions] Found buttons:', buttons.length);
+        slog('[bindPopupActions] Found buttons:', buttons.length);
         
         if (buttons.length > 0) {
-          console.log('[bindPopupActions] Binding actions for pin:', pin.name);
+          slog('[bindPopupActions] Binding actions for pin:', pin.name);
           bindActionsToPopup(popupElement, marker, pin);
           return;
         } else {
-          console.log('[bindPopupActions] Popup element exists but no buttons found, retrying...');
+          slog('[bindPopupActions] Popup element exists but no buttons found, retrying...');
         }
       }
     }
     
     if (attempts < maxAttempts) {
-      console.log('[bindPopupActions] Popup element not ready, retrying in 200ms...');
+      slog('[bindPopupActions] Popup element not ready, retrying in 200ms...');
       setTimeout(tryBind, 200);
     } else {
       console.error('[bindPopupActions] Failed to get popup element after', maxAttempts, 'attempts');
       // Try alternative approach - bind to marker click event
-      console.log('[bindPopupActions] Trying alternative approach - binding to marker click');
+      slog('[bindPopupActions] Trying alternative approach - binding to marker click');
       bindToMarkerClick(marker, pin);
     }
   };
@@ -582,11 +586,11 @@ function bindPopupActions(marker, pin) {
 
 // Alternative approach - bind to marker click event when popup buttons fail
 function bindToMarkerClick(marker, pin) {
-  console.log('[bindToMarkerClick] Binding to marker click for pin:', pin.name);
+  slog('[bindToMarkerClick] Binding to marker click for pin:', pin.name);
   
   marker.getElement().addEventListener('click', (e) => {
     e.stopPropagation();
-    console.log('[bindToMarkerClick] Marker clicked, showing custom popup for pin:', pin.name);
+    slog('[bindToMarkerClick] Marker clicked, showing custom popup for pin:', pin.name);
     
     // Create a custom popup with working buttons
     showCustomPinPopup(marker, pin);
@@ -629,13 +633,13 @@ function showCustomPinPopup(marker, pin) {
 }
 
 function bindActionsToPopup(popupElement, marker, pin) {
-  console.log('[bindActionsToPopup] Binding actions to popup element for pin:', pin.name);
+  slog('[bindActionsToPopup] Binding actions to popup element for pin:', pin.name);
   
   const renameBtn = popupElement.querySelector('.rename-btn');
   const deleteBtn = popupElement.querySelector('.delete-btn');
   const journalBtn = popupElement.querySelector('.journal-btn');
   
-  console.log('[bindActionsToPopup] Found buttons:', {
+  slog('[bindActionsToPopup] Found buttons:', {
     rename: !!renameBtn,
     delete: !!deleteBtn,
     journal: !!journalBtn
@@ -647,7 +651,7 @@ function bindActionsToPopup(popupElement, marker, pin) {
     const newRenameBtn = popupElement.querySelector('.rename-btn');
     newRenameBtn.addEventListener('click', (e) => {
       e.stopPropagation();
-      console.log('[bindActionsToPopup] Rename button clicked for pin:', pin.name);
+      slog('[bindActionsToPopup] Rename button clicked for pin:', pin.name);
       reopenRename(marker, pin);
     });
   }
@@ -658,7 +662,7 @@ function bindActionsToPopup(popupElement, marker, pin) {
     const newDeleteBtn = popupElement.querySelector('.delete-btn');
     newDeleteBtn.addEventListener('click', async (e) => {
       e.stopPropagation();
-      console.log('[bindActionsToPopup] Delete button clicked for pin:', pin.name);
+      slog('[bindActionsToPopup] Delete button clicked for pin:', pin.name);
       // Create custom confirmation dialog
       const confirmDialog = document.createElement('div');
       confirmDialog.className = 'custom-confirm-dialog';
@@ -712,7 +716,7 @@ function bindActionsToPopup(popupElement, marker, pin) {
         );
         if (localIndex > -1) {
           window.localPinData.splice(localIndex, 1);
-          console.log('[Pins] Removed from localPinData, remaining:', window.localPinData.length);
+          slog('[Pins] Removed from localPinData, remaining:', window.localPinData.length);
         }
         
         await savePins(window.customPins);
@@ -742,7 +746,7 @@ function bindActionsToPopup(popupElement, marker, pin) {
             if (error) {
               console.error('[Pins] Failed to update Supabase after deletion:', error.message);
             } else {
-              console.log('[Pins] Successfully updated Supabase after pin deletion');
+              slog('[Pins] Successfully updated Supabase after pin deletion');
             }
           }
         } catch (error) {
@@ -750,7 +754,7 @@ function bindActionsToPopup(popupElement, marker, pin) {
         }
         
         // Re-bind event listeners for all remaining pins
-        console.log('[Delete] Re-binding event listeners for remaining pins...');
+        slog('[Delete] Re-binding event listeners for remaining pins...');
         window.customPins.forEach(remainingPin => {
           if (remainingPin.marker && remainingPin.marker.element) {
             const popup = remainingPin.marker.element.getPopup();
@@ -795,7 +799,7 @@ function bindActionsToPopup(popupElement, marker, pin) {
     const newJournalBtn = popupElement.querySelector('.journal-btn');
     newJournalBtn.addEventListener('click', (e) => {
       e.stopPropagation();
-      console.log('[bindActionsToPopup] Journal button clicked for pin:', pin.name);
+      slog('[bindActionsToPopup] Journal button clicked for pin:', pin.name);
       // Send pin to journal
       if (typeof window.initJournal === 'function') {
         // Get the journal button to simulate a click
@@ -919,7 +923,7 @@ function reopenRename(marker, pin) {
     );
     if (localIndex > -1) {
       window.localPinData[localIndex].label = newName;
-      console.log('[Pins] Updated localPinData for renamed pin:', window.localPinData[localIndex]);
+      slog('[Pins] Updated localPinData for renamed pin:', window.localPinData[localIndex]);
     }
 
     // Restore original popup with new styled structure using the unified builder
@@ -939,7 +943,7 @@ function reopenRename(marker, pin) {
     marker.togglePopup();
     
     // Re-bind actions
-    console.log('[reopenRename save] About to re-bind popup actions for pin:', newName);
+    slog('[reopenRename save] About to re-bind popup actions for pin:', newName);
     setTimeout(() => {
       bindPopupActions(marker, pin);
     }, 100);
@@ -962,7 +966,7 @@ export async function loadTracks(map, drawnTracks, drawTrackLabel) {
   // Check if user is logged in before loading data
   const { data: { user } } = await window.supabaseClient.auth.getUser();
   if (!user) {
-    console.log('[Tracks] No user logged in, skipping track loading');
+    slog('[Tracks] No user logged in, skipping track loading');
     return;
   }
   
@@ -1018,7 +1022,7 @@ export async function loadTracks(map, drawnTracks, drawTrackLabel) {
             drawTrackLabel(track, data.name, data.markerTypes);
           }
           
-          console.log(`[Tracks] Added track: ${data.name} with ${data.coords.length} points`);
+          slog(`[Tracks] Added track: ${data.name} with ${data.coords.length} points`);
         }
       } catch (error) {
         console.error(`[Tracks] Error adding track ${data.name}:`, error);
@@ -1033,26 +1037,125 @@ export async function loadTracks(map, drawnTracks, drawTrackLabel) {
 // (Removed: no longer saving/loading weather marker in localStorage)
 
 // --- GPX ---
+function normalizeGpxFile(file) {
+  if (!file || typeof file !== 'object') return null;
+  if (!file.id || !file.geojson || !Array.isArray(file.geojson.features)) return null;
+  return {
+    id: file.id,
+    name: file.name || file.id,
+    geojson: {
+      type: 'FeatureCollection',
+      features: file.geojson.features
+    }
+  };
+}
+
+function getLocalGpxFiles() {
+  try {
+    const parsed = JSON.parse(localStorage.getItem('witd_gpx_files') || '[]');
+    if (!Array.isArray(parsed)) return [];
+    return parsed.map(normalizeGpxFile).filter(Boolean);
+  } catch (error) {
+    console.warn('[GPX] Failed to parse local GPX files:', error.message);
+    return [];
+  }
+}
+
+async function saveGpxFilesToSupabase(gpxFiles) {
+  try {
+    const supabaseClient = window.supabaseClient;
+    if (!supabaseClient?.auth) {
+      return false;
+    }
+    const { data: { user } } = await supabaseClient.auth.getUser();
+    if (!user) return false;
+
+    const { error } = await supabaseClient
+      .from('user_gpx_files')
+      .upsert({
+        user_id: user.id,
+        gpx_files: gpxFiles,
+        updated_at: new Date().toISOString()
+      }, {
+        onConflict: 'user_id'
+      });
+
+    if (error) {
+      console.error('[GPX] Supabase save failed:', error.message);
+      return false;
+    }
+
+    return true;
+  } catch (error) {
+    slog('[GPX] Supabase save skipped/failed:', error.message);
+    return false;
+  }
+}
+
+export async function loadUserGpxFilesFromSupabase() {
+  try {
+    const supabaseClient = window.supabaseClient;
+    if (!supabaseClient?.auth) {
+      return [];
+    }
+    const { data: { user } } = await supabaseClient.auth.getUser();
+    if (!user) return [];
+
+    const { data, error } = await supabaseClient
+      .from('user_gpx_files')
+      .select('gpx_files')
+      .eq('user_id', user.id)
+      .single();
+
+    if (error) {
+      if (error.code === 'PGRST116') {
+        return [];
+      }
+      console.error('[GPX] Supabase load failed:', error.message);
+      return [];
+    }
+
+    const remoteFiles = Array.isArray(data?.gpx_files) ? data.gpx_files : [];
+    return remoteFiles.map(normalizeGpxFile).filter(Boolean);
+  } catch (error) {
+    slog('[GPX] Supabase load skipped/failed:', error.message);
+    return [];
+  }
+}
+
 export function saveGpxFiles(gpxFiles) {
-  localStorage.setItem('witd_gpx_files', JSON.stringify(gpxFiles));
+  const normalizedFiles = (Array.isArray(gpxFiles) ? gpxFiles : [])
+    .map(normalizeGpxFile)
+    .filter(Boolean);
+  localStorage.setItem('witd_gpx_files', JSON.stringify(normalizedFiles));
+  saveGpxFilesToSupabase(normalizedFiles);
 }
 window.saveGpxFiles = saveGpxFiles;
 
 export async function loadGpxFiles(map, gpxFiles, addGpxToMap) {
+  // Backward-compatible sync usage (gpxManager init) expects raw array return.
+  if (!map || !Array.isArray(gpxFiles) || typeof addGpxToMap !== 'function') {
+    return getLocalGpxFiles();
+  }
+
   // Check if user is logged in before loading data
   const { data: { user } } = await window.supabaseClient.auth.getUser();
   if (!user) {
-    console.log('[GPX] No user logged in, skipping GPX loading');
-    return;
+    slog('[GPX] No user logged in, skipping GPX loading');
+    return [];
   }
   
-  const saved = JSON.parse(localStorage.getItem('witd_gpx_files') || '[]');
+  const saved = getLocalGpxFiles();
   saved.forEach(file => {
-    addGpxToMap(file.name, file.content);
+    if (file?.geojson) {
+      addGpxToMap(file.geojson, file.name, false);
+    }
     gpxFiles.push(file);
   });
+  return saved;
 }
 window.loadGpxFiles = loadGpxFiles;
+window.loadUserGpxFilesFromSupabase = loadUserGpxFilesFromSupabase;
 
 // --- Clear All ---
 export function clearAll() {
@@ -1063,55 +1166,55 @@ export function clearAll() {
 
 // --- Global debug function for browser console ---
 window.debugSupabasePins = async function() {
-  console.log('🔍 Debugging Supabase pins setup...');
+  slog('🔍 Debugging Supabase pins setup...');
   
   try {
     // Import the debug function
     const { debugSupabaseSetup } = await import('./storeManager.js');
     const result = await debugSupabaseSetup();
-    console.log('🔍 Debug result:', result);
+    slog('🔍 Debug result:', result);
     return result;
   } catch (error) {
-    console.log('🔍 Error importing debug function:', error.message);
+    slog('🔍 Error importing debug function:', error.message);
     
     // Fallback: try to call it directly if it's already loaded
     if (typeof window.debugSupabaseSetup === 'function') {
       const result = await window.debugSupabaseSetup();
-      console.log('🔍 Debug result (direct call):', result);
+      slog('🔍 Debug result (direct call):', result);
       return result;
     } else {
-      console.log('🔍 Debug function not available');
+      slog('🔍 Debug function not available');
       return { status: 'error', message: 'Debug function not available' };
     }
   }
 };
 
-console.log('🔍 Debug function available: window.debugSupabasePins()');
+slog('🔍 Debug function available: window.debugSupabasePins()');
 
 // --- Simple global debug function ---
 window.debugSupabaseSimple = async function() {
-  console.log('🔍 Simple Supabase debug...');
+  slog('🔍 Simple Supabase debug...');
   
   try {
     // Check if supabase is available
     if (typeof supabase === 'undefined') {
-      console.log('❌ Supabase client not available');
+      slog('❌ Supabase client not available');
       return { error: 'Supabase client not available' };
     }
     
     // Check if user is authenticated
     const { data: { user }, error: authError } = await window.supabaseClient.auth.getUser();
     if (authError) {
-      console.log('❌ Auth error:', authError.message);
+      slog('❌ Auth error:', authError.message);
       return { error: 'Auth error: ' + authError.message };
     }
     
     if (!user) {
-      console.log('❌ No user authenticated');
+      slog('❌ No user authenticated');
       return { error: 'No user authenticated' };
     }
     
-    console.log('✅ User authenticated:', user.id);
+    slog('✅ User authenticated:', user.id);
     
     // Try to query user_pins table
     try {
@@ -1121,7 +1224,7 @@ window.debugSupabaseSimple = async function() {
         .eq('user_id', user.id);
       
       if (error) {
-        console.log('❌ Query error:', error.message);
+        slog('❌ Query error:', error.message);
         return { 
           user: user.id, 
           error: error.message, 
@@ -1129,23 +1232,23 @@ window.debugSupabaseSimple = async function() {
         };
       }
       
-      console.log('✅ Query successful, data:', data);
+      slog('✅ Query successful, data:', data);
       return { 
         user: user.id, 
         success: true, 
         data: data 
       };
     } catch (queryError) {
-      console.log('❌ Query exception:', queryError.message);
+      slog('❌ Query exception:', queryError.message);
       return { 
         user: user.id, 
         error: 'Query exception: ' + queryError.message 
       };
     }
   } catch (error) {
-    console.log('❌ Debug function error:', error.message);
+    slog('❌ Debug function error:', error.message);
     return { error: 'Debug function error: ' + error.message };
   }
 };
 
-console.log('🔍 Simple debug function available: window.debugSupabaseSimple()');
+slog('🔍 Simple debug function available: window.debugSupabaseSimple()');

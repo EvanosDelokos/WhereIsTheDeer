@@ -27,6 +27,47 @@
   let currentDrawStyle = 'solid';  // Current drawing style (solid, dashed, dotted)
   let currentDrawThickness = 3;  // Current drawing thickness (1-10)
   let currentDrawMode = 'pencil';  // Current drawing mode (pencil, line, polygon, circle)
+  /** Display-only line coloring: manual uses stored per-track color; elevation/slope use terrain samples. */
+  let drawColorMode = 'manual'; // 'manual' | 'elevation' | 'slope'
+  const DRAW_DEBUG = window.DRAW_DEBUG === true;
+  const dlog = (...args) => {
+    if (DRAW_DEBUG) console.log(...args);
+  };
+
+  async function getCachedSupabaseUser() {
+    const cache = window.__supabaseUserCache || {};
+    const now = Date.now();
+    const ttlMs = 5000;
+
+    if (cache.user && cache.ts && (now - cache.ts) < ttlMs) {
+      return { user: cache.user, error: null };
+    }
+
+    if (cache.promise) {
+      return await cache.promise;
+    }
+
+    const promise = (async () => {
+      const { data: { user }, error } = await window.supabaseClient.auth.getUser();
+      window.__supabaseUserCache = {
+        user: user || null,
+        error: error || null,
+        ts: Date.now(),
+        promise: null
+      };
+      return { user: user || null, error: error || null };
+    })();
+
+    window.__supabaseUserCache = { ...cache, promise };
+
+    try {
+      return await promise;
+    } finally {
+      if (window.__supabaseUserCache) {
+        window.__supabaseUserCache.promise = null;
+      }
+    }
+  }
 
   // --- Distance and Area calculation functions ---
   function calculateDistance(point1, point2) {
@@ -199,6 +240,117 @@
     return `${bearing.toFixed(0)}° ${directions[index]}`;
   }
 
+  // --- Mapbox Terrain-RGB (raster tile) sampling — works without map.setTerrain() ---
+  function getMapboxAccessToken() {
+    try {
+      if (typeof mapboxgl !== 'undefined' && mapboxgl.accessToken) return mapboxgl.accessToken;
+    } catch (_) { /* ignore */ }
+    return '';
+  }
+
+  function decodeTerrainRgbHeight(r, g, b) {
+    return -10000 + ((r * 256 * 256 + g * 256 + b) * 0.1);
+  }
+
+  /** Web Mercator: fractional tile x,y and pixel within tile (0..1). */
+  function lngLatToTilePixel(lng, lat, z) {
+    const n = Math.pow(2, z);
+    const xf = ((lng + 180) / 360) * n;
+    const latRad = (lat * Math.PI) / 180;
+    const yf = (1 - Math.log(Math.tan(latRad) + 1 / Math.cos(latRad)) / Math.PI) / 2 * n;
+    const tx = Math.floor(xf);
+    const ty = Math.floor(yf);
+    const fx = xf - tx;
+    const fy = yf - ty;
+    return { z, tx, ty, fx, fy };
+  }
+
+  const TERRAIN_TILE_CACHE_MAX = 80;
+  const __terrainTileDataCache = new Map();
+
+  async function getTerrainTileImageData(z, tx, ty, token) {
+    const key = `${z}/${tx}/${ty}`;
+    if (__terrainTileDataCache.has(key)) {
+      return __terrainTileDataCache.get(key);
+    }
+    if (!token) return null;
+    const url = `https://api.mapbox.com/v4/mapbox.terrain-rgb/${z}/${tx}/${ty}.pngraw?access_token=${encodeURIComponent(token)}`;
+    try {
+      const res = await fetch(url);
+      if (!res.ok) return null;
+      const blob = await res.blob();
+      if (typeof createImageBitmap !== 'function') return null;
+      const bmp = await createImageBitmap(blob);
+      const canvas = document.createElement('canvas');
+      canvas.width = bmp.width;
+      canvas.height = bmp.height;
+      const ctx = canvas.getContext('2d');
+      if (!ctx) return null;
+      ctx.drawImage(bmp, 0, 0);
+      const imgData = ctx.getImageData(0, 0, canvas.width, canvas.height);
+      if (__terrainTileDataCache.size >= TERRAIN_TILE_CACHE_MAX) {
+        const firstKey = __terrainTileDataCache.keys().next().value;
+        __terrainTileDataCache.delete(firstKey);
+      }
+      __terrainTileDataCache.set(key, imgData);
+      return imgData;
+    } catch (_) {
+      return null;
+    }
+  }
+
+  function elevationFromTileFrac(imgData, fx, fy) {
+    const w = imgData.width;
+    const h = imgData.height;
+    const xPix = Math.min(w - 1, Math.max(0, Math.floor(fx * w)));
+    const yPix = Math.min(h - 1, Math.max(0, Math.floor(fy * h)));
+    const idx = (yPix * w + xPix) * 4;
+    const r = imgData.data[idx];
+    const g = imgData.data[idx + 1];
+    const b = imgData.data[idx + 2];
+    return decodeTerrainRgbHeight(r, g, b);
+  }
+
+  /**
+   * Fill null / non-finite elevations using Terrain-RGB tiles (batched by tile).
+   * @param {[number,number][]} coords
+   * @param {(number|null)[]|undefined} mergeFrom optional prior samples (e.g. queryTerrainElevation)
+   */
+  async function computeCoordElevationsTerrainRgb(coords, mergeFrom) {
+    const token = getMapboxAccessToken();
+    const z = 12;
+    const out = mergeFrom && mergeFrom.length === coords.length
+      ? mergeFrom.slice()
+      : coords.map(() => null);
+
+    const groups = new Map();
+    for (let i = 0; i < coords.length; i++) {
+      const v = out[i];
+      if (v !== null && v !== undefined && Number.isFinite(v)) continue;
+      const c = coords[i];
+      if (!c || c.length < 2) continue;
+      const [lng, lat] = c;
+      const tp = lngLatToTilePixel(lng, lat, z);
+      const key = `${tp.z}/${tp.tx}/${tp.ty}`;
+      if (!groups.has(key)) groups.set(key, []);
+      groups.get(key).push({ i, fx: tp.fx, fy: tp.fy });
+    }
+
+    for (const [key, samples] of groups) {
+      const parts = key.split('/');
+      const zv = Number(parts[0]);
+      const tx = Number(parts[1]);
+      const ty = Number(parts[2]);
+      const imgData = await getTerrainTileImageData(zv, tx, ty, token);
+      if (!imgData) continue;
+      for (let s = 0; s < samples.length; s++) {
+        const { i, fx, fy } = samples[s];
+        out[i] = elevationFromTileFrac(imgData, fx, fy);
+      }
+    }
+    return out;
+  }
+
   // Calculate elevation using Mapbox Terrain API
   async function calculateElevation(coordinates) {
     if (coordinates.length === 0) return { start: 0, end: 0, change: 0 };
@@ -208,8 +360,14 @@
     
     try {
       // Get elevation from Mapbox Terrain API
-      const startElevation = await getMapboxElevation(start[1], start[0]); // lat, lng
-      const endElevation = await getMapboxElevation(end[1], end[0]); // lat, lng
+      const startElevationRaw = await getMapboxElevation(start[1], start[0]); // lat, lng
+      const endElevationRaw = await getMapboxElevation(end[1], end[0]); // lat, lng
+      const startElevation = Number.isFinite(startElevationRaw)
+        ? startElevationRaw
+        : estimateElevationFromCoords(start[1], start[0]);
+      const endElevation = Number.isFinite(endElevationRaw)
+        ? endElevationRaw
+        : estimateElevationFromCoords(end[1], end[0]);
       const elevationChange = endElevation - startElevation;
       
       return {
@@ -226,38 +384,26 @@
 
   // Get elevation from Mapbox Terrain API
   async function getMapboxElevation(lat, lng) {
-    const MAPBOX_TOKEN = 'pk.eyJ1IjoiZXZhbmtva2EiLCJhIjoiY21lNWJmY3F2MHJzOTJrb2h1MWl4eDZpMCJ9.5ZEQqD207yalsIQLX5tpdg';
-    
     try {
-      // Method 1: Try map.queryTerrainElevation first (most accurate)
       if (map && typeof map.queryTerrainElevation === 'function' && map.isStyleLoaded()) {
         try {
           const elevation = map.queryTerrainElevation([lng, lat]);
-          if (elevation !== null && elevation !== undefined && !isNaN(elevation)) {
-            // Got elevation from map.queryTerrainElevation
+          if (elevation !== null && elevation !== undefined && Number.isFinite(elevation)) {
             return elevation;
           }
-        } catch (e) {
-          console.warn('[draw] map.queryTerrainElevation failed');
-        }
+        } catch (_) { /* terrain off or unavailable */ }
       }
-      
-      // Method 2: Use Mapbox Terrain-RGB API
-      const url = `https://api.mapbox.com/v4/mapbox.terrain-rgb/${Math.floor(lng*100)/100},${Math.floor(lat*100)/100}.json?access_token=${MAPBOX_TOKEN}`;
-      
-      const response = await fetch(url);
-      if (!response.ok) {
-        throw new Error(`Mapbox API error: ${response.status}`);
+
+      const token = getMapboxAccessToken();
+      const tp = lngLatToTilePixel(lng, lat, 12);
+      const imgData = await getTerrainTileImageData(tp.z, tp.tx, tp.ty, token);
+      if (imgData) {
+        return elevationFromTileFrac(imgData, tp.fx, tp.fy);
       }
-      
-      // For now, use a fallback estimation based on the location
-      // In a real implementation, you'd decode the terrain RGB data
-      const elevation = estimateElevationFromCoords(lat, lng);
-      return elevation;
-      
+
+      return estimateElevationFromCoords(lat, lng);
     } catch (error) {
-      console.warn('[draw] Mapbox elevation API failed');
-      // Return fallback estimation
+      dlog('[draw] Mapbox elevation API failed');
       return estimateElevationFromCoords(lat, lng);
     }
   }
@@ -394,6 +540,13 @@
       loadDrawThickness();
     }, 500);
 
+    setTimeout(() => {
+      loadDrawColorMode();
+      if (map && map.getSource(SRC_ID)) {
+        syncDrawLayerData();
+      }
+    }, 520);
+
     // Start stroke on pointer down ONLY when mode is active
     // Adding event listeners to map
     map.on('mousedown', onPointerDown);
@@ -485,10 +638,10 @@
 
     // Check if only source exists (orphaned source)
     if (map.getSource(SRC_ID) && !map.getLayer(LINE_LAYER_ID)) {
-      console.log('[draw] Source exists but layer missing, cleaning up orphaned source...');
+      dlog('[draw] Source exists but layer missing, cleaning up orphaned source...');
       try {
         map.removeSource(SRC_ID);
-        console.log('[draw] Orphaned source removed');
+        dlog('[draw] Orphaned source removed');
       } catch (error) {
         console.warn('[draw] Could not remove orphaned source:', error.message);
       }
@@ -496,65 +649,288 @@
 
     // Check if only layer exists (orphaned layer)
     if (!map.getSource(SRC_ID) && map.getLayer(LINE_LAYER_ID)) {
-      console.log('[draw] Layer exists but source missing, cleaning up orphaned layer...');
+      dlog('[draw] Layer exists but source missing, cleaning up orphaned layer...');
       try {
         map.removeLayer(LINE_LAYER_ID);
-        console.log('[draw] Orphaned layer removed');
+        dlog('[draw] Orphaned layer removed');
       } catch (error) {
         console.warn('[draw] Could not remove orphaned layer:', error.message);
       }
     }
     
-    console.log('[draw] Creating new source and layer');
+    if (!map.isStyleLoaded()) {
+      map.once('style.load', ensureSourceAndLayer);
+      return;
+    }
+
+    dlog('[draw] Creating new source and layer');
     isInitializing = true;
-
-    window.safeAddToMap(map, () => {
-      try {
-        // Double-check that source doesn't exist before creating
-        if (map.getSource(SRC_ID)) {
-          console.log('[draw] Source already exists, skipping source creation');
-        } else {
-          map.addSource(SRC_ID, {
-            type: 'geojson',
-            data: featureCollection
-          });
-          console.log('[draw] Source created successfully');
-        }
-
-        // Double-check that layer doesn't exist before creating
-        if (map.getLayer(LINE_LAYER_ID)) {
-          console.log('[draw] Layer already exists, skipping layer creation');
-        } else {
-          map.addLayer({
-            id: LINE_LAYER_ID,
-            type: 'line',
-            source: SRC_ID,
-            layout: {
-              'line-join': 'round',
-              'line-cap': 'round'
-            },
-            paint: {
-              'line-color': ['coalesce', ['get', 'color'], '#ff6b35'],
-              'line-width': ['coalesce', ['get', 'thickness'], currentDrawThickness],
-              'line-dasharray': ['case',
-                ['==', ['get', 'style'], 'dashed'], [2, 2],
-                ['==', ['get', 'style'], 'dotted'], [1, 3],
-                [1, 0]  // solid line - very short dash with no gap
-              ]
-            }
-          });
-          console.log('[draw] Layer created successfully');
-        }
-        
-        console.log('[draw] Source and layer setup complete');
-        console.log('[draw] Current source data:', map.getSource(SRC_ID));
-        console.log('[draw] Current layer:', map.getLayer(LINE_LAYER_ID));
-      } catch (error) {
-        console.error('[draw] Error creating source/layer:', error);
-      } finally {
-        isInitializing = false;
+    try {
+      // Double-check that source doesn't exist before creating
+      if (map.getSource(SRC_ID)) {
+        dlog('[draw] Source already exists, skipping source creation');
+      } else {
+        map.addSource(SRC_ID, {
+          type: 'geojson',
+          data: featureCollection
+        });
+        dlog('[draw] Source created successfully');
       }
+
+      // Double-check that layer doesn't exist before creating
+      if (map.getLayer(LINE_LAYER_ID)) {
+        dlog('[draw] Layer already exists, skipping layer creation');
+      } else {
+        map.addLayer({
+          id: LINE_LAYER_ID,
+          type: 'line',
+          source: SRC_ID,
+          layout: {
+            'line-join': 'round',
+            'line-cap': 'round'
+          },
+          paint: {
+            'line-color': ['coalesce', ['get', 'color'], '#ff6b35'],
+            'line-width': ['coalesce', ['get', 'thickness'], currentDrawThickness],
+            'line-dasharray': ['case',
+              ['==', ['get', 'style'], 'dashed'], [2, 2],
+              ['==', ['get', 'style'], 'dotted'], [1, 3],
+              [1, 0]  // solid line - very short dash with no gap
+            ]
+          }
+        });
+        dlog('[draw] Layer created successfully');
+      }
+
+      dlog('[draw] Source and layer setup complete');
+      dlog('[draw] Current source data:', map.getSource(SRC_ID));
+      dlog('[draw] Current layer:', map.getLayer(LINE_LAYER_ID));
+
+      if (featureCollection.features.length > 0) {
+        syncDrawLayerData();
+      }
+    } catch (error) {
+      console.error('[draw] Error creating source/layer:', error);
+    } finally {
+      isInitializing = false;
+    }
+  }
+
+  /** How this track should render (snapshot when stroke finished); dropdown only picks mode for the next stroke. */
+  function getFeatureLineColorMode(feature) {
+    const m = feature && feature.properties && feature.properties.lineColorMode;
+    if (m === 'elevation' || m === 'slope' || m === 'manual') return m;
+    return 'manual';
+  }
+
+  function segmentBasePropsForDraw(feature) {
+    const p = feature.properties || {};
+    return {
+      color: p.color,
+      style: p.style,
+      thickness: p.thickness,
+      drawTrackId: p.id,
+      name: p.name,
+      isDrawSegment: true
+    };
+  }
+
+  function computeCoordElevationsSync(coords) {
+    if (!Array.isArray(coords) || coords.length === 0) return [];
+    return coords.map(([lng, lat]) => {
+      try {
+        if (map && typeof map.queryTerrainElevation === 'function' && map.isStyleLoaded()) {
+          const v = map.queryTerrainElevation([lng, lat]);
+          if (v !== null && v !== undefined && Number.isFinite(v)) return v;
+        }
+      } catch (_) { /* terrain unavailable */ }
+      return null;
     });
+  }
+
+  function buildDisplayGeoJson(extraPreviewFeature) {
+    const out = [];
+    const math = window.WITD && window.WITD.gpxTrackMath;
+    for (let i = 0; i < featureCollection.features.length; i++) {
+      const f = featureCollection.features[i];
+      const featureMode = getFeatureLineColorMode(f);
+      if (featureMode === 'manual' || !math || typeof math.buildDrawColoredSegments !== 'function') {
+        out.push(f);
+        continue;
+      }
+      const coords = f.geometry && f.geometry.coordinates ? f.geometry.coordinates : [];
+      const elevs = f.properties && f.properties.coordElevations;
+      const segs = math.buildDrawColoredSegments(featureMode, coords, elevs, segmentBasePropsForDraw(f));
+      if (segs && segs.length > 0) {
+        segs.forEach((seg) => out.push(seg));
+      } else {
+        out.push(f);
+      }
+    }
+    if (extraPreviewFeature) out.push(extraPreviewFeature);
+    return { type: 'FeatureCollection', features: out };
+  }
+
+  function syncDrawLayerData(extraPreviewFeature) {
+    if (!map || !map.getSource(SRC_ID)) return;
+    try {
+      map.getSource(SRC_ID).setData(buildDisplayGeoJson(extraPreviewFeature));
+      updateDrawExportGpxUi();
+    } catch (err) {
+      console.warn('[draw] syncDrawLayerData:', err);
+    }
+  }
+
+  function updateDrawExportGpxUi() {
+    try {
+      const btn = document.getElementById('exportDrawGpxBtn');
+      if (!btn) return;
+      const n = featureCollection.features.filter((f) => {
+        const c = f.geometry && f.geometry.coordinates;
+        return c && c.length >= 2;
+      }).length;
+      btn.style.display = n > 0 ? '' : 'none';
+      btn.disabled = n === 0;
+    } catch (_) { /* optional UI */ }
+  }
+
+  function resampleAllTrackElevationsFromTerrain() {
+    if (!map || !featureCollection.features.length) return;
+    featureCollection.features.forEach((f) => {
+      const mode = getFeatureLineColorMode(f);
+      if (mode !== 'elevation' && mode !== 'slope') return;
+      const coords = f.geometry && f.geometry.coordinates;
+      if (!coords || coords.length < 2) return;
+      f.properties = f.properties || {};
+      const prev = f.properties.coordElevations;
+      const next = computeCoordElevationsSync(coords);
+      if (Array.isArray(prev) && prev.length === next.length) {
+        for (let i = 0; i < next.length; i++) {
+          const nv = next[i];
+          const pv = prev[i];
+          const lost = nv === null || nv === undefined || !Number.isFinite(nv);
+          const keep = pv !== null && pv !== undefined && Number.isFinite(pv);
+          if (lost && keep) {
+            next[i] = pv;
+          }
+        }
+      }
+      f.properties.coordElevations = next;
+    });
+    syncDrawLayerData();
+
+    void (async () => {
+      let touched = false;
+      for (let fi = 0; fi < featureCollection.features.length; fi++) {
+        const f = featureCollection.features[fi];
+        const mode = getFeatureLineColorMode(f);
+        if (mode !== 'elevation' && mode !== 'slope') continue;
+        const coords = f.geometry && f.geometry.coordinates;
+        if (!coords || coords.length < 2) continue;
+        const prev = f.properties.coordElevations;
+        if (!prev || prev.length !== coords.length) continue;
+        if (!prev.some((e) => e === null || !Number.isFinite(e))) continue;
+        f.properties.coordElevations = await computeCoordElevationsTerrainRgb(coords, prev);
+        touched = true;
+      }
+      if (touched) syncDrawLayerData();
+    })();
+  }
+
+  function escapeXml(s) {
+    return String(s)
+      .replace(/&/g, '&amp;')
+      .replace(/</g, '&lt;')
+      .replace(/>/g, '&gt;')
+      .replace(/"/g, '&quot;');
+  }
+
+  function sanitizeGpxFilename(name) {
+    const s = String(name || 'track')
+      .replace(/[\\/:*?"<>|]+/g, '_')
+      .replace(/\s+/g, ' ')
+      .trim();
+    return s || 'track';
+  }
+
+  function exportDrawnTracksAsGpx(filename, tracksSubset) {
+    const nameBase = filename || 'drawn-tracks.gpx';
+    const sourceList = Array.isArray(tracksSubset) ? tracksSubset : featureCollection.features;
+    const tracks = sourceList.filter((f) => {
+      const c = f.geometry && f.geometry.coordinates;
+      return f.geometry && f.geometry.type === 'LineString' && c && c.length >= 2;
+    });
+    if (tracks.length === 0) return;
+
+    let xml = '<?xml version="1.0" encoding="UTF-8"?>\n';
+    xml += '<gpx version="1.1" creator="WhereIsTheDeer" xmlns="http://www.topografix.com/GPX/1/1" ';
+    xml += 'xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" ';
+    xml += 'xsi:schemaLocation="http://www.topografix.com/GPX/1/1 http://www.topografix.com/GPX/1/1/gpx.xsd">\n';
+
+    tracks.forEach((feature, idx) => {
+      const trkName = (feature.properties && feature.properties.name) || `Track ${idx + 1}`;
+      const coords = feature.geometry.coordinates;
+      const elevs = feature.properties && feature.properties.coordElevations;
+      xml += '  <trk><name>' + escapeXml(trkName) + '</name><trkseg>\n';
+      for (let i = 0; i < coords.length; i++) {
+        const pt = coords[i];
+        const lon = pt[0];
+        const lat = pt[1];
+        const el = elevs && elevs[i];
+        const eleTag = (el !== null && el !== undefined && Number.isFinite(el)) ? '<ele>' + el.toFixed(1) + '</ele>' : '';
+        xml += '    <trkpt lat="' + lat + '" lon="' + lon + '">' + eleTag + '</trkpt>\n';
+      }
+      xml += '  </trkseg></trk>\n';
+    });
+    xml += '</gpx>';
+
+    const blob = new Blob([xml], { type: 'application/gpx+xml' });
+    const a = document.createElement('a');
+    a.href = URL.createObjectURL(blob);
+    a.download = nameBase.endsWith('.gpx') ? nameBase : nameBase + '.gpx';
+    a.click();
+    URL.revokeObjectURL(a.href);
+  }
+
+  function exportSingleDrawnTrackAsGpx(feature) {
+    if (!feature || !feature.geometry || feature.geometry.type !== 'LineString') return;
+    const c = feature.geometry.coordinates;
+    if (!c || c.length < 2) return;
+    const id = feature.properties && feature.properties.id;
+    let current = feature;
+    if (id != null) {
+      const found = featureCollection.features.find(
+        (f) => f.properties && (f.properties.id === id || String(f.properties.id) === String(id))
+      );
+      if (found) current = found;
+    }
+    const trkName = (current.properties && current.properties.name) || 'Track';
+    exportDrawnTracksAsGpx(sanitizeGpxFilename(trkName) + '.gpx', [current]);
+  }
+
+  function updateDrawColorMode(mode) {
+    if (mode !== 'manual' && mode !== 'elevation' && mode !== 'slope') return;
+    const prev = drawColorMode;
+    if (prev === mode) return;
+
+    drawColorMode = mode;
+    try {
+      localStorage.setItem('witd_draw_color_mode', mode);
+    } catch (_) { /* ignore */ }
+
+    // Dropdown only affects the *next* stroke; existing tracks keep properties.lineColorMode.
+    syncDrawLayerData();
+  }
+
+  function loadDrawColorMode() {
+    try {
+      const s = localStorage.getItem('witd_draw_color_mode');
+      if (s === 'manual' || s === 'elevation' || s === 'slope') {
+        drawColorMode = s;
+      }
+    } catch (_) { /* ignore */ }
+    const sel = document.getElementById('drawColorModeSelect');
+    if (sel) sel.value = drawColorMode;
   }
 
   // --- Mode control (toolbar) ---
@@ -860,7 +1236,7 @@
     
     // Update map source to clear preview
     if (map && map.getSource(SRC_ID)) {
-      map.getSource(SRC_ID).setData(featureCollection);
+      syncDrawLayerData();
     }
     
     // Remove all polygon handlers
@@ -1004,7 +1380,7 @@
     
     // Update map source to clear preview
     if (map && map.getSource(SRC_ID)) {
-      map.getSource(SRC_ID).setData(featureCollection);
+      syncDrawLayerData();
     }
     
     // Remove all circle handlers
@@ -1089,19 +1465,9 @@
       geometry: { type: 'LineString', coordinates: coordinates }
     };
     
-    // Render the in-progress line by updating source with a temporary feature
-    const temp = {
-      type: 'FeatureCollection',
-      features: [
-        ...featureCollection.features,
-        previewFeature
-      ]
-    };
-    
     try {
-      const source = map.getSource(SRC_ID);
-      if (source) {
-        source.setData(temp);
+      if (map.getSource(SRC_ID)) {
+        syncDrawLayerData(previewFeature);
         console.log('[draw] Preview updated with actual drawing settings');
       }
     } catch (err) {
@@ -1124,7 +1490,15 @@
         // Close the line by adding the first point at the end
         finalCoords.push(finalCoords[0]);
       }
-      
+
+      let coordElevations = computeCoordElevationsSync(finalCoords);
+      const needsTerrainRgb =
+        (drawColorMode === 'elevation' || drawColorMode === 'slope') &&
+        coordElevations.some((e) => e === null || !Number.isFinite(e));
+      if (needsTerrainRgb) {
+        coordElevations = await computeCoordElevationsTerrainRgb(finalCoords, coordElevations);
+      }
+
       const trackId = nextTrackId++;
       
       // Calculate distance for this feature
@@ -1149,10 +1523,16 @@
         // For line mode, calculate bearing from start to end
         bearing = calculateBearing(finalCoords[0], finalCoords[finalCoords.length - 1]);
         formattedBearing = formatBearing(bearing);
-        
-        // Calculate elevation for the track
-        elevationData = await calculateElevation(finalCoords);
-        formattedElevation = formatElevation(elevationData);
+
+        const el0 = coordElevations.length ? coordElevations[0] : null;
+        const el1 = coordElevations.length ? coordElevations[coordElevations.length - 1] : null;
+        if (Number.isFinite(el0) && Number.isFinite(el1)) {
+          elevationData = { start: el0, end: el1, change: el1 - el0 };
+          formattedElevation = formatElevation(elevationData);
+        } else {
+          elevationData = await calculateElevation(finalCoords);
+          formattedElevation = formatElevation(elevationData);
+        }
       }
       
       const newFeature = {
@@ -1173,6 +1553,8 @@
           formattedBearing: formattedBearing,  // Store the formatted bearing string
           elevation: elevationData,  // Store the elevation data
           formattedElevation: formattedElevation,  // Store the formatted elevation string
+          coordElevations,
+          lineColorMode: drawColorMode,
           isPolygon: isPolygonMode,  // Track if this is a polygon
           isCircle: isCircleMode  // Track if this is a circle
         },
@@ -1194,9 +1576,13 @@
 
     // Commit final collection
     try {
-      const source = map.getSource(SRC_ID);
-      if (source) {
-        source.setData(featureCollection);
+      let source = map.getSource(SRC_ID);
+      if (!source) {
+        ensureSourceAndLayer();
+        source = map.getSource(SRC_ID);
+      }
+      if (source && typeof source.setData === 'function') {
+        syncDrawLayerData();
         console.log('[draw] Final collection committed to source');
       } else {
         console.error('[draw] Source not found when finishing stroke!');
@@ -1345,7 +1731,7 @@
     };
     
     const hueRotation = getHueRotation(trackColor);
-    console.log(`[draw] Track color: ${trackColor}, Hue rotation: ${hueRotation}deg`);
+    dlog(`[draw] Track color: ${trackColor}, Hue rotation: ${hueRotation}deg`);
     
     // Create styled track label element
     const trackLabelEl = document.createElement('div');
@@ -1375,47 +1761,37 @@
     if (area && (isPolygon || isCircle)) {
       infoHtml += `<br><span class="track-label-area">📐 ${area}</span>`;
     }
-    
+
+    const canExportGpx =
+      !isPolygon &&
+      !isCircle &&
+      feature.geometry &&
+      feature.geometry.type === 'LineString' &&
+      validCoordinates.length >= 2;
+    const gpxBtnHtml = canExportGpx
+      ? `<button type="button" class="saved-pin-btn gpx-btn track-download-gpx-btn" title="Download this track as GPX for Garmin or handheld GPS">⬇️ Download GPX</button>`
+      : '';
+
     trackLabelEl.innerHTML = `
-        <div class="track-label-pin" style="display: none;">
-          <svg width="40" height="40" viewBox="0 0 1024 1024" xmlns="http://www.w3.org/2000/svg">
-            <!-- Red center part - this will be dynamically colored -->
-            <path d="M709.485714 277.942857C709.485714 160.914286 614.4 65.828571 497.371429 65.828571S292.571429 160.914286 292.571429 277.942857c0 73.142857 204.8 358.4 204.8 358.4s212.114286-277.942857 212.114285-358.4z" fill="${trackColor}"/>
-            <!-- Black outline -->
-            <path d="M497.371429 709.485714l-21.942858-29.257143c-36.571429-51.2-219.428571-307.2-219.428571-387.657142C256 160.914286 365.714286 51.2 497.371429 51.2s241.371429 109.714286 241.371428 241.371429c0 87.771429-182.857143 336.457143-226.742857 387.657142l-14.628571 29.257143z m0-607.085714C394.971429 102.4 307.2 182.857143 307.2 292.571429c0 43.885714 102.4 204.8 190.171429 321.828571C585.142857 497.371429 687.542857 336.457143 687.542857 292.571429c0-109.714286-87.771429-190.171429-190.171428-190.171429z" fill="#000000"/>
-            <!-- Black track line part 1 -->
-            <path d="M928.914286 819.2H102.4C58.514286 819.2 14.628571 782.628571 14.628571 731.428571s36.571429-87.771429 87.771429-87.771428h138.971429c14.628571 0 29.257143 14.628571 29.257142 29.257143s-7.314286 29.257143-21.942857 29.257143h-146.285714c-14.628571 0-29.257143 14.628571-29.257143 29.257142s14.628571 29.257143 29.257143 29.257143h819.2c14.628571 0 29.257143 14.628571 29.257143 29.257143s-7.314286 29.257143-21.942857 29.257143z" fill="#000000"/>
-            <!-- Black track line part 2 -->
-            <path d="M928.914286 936.228571H226.742857c-14.628571 0-29.257143-14.628571-29.257143-29.257142s14.628571-29.257143 29.257143-29.257143h694.857143c14.628571 0 29.257143-14.628571 29.257143-29.257143s-14.628571-29.257143-29.257143-29.257143H102.4c-14.628571 0-29.257143-14.628571-29.257143-29.257143s14.628571-29.257143 29.257143-29.257143h819.2c43.885714 0 87.771429 36.571429 87.771429 87.771429s-36.571429 87.771429-80.457143 87.771428z" fill="#000000"/>
-            <!-- White circle in center -->
-            <path d="M497.371429 263.314286m-80.457143 0a80.457143 80.457143 0 1 0 160.914285 0 80.457143 80.457143 0 1 0-160.914285 0Z" fill="#FDFBFB"/>
-            <!-- Black circle outline -->
-            <path d="M497.371429 365.714286C438.857143 365.714286 394.971429 321.828571 394.971429 263.314286S438.857143 160.914286 497.371429 160.914286s102.4 43.885714 102.4 102.4S555.885714 365.714286 497.371429 365.714286z m0-153.6c-29.257143 0-51.2 21.942857-51.2 51.2s21.942857 51.2 51.2 51.2 51.2-21.942857 51.2-51.2-21.942857-51.2-51.2-51.2z" fill="#000000"/>
-          </svg>
-        </div>
-      <div class="track-label-popup">
-        <div class="track-label-header">
-          <span class="track-label-title">${feature.properties.name || `Drawn Track ${feature.properties.id}`}</span>
-          <div class="track-label-actions">
-            <button class="track-minimize-btn" title="Minimize Track Label">📌</button>
-            <button class="track-rename-btn" title="Rename Track">
-              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                <path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"></path>
-                <path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"></path>
-              </svg>
-            </button>
-            <button class="track-delete-btn" title="Delete Track">
-              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                <polyline points="3,6 5,6 21,6"></polyline>
-                <path d="m19,6v14a2,2 0 0,1 -2,2H7a2,2 0 0,1 -2,-2V6m3,0V4a2,2 0 0,1 2,-2h4a2,2 0 0,1 2,2v2"></path>
-                <line x1="10" y1="11" x2="10" y2="17"></line>
-                <line x1="14" y1="11" x2="14" y2="17"></line>
-              </svg>
-            </button>
+        <div class="track-drawn-minimized marker-text-box" style="display: none;" title="Open track details">
+          <div class="track-label-pin track-label-pin--newdraw">
+            <img src="Images/Pins/newdrawicon.svg" width="40" height="40" alt="" decoding="async" />
           </div>
+          <div class="label-inner">${feature.properties.name || `Drawn Track ${feature.properties.id}`}</div>
         </div>
-        <div class="track-label-info">
+      <div class="saved-pin-popup track-label-popup">
+        <div class="saved-pin-header">
+          <span class="saved-pin-icon" aria-hidden="true">📍</span>
+          <span class="track-label-title saved-pin-name">${feature.properties.name || `Drawn Track ${feature.properties.id}`}</span>
+        </div>
+        <div class="saved-pin-coords track-label-info">
           ${infoHtml}
+        </div>
+        <div class="saved-pin-actions">
+          <button type="button" class="saved-pin-btn rename-btn track-rename-btn" title="Rename track">✏️ Rename</button>
+          <button type="button" class="saved-pin-btn delete-btn track-delete-btn" title="Delete track">🗑️ Delete</button>
+          ${gpxBtnHtml}
+          <button type="button" class="saved-pin-btn minimize-btn track-minimize-btn" title="Minimize to map pin">📌 Minimize</button>
         </div>
       </div>
     `;
@@ -1476,33 +1852,24 @@
     // Add the element to the map container
     map.getContainer().appendChild(trackLabelEl);
     
-    // Prevent browser zoom but allow map zoom
+    // Wheel over the label hits this DOM layer, not the map canvas — forward zoom
+    // using `around` so the point under the cursor stays fixed (zoomTo+center pans wrong).
     trackLabelEl.addEventListener('wheel', (e) => {
-      // Prevent the browser from zooming the page
       e.preventDefault();
-      
-      // Get the current zoom level
       const currentZoom = map.getZoom();
-      
-      // Calculate zoom delta based on scroll direction
       const zoomDelta = e.deltaY > 0 ? -0.1 : 0.1;
       const newZoom = Math.max(0, Math.min(22, currentZoom + zoomDelta));
-      
-      // Get the map container bounds
       const mapContainer = map.getContainer();
       const rect = mapContainer.getBoundingClientRect();
-      
-      // Convert cursor position to map coordinates
       const cursorX = e.clientX - rect.left;
       const cursorY = e.clientY - rect.top;
       const cursorLngLat = map.unproject([cursorX, cursorY]);
-      
-      // Zoom around the cursor position
-      map.zoomTo(newZoom, {
-        center: cursorLngLat,
-        duration: 150
+      map.easeTo({
+        zoom: newZoom,
+        around: cursorLngLat,
+        duration: 0
       });
-    });
+    }, { passive: false });
     
     // Initial positioning
     updateMarkerPosition();
@@ -1521,7 +1888,7 @@
       map.off('zoom', onMapMove);
     };
     
-    console.log(`[draw] Track pin positioned at geometric center:`, middleCoord);
+    dlog(`[draw] Track pin positioned at geometric center:`, middleCoord);
     
     // Store reference for deletion using track ID
     trackLabelMarker._trackId = feature.properties.id;
@@ -1533,33 +1900,32 @@
       const isCurrentlyEditing = editingTrackId === feature.properties.id;
       const isUnnamedTrack = !feature.properties.userNamed;
       
-      console.log(`[draw] Visibility update called for track: ${feature.properties.name}, zoom: ${zoom}, editing: ${isCurrentlyEditing}, unnamed: ${isUnnamedTrack}, startMinimized: ${startMinimized}`);
+      dlog(`[draw] Visibility update called for track: ${feature.properties.name}, zoom: ${zoom}, editing: ${isCurrentlyEditing}, unnamed: ${isUnnamedTrack}, startMinimized: ${startMinimized}`);
       
+      const trackPopup = trackLabelEl.querySelector('.track-label-popup');
+      const trackMinimized = trackLabelEl.querySelector('.track-drawn-minimized');
+
       // Always show the marker, but control visibility of content
       if (isCurrentlyEditing) {
-        // Always show when editing
         trackLabelEl.style.display = 'block';
+        if (trackPopup) trackPopup.style.display = 'block';
+        if (trackMinimized) trackMinimized.style.display = 'none';
         console.log(`[draw] Showing full label (editing) for track: ${feature.properties.name}`);
       } else if (zoom < 8 || startMinimized) {
-        // Hide when zoomed out (clustering) or when starting minimized - but keep marker position
         trackLabelEl.style.display = 'block';
-        // Hide the popup content but show the pin
-        const trackPopup = trackLabelEl.querySelector('.track-label-popup');
-        const trackPin = trackLabelEl.querySelector('.track-label-pin');
-        if (trackPopup && trackPin) {
-          trackPopup.style.display = 'none';
-          trackPin.style.display = 'block';
-        }
-        console.log(`[draw] Showing pin only (zoomed out or startMinimized) for track: ${feature.properties.name}`);
+        if (trackPopup) trackPopup.style.display = 'none';
+        if (trackMinimized) trackMinimized.style.display = 'flex';
+        dlog(`[draw] Showing pin only (zoomed out or startMinimized) for track: ${feature.properties.name}`);
       } else {
-        // Show when zoomed in
         trackLabelEl.style.display = 'block';
+        if (trackPopup) trackPopup.style.display = 'block';
+        if (trackMinimized) trackMinimized.style.display = 'none';
         console.log(`[draw] Showing full label (zoomed in) for track: ${feature.properties.name}`);
       }
       
       // Debug: Check if the element is actually visible
       const computedStyle = window.getComputedStyle(trackLabelEl);
-      console.log(`[draw] Track ${feature.properties.name} computed display: ${computedStyle.display}, visibility: ${computedStyle.visibility}`);
+      dlog(`[draw] Track ${feature.properties.name} computed display: ${computedStyle.display}, visibility: ${computedStyle.visibility}`);
       
       // If the element is hidden, force it to be visible (temporary fix)
       if (computedStyle.display === 'none') {
@@ -1597,22 +1963,30 @@
       console.log(`[draw] Rename button clicked for drawn track: ${feature.properties.name} (ID: ${feature.properties.id})`);
       startRenaming(trackLabelEl, feature, trackLabelMarker);
     });
+
+    const gpxDownloadBtn = trackLabelEl.querySelector('.track-download-gpx-btn');
+    if (gpxDownloadBtn) {
+      gpxDownloadBtn.addEventListener('click', (e) => {
+        e.stopPropagation();
+        exportSingleDrawnTrackAsGpx(feature);
+      });
+    }
     
     // Add minimize/maximize functionality
     const minimizeBtn = trackLabelEl.querySelector('.track-minimize-btn');
-    const trackPin = trackLabelEl.querySelector('.track-label-pin');
+    const trackMinimized = trackLabelEl.querySelector('.track-drawn-minimized');
     const trackPopup = trackLabelEl.querySelector('.track-label-popup');
     
     // Function to minimize this specific label
     const minimizeLabel = () => {
-      trackPopup.style.display = 'none';
-      trackPin.style.display = 'block';
+      if (trackPopup) trackPopup.style.display = 'none';
+      if (trackMinimized) trackMinimized.style.display = 'flex';
     };
     
     // Function to expand this specific label
     const expandLabel = () => {
-      trackPopup.style.display = 'block';
-      trackPin.style.display = 'none';
+      if (trackPopup) trackPopup.style.display = 'block';
+      if (trackMinimized) trackMinimized.style.display = 'none';
     };
     
     // Minimize button click
@@ -1621,11 +1995,13 @@
       minimizeLabel();
     });
     
-    // Pin click to expand
-    trackPin.addEventListener('click', (e) => {
-      e.stopPropagation();
-      expandLabel();
-    });
+    // Same behaviour as pin marker + name label: tap pin or name chip to open full card
+    if (trackMinimized) {
+      trackMinimized.addEventListener('click', (e) => {
+        e.stopPropagation();
+        expandLabel();
+      });
+    }
     
     // Add name editing functionality
     const titleElement = trackLabelEl.querySelector('.track-label-title');
@@ -1641,7 +2017,7 @@
     // Store the marker for later management
     drawnTrackLabels.push(trackLabelMarker);
     
-    console.log(`[draw] Added track label "${feature.properties.name}" at:`, middleCoord);
+    dlog(`[draw] Added track label "${feature.properties.name}" at:`, middleCoord);
   }
   
   // Global function to minimize all track labels
@@ -1649,12 +2025,10 @@
     drawnTrackLabels.forEach(labelMarker => {
       const trackLabelEl = labelMarker.getElement();
       const trackPopup = trackLabelEl.querySelector('.track-label-popup');
-      const trackPin = trackLabelEl.querySelector('.track-label-pin');
+      const trackMinimized = trackLabelEl.querySelector('.track-drawn-minimized');
       
-      if (trackPopup && trackPin) {
-        trackPopup.style.display = 'none';
-        trackPin.style.display = 'block';
-      }
+      if (trackPopup) trackPopup.style.display = 'none';
+      if (trackMinimized) trackMinimized.style.display = 'flex';
     });
   }
   
@@ -1683,6 +2057,8 @@
     const titleElement = trackLabelEl.querySelector('.track-label-title');
     const renameBtn = trackLabelEl.querySelector('.track-rename-btn');
     const deleteBtn = trackLabelEl.querySelector('.track-delete-btn');
+    const gpxDownloadBtn = trackLabelEl.querySelector('.track-download-gpx-btn');
+    const minimizeBtn = trackLabelEl.querySelector('.track-minimize-btn');
     
     // Set this track as currently being edited
     editingTrackId = feature.properties.id;
@@ -1704,6 +2080,8 @@
     // Hide action buttons during editing
     renameBtn.style.display = 'none';
     deleteBtn.style.display = 'none';
+    if (gpxDownloadBtn) gpxDownloadBtn.style.display = 'none';
+    if (minimizeBtn) minimizeBtn.style.display = 'none';
     
     // Focus and select text
     titleElement.focus();
@@ -1773,6 +2151,9 @@
         // If empty, restore original name
         titleElement.textContent = originalName;
       }
+
+      const minChip = trackLabelEl.querySelector('.track-drawn-minimized .label-inner');
+      if (minChip) minChip.textContent = titleElement.textContent.trim();
       
       // Clear editing state
       editingTrackId = null;
@@ -1789,6 +2170,8 @@
       titleElement.classList.remove('editing');
       renameBtn.style.display = 'flex';
       deleteBtn.style.display = 'flex';
+      if (gpxDownloadBtn) gpxDownloadBtn.style.display = '';
+      if (minimizeBtn) minimizeBtn.style.display = '';
       
       // Remove event listeners
       titleElement.removeEventListener('keydown', handleKeyDown);
@@ -1798,6 +2181,8 @@
     
     function cancelRenaming() {
       titleElement.textContent = originalName;
+      const minChip = trackLabelEl.querySelector('.track-drawn-minimized .label-inner');
+      if (minChip) minChip.textContent = originalName;
       
       // Clear editing state
       editingTrackId = null;
@@ -1813,6 +2198,8 @@
       titleElement.classList.remove('editing');
       renameBtn.style.display = 'flex';
       deleteBtn.style.display = 'flex';
+      if (gpxDownloadBtn) gpxDownloadBtn.style.display = '';
+      if (minimizeBtn) minimizeBtn.style.display = '';
       
       // Remove event listeners
       titleElement.removeEventListener('keydown', handleKeyDown);
@@ -1821,50 +2208,58 @@
     }
   }
   
+  /** Compare track ids from UI / GeoJSON (reload can change runtime types). */
+  function sameDrawTrackId(a, b) {
+    if (a === b) return true;
+    if (a == null || b == null) return false;
+    return String(a) === String(b);
+  }
+
   function deleteDrawnTrack(trackId) {
-    // Find the feature with the matching ID
-    const featureIndex = featureCollection.features.findIndex(feature => feature.properties.id === trackId);
-    
-    if (featureIndex !== -1) {
-      // Remove the feature from the collection
-      featureCollection.features.splice(featureIndex, 1);
-      
-      // Update the map source
-      if (map && map.getSource(SRC_ID)) {
-        map.getSource(SRC_ID).setData(featureCollection);
-      }
-      
-      // Remove the corresponding label marker
-      const labelToRemove = drawnTrackLabels.find(label => label._trackId === trackId);
-      if (labelToRemove) {
-        try {
-          // Remove any zoom event listeners
-          if (map && labelToRemove._updateVisibility) {
-            map.off('zoom', labelToRemove._updateVisibility);
-          }
-          
-          // Remove the marker from the map
-          labelToRemove.remove();
-          
-          // Remove from the array
-          const labelIndex = drawnTrackLabels.indexOf(labelToRemove);
-          if (labelIndex > -1) {
-            drawnTrackLabels.splice(labelIndex, 1);
-          }
-          
-          console.log(`[draw] Removed label marker for track ID ${trackId}`);
-        } catch (error) {
-          console.warn(`[draw] Error removing label marker for track ID ${trackId}:`, error);
-        }
-      }
-      
-      // Save updated tracks to Supabase
-      saveDrawnTracksToSupabase();
-      
-      console.log(`[draw] Deleted drawn track with ID ${trackId}`);
-    } else {
+    const featureIndex = featureCollection.features.findIndex((feature) =>
+      sameDrawTrackId(feature.properties.id, trackId)
+    );
+
+    if (featureIndex === -1) {
       console.warn(`[draw] Could not find track with ID ${trackId} to delete`);
+      return;
     }
+
+    const removedFeature = featureCollection.features[featureIndex];
+
+    const labelsToRemove = drawnTrackLabels.filter(
+      (label) =>
+        sameDrawTrackId(label._trackId, trackId) || label._feature === removedFeature
+    );
+
+    featureCollection.features.splice(featureIndex, 1);
+
+    if (sameDrawTrackId(editingTrackId, trackId)) {
+      editingTrackId = null;
+    }
+
+    if (map && map.getSource(SRC_ID)) {
+      syncDrawLayerData();
+    }
+
+    labelsToRemove.forEach((labelToRemove) => {
+      try {
+        if (labelToRemove._cleanup) {
+          labelToRemove._cleanup();
+        } else if (map && labelToRemove._updateVisibility) {
+          map.off('zoom', labelToRemove._updateVisibility);
+        }
+        labelToRemove.remove();
+        const labelIndex = drawnTrackLabels.indexOf(labelToRemove);
+        if (labelIndex > -1) drawnTrackLabels.splice(labelIndex, 1);
+        console.log(`[draw] Removed label marker for track ID ${trackId}`);
+      } catch (error) {
+        console.warn(`[draw] Error removing label marker for track ID ${trackId}:`, error);
+      }
+    });
+
+    saveDrawnTracksToSupabase();
+    console.log(`[draw] Deleted drawn track with ID ${trackId}`);
   }
   
   function clearDrawnTrackLabels() {
@@ -1889,14 +2284,14 @@
     });
     drawnTrackLabels = [];
     editingTrackId = null; // Reset editing state
-    console.log('[draw] Cleared all drawn track labels');
+    dlog('[draw] Cleared all drawn track labels');
   }
 
   // --- Utilities ---
   function clear() {
     featureCollection = { type: 'FeatureCollection', features: [] };
     if (map && map.getSource(SRC_ID)) {
-      map.getSource(SRC_ID).setData(featureCollection);
+      syncDrawLayerData();
     }
     // Clear all track labels
     clearDrawnTrackLabels();
@@ -1914,7 +2309,7 @@
       }
       
       // Get current user
-      const { data: { user }, error: authError } = await window.supabaseClient.auth.getUser();
+      const { user, error: authError } = await getCachedSupabaseUser();
       if (authError || !user) {
         console.log('[draw] No authenticated user, skipping Supabase save');
         return;
@@ -1927,7 +2322,8 @@
           coords: feature.geometry.coordinates,
           color: feature.properties.color || currentDrawColor,
           style: feature.properties.style || currentDrawStyle,
-          thickness: feature.properties.thickness || currentDrawThickness
+          thickness: feature.properties.thickness || currentDrawThickness,
+          line_color_mode: feature.properties.lineColorMode || 'manual'
         }));
 
       // Clear existing tracks for this user first
@@ -1964,7 +2360,7 @@
   
   async function loadDrawnTracksFromSupabase() {
     try {
-      console.log('[draw] Starting to load drawn tracks from Supabase... (attempt', loadRetryCount + 1, ')');
+      dlog('[draw] Starting to load drawn tracks from Supabase... (attempt', loadRetryCount + 1, ')');
       
       // Check if Supabase client is available
       if (!window.supabaseClient) {
@@ -1979,13 +2375,13 @@
       }
       
       // Get current user
-      const { data: { user }, error: authError } = await window.supabaseClient.auth.getUser();
+      const { user, error: authError } = await getCachedSupabaseUser();
       if (authError || !user) {
-        console.log('[draw] No authenticated user, skipping Supabase load');
+        dlog('[draw] No authenticated user, skipping Supabase load');
         return;
       }
 
-      console.log('[draw] User authenticated:', user.id);
+      dlog('[draw] User authenticated:', user.id);
 
       // Fetch tracks from Supabase
       const { data: tracks, error } = await window.supabaseClient
@@ -1999,14 +2395,27 @@
         return;
       }
 
-      console.log('[draw] Raw tracks from Supabase:', tracks);
+      dlog('[draw] Raw tracks from Supabase:', tracks);
 
       if (tracks && tracks.length > 0) {
-        console.log('[draw] Loading', tracks.length, 'drawn tracks from Supabase');
+        dlog('[draw] Loading', tracks.length, 'drawn tracks from Supabase');
         
         // Convert tracks back to GeoJSON features
         const features = await Promise.all(tracks.map(async track => {
           const trackId = nextTrackId++;
+          const storedMode = track.line_color_mode ?? track.lineColorMode;
+          const lineColorMode =
+            storedMode === 'elevation' || storedMode === 'slope' || storedMode === 'manual'
+              ? storedMode
+              : 'manual';
+
+          let coordElevations = computeCoordElevationsSync(track.coords);
+          if (
+            (lineColorMode === 'elevation' || lineColorMode === 'slope') &&
+            coordElevations.some((e) => e === null || !Number.isFinite(e))
+          ) {
+            coordElevations = await computeCoordElevationsTerrainRgb(track.coords, coordElevations);
+          }
           
           // Calculate distance for loaded tracks
           const distance = calculateTotalDistance(track.coords);
@@ -2037,11 +2446,18 @@
           if (!isPolygon && !isCircle && track.coords.length >= 2) {
             bearing = calculateBearing(track.coords[0], track.coords[track.coords.length - 1]);
             formattedBearing = formatBearing(bearing);
-            
-            elevationData = await calculateElevation(track.coords);
-            formattedElevation = formatElevation(elevationData);
+
+            const el0 = coordElevations.length ? coordElevations[0] : null;
+            const el1 = coordElevations.length ? coordElevations[coordElevations.length - 1] : null;
+            if (Number.isFinite(el0) && Number.isFinite(el1)) {
+              elevationData = { start: el0, end: el1, change: el1 - el0 };
+              formattedElevation = formatElevation(elevationData);
+            } else {
+              elevationData = await calculateElevation(track.coords);
+              formattedElevation = formatElevation(elevationData);
+            }
           }
-          
+
           return {
             type: 'Feature',
             properties: {
@@ -2060,6 +2476,8 @@
               formattedBearing: formattedBearing, // Store the formatted bearing string
               elevation: elevationData, // Store the elevation data
               formattedElevation: formattedElevation, // Store the formatted elevation string
+              coordElevations,
+              lineColorMode,
               isPolygon: isPolygon, // Track if this is a polygon
               isCircle: isCircle // Track if this is a circle
             },
@@ -2070,15 +2488,15 @@
           };
         }));
         
-        console.log('[draw] Converted features:', features);
+        dlog('[draw] Converted features:', features);
         featureCollection.features = features;
         
         // Migrate any tracks that don't have color properties
         migrateTrackColors();
         
-        console.log('[draw] Feature collection after migration:', featureCollection);
-        console.log('[draw] Map source exists:', !!map.getSource(SRC_ID));
-        console.log('[draw] Map layer exists:', !!map.getLayer(LINE_LAYER_ID));
+        dlog('[draw] Feature collection after migration:', featureCollection);
+        dlog('[draw] Map source exists:', !!map.getSource(SRC_ID));
+        dlog('[draw] Map layer exists:', !!map.getLayer(LINE_LAYER_ID));
         
         // Ensure source and layer exist, then update the data
         ensureSourceAndLayer();
@@ -2095,9 +2513,9 @@
           // Update the map source with loaded tracks
           if (map && map.getSource(SRC_ID)) {
             try {
-              map.getSource(SRC_ID).setData(featureCollection);
-              console.log('[draw] Successfully loaded drawn tracks to map');
-              console.log('[draw] Source data after update:', map.getSource(SRC_ID)._data);
+              syncDrawLayerData();
+              dlog('[draw] Successfully loaded drawn tracks to map');
+              dlog('[draw] Source data after update:', map.getSource(SRC_ID)._data);
             } catch (error) {
               console.error('[draw] Error updating map source:', error);
             }
@@ -2107,7 +2525,7 @@
               addDrawnTrackLabel(feature, false, true); // Third parameter: startMinimized
             });
           } else {
-            console.warn('[draw] Map source still not ready after ensureSourceAndLayer, will retry when map is loaded');
+            dlog('[draw] Map source still not ready after ensureSourceAndLayer, will retry when map is loaded');
             // Retry when map is ready
             if (map) {
               map.on('load', () => {
@@ -2119,8 +2537,8 @@
                   // Migrate any tracks that don't have color properties
                   migrateTrackColors();
                   
-                  map.getSource(SRC_ID).setData(featureCollection);
-                  console.log('[draw] Loaded drawn tracks to map (retry)');
+                  syncDrawLayerData();
+                  dlog('[draw] Loaded drawn tracks to map (retry)');
                   
                   // Add labels for all loaded tracks (but start minimized)
                   features.forEach((feature) => {
@@ -2132,7 +2550,7 @@
           }
         }
       } else {
-        console.log('[draw] No drawn tracks found in Supabase');
+        dlog('[draw] No drawn tracks found in Supabase');
       }
       
       // Reset retry count on success
@@ -2142,7 +2560,7 @@
       console.error('[draw] Error in loadDrawnTracksFromSupabase:', error);
       loadRetryCount++;
       if (loadRetryCount < MAX_LOAD_RETRIES) {
-        console.log('[draw] Retrying load in 3 seconds... (attempt', loadRetryCount, 'of', MAX_LOAD_RETRIES, ')');
+        dlog('[draw] Retrying load in 3 seconds... (attempt', loadRetryCount, 'of', MAX_LOAD_RETRIES, ')');
         setTimeout(loadDrawnTracksFromSupabase, 3000);
       } else {
         console.log('[draw] Max retries reached after error, giving up on loading drawn tracks');
@@ -2160,7 +2578,7 @@
       }
       
       // Get current user
-      const { data: { user }, error: authError } = await window.supabaseClient.auth.getUser();
+      const { user, error: authError } = await getCachedSupabaseUser();
       if (authError || !user) {
         console.log('[draw] No authenticated user, skipping Supabase clear');
         return;
@@ -2192,7 +2610,7 @@
       }
       
       // Get current user
-      const { data: { user }, error: authError } = await window.supabaseClient.auth.getUser();
+      const { user, error: authError } = await getCachedSupabaseUser();
       if (authError || !user) {
         console.log('[draw] No authenticated user, skipping color save');
         return;
@@ -2238,7 +2656,7 @@
       }
       
       // Get current user
-      const { data: { user }, error: authError } = await window.supabaseClient.auth.getUser();
+      const { user, error: authError } = await getCachedSupabaseUser();
       if (authError || !user) {
         console.log('[draw] No authenticated user, skipping color load');
         return null;
@@ -2262,12 +2680,15 @@
             // Table doesn't exist, that's okay too
             console.log('[draw] user_settings table does not exist, using default');
             return null;
+          } else if (String(error.message || '').includes('NetworkError')) {
+            dlog('[draw] Network error while loading color from Supabase, using local/default color');
+            return null;
           }
           console.error('[draw] Error loading color from Supabase:', error);
           return null;
         }
 
-        console.log('[draw] Loaded color from Supabase:', data.setting_value);
+        dlog('[draw] Loaded color from Supabase:', data.setting_value);
         return data.setting_value;
       } catch (tableError) {
         // Table doesn't exist or other error
@@ -2275,7 +2696,11 @@
         return null;
       }
     } catch (error) {
-      console.error('[draw] Error in loadDrawColorFromSupabase:', error);
+      if (String(error?.message || '').includes('NetworkError')) {
+        dlog('[draw] Network error in loadDrawColorFromSupabase, using local/default color');
+      } else {
+        console.error('[draw] Error in loadDrawColorFromSupabase:', error);
+      }
       return null;
     }
   }
@@ -2293,7 +2718,7 @@
       const localColor = localStorage.getItem('witd_draw_color');
       if (localColor) {
         loadedColor = localColor;
-        console.log('[draw] Loaded color from localStorage:', loadedColor);
+        dlog('[draw] Loaded color from localStorage:', loadedColor);
       }
     } catch (error) {
       console.warn('[draw] Could not load color from localStorage:', error);
@@ -2304,7 +2729,7 @@
       const supabaseColor = await loadDrawColorFromSupabase();
       if (supabaseColor) {
         loadedColor = supabaseColor;
-        console.log('[draw] Loaded color from Supabase:', loadedColor);
+        dlog('[draw] Loaded color from Supabase:', loadedColor);
         
         // Update localStorage with Supabase value for next time
         try {
@@ -2325,7 +2750,7 @@
       const colorPicker = document.getElementById('drawColorPicker');
       if (colorPicker) {
         colorPicker.value = loadedColor;
-        console.log('[draw] Updated color picker UI to:', loadedColor);
+        dlog('[draw] Updated color picker UI to:', loadedColor);
       }
       
       // Migrate existing tracks that don't have a color property
@@ -2340,12 +2765,12 @@
 
   // Migrate existing tracks to have color properties
   function migrateTrackColors() {
-    console.log('[draw] Starting migration, currentDrawColor:', currentDrawColor);
-    console.log('[draw] Features before migration:', featureCollection.features.length);
+    dlog('[draw] Starting migration, currentDrawColor:', currentDrawColor);
+    dlog('[draw] Features before migration:', featureCollection.features.length);
     
     let migrated = false;
     featureCollection.features.forEach((feature, index) => {
-      console.log(`[draw] Feature ${index}:`, {
+      dlog(`[draw] Feature ${index}:`, {
         id: feature.properties.id,
         hasColor: !!feature.properties.color,
         color: feature.properties.color
@@ -2354,18 +2779,18 @@
       if (!feature.properties.color) {
         feature.properties.color = currentDrawColor;
         migrated = true;
-        console.log('[draw] Migrated track', feature.properties.id, 'to color:', currentDrawColor);
+        dlog('[draw] Migrated track', feature.properties.id, 'to color:', currentDrawColor);
       }
     });
     
-    console.log('[draw] Migration complete, migrated:', migrated);
+    dlog('[draw] Migration complete, migrated:', migrated);
     
     if (migrated) {
       // Update the map source with migrated data
       if (map && map.getSource(SRC_ID)) {
         try {
-          map.getSource(SRC_ID).setData(featureCollection);
-          console.log('[draw] Updated map source with migrated colors');
+          syncDrawLayerData();
+          dlog('[draw] Updated map source with migrated colors');
         } catch (error) {
           console.error('[draw] Error updating map source with migrated colors:', error);
         }
@@ -2416,24 +2841,24 @@
     const savedStyle = localStorage.getItem('witd_draw_style');
     if (savedStyle) {
       currentDrawStyle = savedStyle;
-      console.log('[draw] Loaded style from localStorage:', currentDrawStyle);
+      dlog('[draw] Loaded style from localStorage:', currentDrawStyle);
     }
     
     // Update the UI to reflect the current style
     const styleSelect = document.getElementById('lineStyleSelect');
     if (styleSelect) {
       styleSelect.value = currentDrawStyle;
-      console.log('[draw] Updated style select UI to:', currentDrawStyle);
+      dlog('[draw] Updated style select UI to:', currentDrawStyle);
     }
   }
 
   // Function to update drawing thickness
   function updateDrawThickness(newThickness) {
     currentDrawThickness = parseInt(newThickness);
-    console.log('[draw] Updated drawing thickness to:', currentDrawThickness);
+    dlog('[draw] Updated drawing thickness to:', currentDrawThickness);
     try {
       localStorage.setItem('witd_draw_thickness', currentDrawThickness.toString());
-      console.log('[draw] Saved thickness to localStorage:', currentDrawThickness);
+      dlog('[draw] Saved thickness to localStorage:', currentDrawThickness);
     } catch (error) {
       console.warn('[draw] Could not save thickness to localStorage:', error);
     }
@@ -2444,14 +2869,14 @@
     const savedThickness = localStorage.getItem('witd_draw_thickness');
     if (savedThickness) {
       currentDrawThickness = parseInt(savedThickness);
-      console.log('[draw] Loaded thickness from localStorage:', currentDrawThickness);
+      dlog('[draw] Loaded thickness from localStorage:', currentDrawThickness);
     }
     const thicknessSlider = document.getElementById('thicknessSlider');
     const thicknessValue = document.getElementById('thicknessValue');
     if (thicknessSlider && thicknessValue) {
       thicknessSlider.value = currentDrawThickness;
       thicknessValue.textContent = currentDrawThickness;
-      console.log('[draw] Updated thickness slider UI to:', currentDrawThickness);
+      dlog('[draw] Updated thickness slider UI to:', currentDrawThickness);
     }
   }
 
@@ -2461,7 +2886,7 @@
     isLineMode = (mode === 'line');
     isPolygonMode = (mode === 'polygon');
     isCircleMode = (mode === 'circle');
-    console.log('[draw] Drawing mode set to:', mode, 'isLineMode:', isLineMode, 'isPolygonMode:', isPolygonMode, 'isCircleMode:', isCircleMode);
+    dlog('[draw] Drawing mode set to:', mode, 'isLineMode:', isLineMode, 'isPolygonMode:', isPolygonMode, 'isCircleMode:', isCircleMode);
     
     // Reset drawing state when switching modes
     if (!isLineMode) {
@@ -2516,7 +2941,7 @@
       
       // Update the map source
       if (map && map.getSource(SRC_ID)) {
-        map.getSource(SRC_ID).setData(featureCollection);
+        syncDrawLayerData();
         console.log('[draw] Map source cleared');
       }
       
@@ -2531,7 +2956,7 @@
       // Clear from Supabase if user is authenticated
       if (window.supabaseClient) {
         try {
-          const { data: { user } } = await window.supabaseClient.auth.getUser();
+          const { user } = await getCachedSupabaseUser();
           if (user) {
             await clearAllDrawingsFromSupabase(user.id);
           } else {
@@ -2625,6 +3050,13 @@
     loadDrawStyle,
     updateDrawThickness,
     loadDrawThickness,
+    updateDrawColorMode,
+    loadDrawColorMode,
+    getDrawColorMode: () => drawColorMode,
+    exportDrawnTracksAsGpx,
+    exportSingleDrawnTrackAsGpx,
+    updateExportGpxButtonVisibility: updateDrawExportGpxUi,
+    resampleTrackElevationsFromTerrain: resampleAllTrackElevationsFromTerrain,
     setDrawMode,
     clearAllDrawings,
     save: saveDrawnTracksToSupabase,
@@ -2641,10 +3073,11 @@
       layerExists: map ? !!map.getLayer(LINE_LAYER_ID) : false,
       featureCount: featureCollection.features.length,
       currentColor: currentDrawColor,
-      currentStyle: currentDrawStyle
+      currentStyle: currentDrawStyle,
+      drawColorMode
     }),
     restoreAfterStyleSwitch: () => {
-      console.log('[draw] Restoring draw tracks after style switch...');
+      dlog('[draw] Restoring draw tracks after style switch...');
       
       // Prevent multiple simultaneous restoration attempts
       if (isRestoring) {
@@ -2653,82 +3086,75 @@
       }
       
       isRestoring = true;
+      const restoreWatchdog = setTimeout(() => {
+        if (isRestoring) {
+          console.warn('[draw] Restoration watchdog reset (timeout)');
+          isRestoring = false;
+        }
+      }, 5000);
       
       const currentMap = window.WITD?.map;
       if (currentMap) {
-        // Store the current feature collection before cleanup (if any)
+        // Preserve features and rebind them explicitly to the new style source.
         const savedFeatures = featureCollection.features.length > 0 ? [...featureCollection.features] : [];
-        console.log(`[draw] Preserving ${savedFeatures.length} features before restoration`);
-        
-        // Update the map reference
+        dlog(`[draw] Preserving ${savedFeatures.length} features before restoration`);
         map = currentMap;
-        
-        // Restore the feature collection BEFORE creating the source
-        if (savedFeatures.length > 0) {
-          console.log(`[draw] Restoring ${savedFeatures.length} features to collection before source creation...`);
-          featureCollection.features = savedFeatures;
-        }
-        
-        // Force cleanup of existing source and layer before re-initialization
-        if (map.getSource(SRC_ID)) {
-          console.log('[draw] Removing existing source before restoration...');
-          map.removeSource(SRC_ID);
-        }
-        if (map.getLayer(LINE_LAYER_ID)) {
-          console.log('[draw] Removing existing layer before restoration...');
-          map.removeLayer(LINE_LAYER_ID);
-        }
-        
-        // Force re-initialization by temporarily clearing the map reference
-        const previousMap = map;
-        map = null;
-        
-        // Re-initialize the source and layer
-        init(previousMap, true); // Skip auto-load to prevent interference
-        
-        // Restore the map reference
-        map = previousMap;
-        
-        window.safeAddToMap(map, () => {
-          console.log('[draw] Map style loaded, creating source and layer...');
-          ensureSourceAndLayer();
-          
-          // Wait longer for the source and layer to be created and map to be fully ready
-          setTimeout(() => {
-            console.log('[draw] Checking source and layer after restoration...');
+        featureCollection.features = savedFeatures;
+
+        const rebindDrawLayers = () => {
+          if (rebindDrawLayers._ran) return;
+          rebindDrawLayers._ran = true;
+          try {
+            // Remove in safe order: layer first, then source.
+            if (map.getLayer(LINE_LAYER_ID)) {
+              map.removeLayer(LINE_LAYER_ID);
+            }
+            if (map.getSource(SRC_ID)) {
+              map.removeSource(SRC_ID);
+            }
+
+            ensureSourceAndLayer();
             const source = map.getSource(SRC_ID);
             const layer = map.getLayer(LINE_LAYER_ID);
-            console.log('[draw] Source exists:', !!source);
-            console.log('[draw] Layer exists:', !!layer);
-            
-            if (savedFeatures.length > 0) {
-              console.log(`[draw] Features should already be in source (${featureCollection.features.length} features)`);
-              
-              // Wait a bit more before restoring labels to ensure map is fully ready
-              setTimeout(() => {
-                // Restore track labels for all features
-                console.log('[draw] Restoring track labels...');
-                savedFeatures.forEach(feature => {
-                  addDrawnTrackLabel(feature, false, true); // Third parameter: startMinimized
-                });
-                console.log(`[draw] Restored ${savedFeatures.length} track labels`);
-                
-                // Force a map update to ensure the features are rendered
-                map.triggerRepaint();
-                console.log('[draw] Triggered map repaint');
-              }, 200);
-            } else {
-              // If no local features, try to reload from Supabase
-              console.log('[draw] No local features, reloading from Supabase...');
-              setTimeout(() => {
-                loadDrawnTracksFromSupabase();
-              }, 500);
+            dlog('[draw] Source exists:', !!source);
+            dlog('[draw] Layer exists:', !!layer);
+
+            if (source && typeof source.setData === 'function') {
+              resampleAllTrackElevationsFromTerrain();
+              dlog(`[draw] Rebound ${featureCollection.features.length} features to draw source`);
             }
-          }, 200); // Increased delay
-        });
-        
-        // Reset restoration flag
-        isRestoring = false;
+
+            if (savedFeatures.length > 0) {
+              dlog('[draw] Restoring track labels...');
+              savedFeatures.forEach(feature => {
+                addDrawnTrackLabel(feature, false, true);
+              });
+              dlog(`[draw] Restored ${savedFeatures.length} track labels`);
+              map.triggerRepaint();
+            } else {
+              console.log('[draw] No local features, reloading from Supabase...');
+              loadDrawnTracksFromSupabase();
+            }
+          } catch (error) {
+            console.error('[draw] Rebind draw layers failed:', error);
+          } finally {
+            clearTimeout(restoreWatchdog);
+            isRestoring = false;
+          }
+        };
+
+        if (!map.isStyleLoaded()) {
+          map.once('style.load', () => {
+            rebindDrawLayers();
+            map.once('idle', rebindDrawLayers);
+            setTimeout(rebindDrawLayers, 1200);
+          });
+        } else {
+          // Run immediately, then keep idle/timer as safety nets.
+          rebindDrawLayers();
+          map.once('idle', rebindDrawLayers);
+          setTimeout(rebindDrawLayers, 1200);
+        }
       } else {
         console.log('[draw] Map not available for restoration');
         isRestoring = false;
@@ -2838,13 +3264,13 @@
   if (window.WITD && window.WITD.map) {
     console.log('[draw] Map already available, initializing immediately');
     init(window.WITD.map);
-    console.log("Drawing module auto-initialized");
+    dlog("Drawing module auto-initialized");
   } else {
     window.addEventListener('witd:map-ready', (event) => {
       const readyMap = event.detail?.map || window.WITD?.map;
       if (readyMap) {
         init(readyMap);
-        console.log("Drawing module auto-initialized");
+        dlog("Drawing module auto-initialized");
       }
     }, { once: true });
   }

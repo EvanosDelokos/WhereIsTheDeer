@@ -1,7 +1,12 @@
 // measurementModule.js - Mapbox GL JS measurement tools
 // Handles distance, area, bearing, and elevation measurements
 
-console.log("Module loaded: measurementModule");
+const MEASUREMENT_DEBUG = false;
+const mmlog = (...args) => {
+  if (MEASUREMENT_DEBUG) console.log(...args);
+};
+
+mmlog("Module loaded: measurementModule");
 
 (function() {
   let map = null;
@@ -23,15 +28,15 @@ console.log("Module loaded: measurementModule");
 
   // Initialize measurement module
   function init(mapInstance) {
-    console.log('[measurement] Initializing with map instance:', mapInstance);
+    mmlog('[measurement] Initializing with map instance:', mapInstance);
     
     if (map && map === mapInstance) {
-      console.log('[measurement] Already initialized with this map instance, skipping...');
+      mmlog('[measurement] Already initialized with this map instance, skipping...');
       return;
     }
     
     if (map && map !== mapInstance) {
-      console.log('[measurement] Cleaning up previous map instance...');
+      mmlog('[measurement] Cleaning up previous map instance...');
       cleanup();
     }
     
@@ -49,7 +54,7 @@ console.log("Module loaded: measurementModule");
   }
 
   function setupMeasurementLayers() {
-    console.log('[measurement] Setting up measurement layers');
+    mmlog('[measurement] Setting up measurement layers');
     window.safeAddToMap(map, () => {
       // Create source for measurement data
       if (!map.getSource('measurement-source')) {
@@ -128,7 +133,7 @@ console.log("Module loaded: measurementModule");
     if (!styleReloadListenerAttached) {
       styleReloadListenerAttached = true;
       map.on('style.load', () => {
-        console.log('[measurement] Style reloaded, resetting layer check flag...');
+        mmlog('[measurement] Style reloaded, resetting layer check flag...');
         layersChecked = false;
         ensureMeasurementLayers();
         // Re-display current measurement if we have one
@@ -138,11 +143,11 @@ console.log("Module loaded: measurementModule");
       });
     }
 
-    console.log('[measurement] Measurement layers setup complete');
+    mmlog('[measurement] Measurement layers setup complete');
   }
 
   function ensureMeasurementLayers() {
-    console.log('[measurement] Ensuring measurement layers exist');
+    mmlog('[measurement] Ensuring measurement layers exist');
     window.safeAddToMap(map, () => {
       // Check if source exists, if not create it
       if (!map.getSource('measurement-source')) {
@@ -399,7 +404,7 @@ console.log("Module loaded: measurementModule");
             type: 'FeatureCollection',
             features: features
           });
-          console.log(`[measurement] Updated measurement data after recreation with ${features.length} features`);
+          mmlog(`[measurement] Updated measurement data after recreation with ${features.length} features`);
         }
       });
     }

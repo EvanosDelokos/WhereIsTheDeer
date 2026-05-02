@@ -1,4 +1,9 @@
-console.log("Module loaded: main.js");
+const MAIN_DEBUG = false;
+const mlog = (...args) => {
+  if (MAIN_DEBUG) console.log(...args);
+};
+
+mlog("Module loaded: main.js");
 // Initialize Supabase client ONCE, early in your app (if not already done)
 if (!window.supabaseClient) {
   window.supabaseClient = window.supabase.createClient(
@@ -16,9 +21,9 @@ if (!window.supabaseClient) {
 
 // Add global auth state listener (if not already present)
 window.supabaseClient.auth.onAuthStateChange((event, session) => {
-  console.log('🔔 Auth Event:', event);
+  mlog('🔔 Auth Event:', event);
   if (event === 'SIGNED_IN' || event === 'TOKEN_REFRESHED') {
-    console.log('✅ Session updated. Re-enabling SSS if needed.');
+    mlog('✅ Session updated. Re-enabling SSS if needed.');
     const modal = document.getElementById('loginModal');
     if (modal) {
       modal.classList.add('hidden');
@@ -44,7 +49,7 @@ window.supabaseClient.auth.onAuthStateChange((event, session) => {
     }
   }
   if (session?.user) {
-    console.log('✅ User is logged in:', session.user.email);
+    mlog('✅ User is logged in:', session.user.email);
     const modal = document.getElementById('loginModal');
     if (modal) {
       modal.classList.add('hidden');
@@ -55,32 +60,29 @@ window.supabaseClient.auth.onAuthStateChange((event, session) => {
       registerModal.style.display = 'none';
     }
   } else {
-    console.log('🚫 No session');
+    mlog('🚫 No session');
   }
 });
 
 // Only load the rest of the app after Supabase is ready
 (async () => {
   const { data: { session } } = await window.supabaseClient.auth.getSession();
-  console.log("✅ Supabase client ready. Session:", session?.user?.email || "none");
+  mlog("✅ Supabase client ready. Session:", session?.user?.email || "none");
 
-  // Dynamically import modules that depend on Supabase
+  // Load only modules that are not already injected by map.html script tags.
   await import('./sssModule.js'); // Only import, do not call setupSSS
-  await import('./mapEngine.js');
-  await import('./layerManager.js');
-  // Add other module imports as needed
 })();
 
 // GPX functionality is now handled directly in map.html
 // No more file forwarding needed - using handleGpxFiles() function
 
-console.log("📦 main.js script loading...");
-console.log("Module loaded: main.js - GPX forwarding removed");
+mlog("📦 main.js script loading...");
+mlog("Module loaded: main.js - GPX forwarding removed");
 
 // Initialize SSS module when DOM is ready
 function initializeMain() {
-  console.log("🔧 Initializing main.js handlers...");
-  console.log("DOM loaded, initializing SSS module...");
+  mlog("🔧 Initializing main.js handlers...");
+  mlog("DOM loaded, initializing SSS module...");
   
   // Force Account button sizing on page load
   forceAccountButtonSizing();
@@ -118,13 +120,13 @@ function initializeMain() {
         window.__sessionUser = session.user;
         window.showAccountPopover?.(session.user);
       } else {
-        console.log("🔓 Opening login modal...");
+        mlog("🔓 Opening login modal...");
         window.openLoginModal?.();
       }
     });
-    console.log("✅ Toolbar login button handler attached");
+    mlog("✅ Toolbar login button handler attached");
   } else {
-    console.warn("⚠️ toolbarLoginBtn not found!");
+    mlog("⚠️ toolbarLoginBtn not found!");
   }
 }
 
@@ -191,6 +193,14 @@ window.supabaseClient.auth.onAuthStateChange((event, session) => {
 function forceAccountButtonSizing() {
   const btn = document.getElementById('toolbarLoginBtn');
   const journalBtn = document.getElementById('toolbarJournalBtn');
+
+  const applySafePixelSize = (el, prop, value) => {
+    if (!el) return;
+    const numeric = typeof value === 'number' ? value : parseFloat(String(value || '').replace('px', ''));
+    if (Number.isFinite(numeric) && numeric > 0) {
+      el.style[prop] = `${numeric}px`;
+    }
+  };
   
   if (btn && journalBtn) {
     // Copy computed styles from the Journal button (which is working correctly)
@@ -200,8 +210,8 @@ function forceAccountButtonSizing() {
     btn.style.flex = journalStyles.flex;
     btn.style.minWidth = journalStyles.minWidth;
     btn.style.maxWidth = journalStyles.maxWidth;
-    btn.style.width = journalStyles.width;
-    btn.style.height = journalStyles.height;
+    applySafePixelSize(btn, 'width', journalStyles.width);
+    applySafePixelSize(btn, 'height', journalStyles.height);
     btn.style.padding = journalStyles.padding;
     btn.style.margin = journalStyles.margin;
     btn.style.borderRadius = journalStyles.borderRadius;

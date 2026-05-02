@@ -1,4 +1,9 @@
-console.log("Module loaded: disclaimerModule");
+const DISCLAIMER_DEBUG = false;
+const dislog = (...args) => {
+  if (DISCLAIMER_DEBUG) console.log(...args);
+};
+
+dislog("Module loaded: disclaimerModule");
 
 document.addEventListener("DOMContentLoaded", () => {
   const disclaimerOverlay = document.getElementById("disclaimerOverlay");
@@ -7,7 +12,7 @@ document.addEventListener("DOMContentLoaded", () => {
   if (agreeDisclaimer) {
     agreeDisclaimer.addEventListener("click", () => {
       disclaimerOverlay.style.display = "none";
-      console.log("Disclaimer agreed — overlay hidden.");
+      dislog("Disclaimer agreed — overlay hidden.");
     });
   }
 });

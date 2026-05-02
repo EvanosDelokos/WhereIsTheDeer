@@ -16,10 +16,14 @@
   <!-- Supabase -->
   <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.39.4/dist/umd/supabase.min.js"></script>
   <script>
+    const DEBUG = false;
+
     // 🎯 Global variables - declare at the top to avoid ReferenceError
     let loggedInUser = null;
     let currentUserPlan = null;
     let planLoaded = false; // Flag to prevent multiple plan fetches
+    let cachedUser = null;
+    let buttonsInitialized = false;
     
     // Initialize global window variables
     window.userPlan = null;
@@ -65,7 +69,11 @@
       window.history.replaceState({}, document.title, window.location.pathname);
     }
 
-    if (hasOAuthCode) {
+    let oauthHandled = false;
+
+    if (hasOAuthCode && !oauthHandled) {
+      oauthHandled = true;
+      console.log("🔐 Processing OAuth code...");
       console.log("🔄 Attempting to exchange OAuth code for session...");
       console.log("🔍 OAuth code:", urlParams.get('code'));
       console.log("🔍 OAuth state:", urlParams.get('state'));
@@ -95,13 +103,13 @@
 
     // Then try to restore any saved session
     window.supabaseClient.auth.getSession().then(({ data: { session } }) => {
-      console.log("🔹 getSession() called");
+      if (DEBUG) console.log("🔹 getSession() called");
       if (session) {
         loggedInUser = session.user;
         currentUserPlan = 'free'; // fallback
         window.currentUserPlan = currentUserPlan;
         window.userPlan = currentUserPlan;
-        console.log("✅ Session restored in <head>:", session.user.email);
+        if (DEBUG) console.log("✅ Session restored in <head>:", session.user.email);
         // Fetch user plan and apply styling
         if (typeof fetchUserPlan === 'function') {
           fetchUserPlan().then((plan) => {
@@ -216,22 +224,22 @@
   </script>
 
   <!-- All your modules in order -->
-  <script src="JS/mapEngine.js"></script>
-  <script src="JS/layerManager.js"></script>
-  <script src="JS/speciesLayer.js"></script>
-  <script type="module" src="JS/searchUI.js"></script>
-  <script type="module" src="JS/apiManager.js"></script>
-  <script type="module" src="JS/pinManager.js"></script>
-  <script src="JS/gpxManager.js"></script>
-  <script type="module" src="JS/drawModule.js"></script>
-  <script src="JS/measurementModule.js"></script>
-  <script type="module" src="JS/weatherModule.js"></script>
-  <script src="JS/journalModal.js"></script>
-  <script src="JS/uiManager.js"></script>
-  <script src="JS/disclaimerModule.js"></script>
-  <script src="JS/settings.js"></script>
-  <script src="JS/main.js" type="module"></script>
-  <script src="JS/authModal.js"></script>
+  <script src="JS/mapEngine.js?v=20260501g"></script>
+  <script src="JS/layerManager.js?v=20260501g"></script>
+  <script src="JS/speciesLayer.js?v=20260501g"></script>
+  <script type="module" src="JS/searchUI.js?v=20260501g"></script>
+  <script type="module" src="JS/apiManager.js?v=20260501g"></script>
+  <script type="module" src="JS/pinManager.js?v=20260501g"></script>
+  <script src="JS/gpxManager.js?v=20260501g"></script>
+  <script type="module" src="JS/drawModule.js?v=20260501g"></script>
+  <script src="JS/measurementModule.js?v=20260501g"></script>
+  <script type="module" src="JS/weatherModule.js?v=20260501g"></script>
+  <script src="JS/journalModal.js?v=20260501g"></script>
+  <script src="JS/uiManager.js?v=20260501g"></script>
+  <script src="JS/disclaimerModule.js?v=20260501g"></script>
+  <script src="JS/settings.js?v=20260501g"></script>
+  <script src="JS/main.js?v=20260501g" type="module"></script>
+  <script src="JS/authModal.js?v=20260501g"></script>
 
   <script>
   const speciesFilter = document.getElementById("speciesFilter");
@@ -371,6 +379,12 @@ if (speciesFilter) {
     <div class="submenu-section">
       <h4>Style Options</h4>
       <div class="style-controls">
+        <label for="drawColorModeSelect">Line color mode:</label>
+        <select id="drawColorModeSelect" aria-label="Draw line color mode" title="Applies to the next track you draw. Finished tracks keep the mode they were drawn with.">
+          <option value="manual">Manual</option>
+          <option value="elevation">Elevation</option>
+          <option value="slope">Slope</option>
+        </select>
         <label>Color:</label>
         <input type="color" id="drawColorPicker" value="#ff6b35">
         <label>Thickness: <span id="thicknessValue">3</span></label>
@@ -387,6 +401,7 @@ if (speciesFilter) {
       <h4>Actions</h4>
       <div class="action-buttons">
         <button id="startDrawBtn" class="action-btn">✏️ Start Drawing</button>
+        <button id="exportDrawGpxBtn" class="action-btn" type="button" style="display:none;" disabled>📤 Export as GPX</button>
         <button id="clearAllDrawingsBtn" class="action-btn">🗑️ Clear All</button>
       </div>
     </div>
@@ -776,7 +791,7 @@ let openAlignRight = false;
 // Function to reposition GPX popup when content changes
 let repositionTimeout = null;
 function repositionGpxPopup() {
-  console.log('repositionGpxPopup called');
+  if (DEBUG) console.log('repositionGpxPopup called');
   
   // Clear any existing timeout to prevent multiple rapid calls
   if (repositionTimeout) {
@@ -784,26 +799,26 @@ function repositionGpxPopup() {
   }
   
   if (openPopup && openPopup.id === 'gpxModal' && openPopup.style.display === 'block' && openButton && openButton.getBoundingClientRect) {
-    console.log('Repositioning GPX popup...');
+    if (DEBUG) console.log('Repositioning GPX popup...');
     
 
     
     // Longer delay to let map operations and DOM updates settle
     repositionTimeout = setTimeout(() => {
-      console.log('Executing positionPopup...');
+      if (DEBUG) console.log('Executing positionPopup...');
       positionPopup(openPopup, openButton, openAlignRight);
-      console.log('GPX popup repositioned');
+      if (DEBUG) console.log('GPX popup repositioned');
       repositionTimeout = null;
       
       // Check if this repositioning is re-loading GPX files
-      console.log('[GPX] After repositioning - checking if files were re-loaded');
+      if (DEBUG) console.log('[GPX] After repositioning - checking if files were re-loaded');
       if (window.gpxCleared) {
-        console.log('[GPX] Files were cleared, preventing re-load');
+        if (DEBUG) console.log('[GPX] Files were cleared, preventing re-load');
         return; // Exit early if files were cleared
       }
     }, 100); // Increased delay to let map operations complete
   } else {
-    console.log('GPX popup repositioning skipped - conditions not met');
+    if (DEBUG) console.log('GPX popup repositioning skipped - conditions not met');
   }
 }
 
@@ -828,8 +843,9 @@ window.addEventListener('scroll', () => {
     positionPopup(openPopup, openButton, openAlignRight);
   }
 }, true);
+if (!buttonsInitialized) {
 // Tools Dropdown
-const toolsBtn = document.getElementById('toolbarToolsBtn');
+let toolsBtn = document.getElementById('toolbarToolsBtn');
 const toolsDropdown = document.getElementById('toolsDropdown');
 const layersDropdown = document.getElementById('layersDropdown');
 
@@ -857,6 +873,8 @@ function applySpeciesUiAvailability() {
   });
 }
 if (toolsBtn && toolsDropdown) {
+  toolsBtn.replaceWith(toolsBtn.cloneNode(true));
+  toolsBtn = document.getElementById(toolsBtn.id);
   toolsBtn.addEventListener('click', e => {
     e.stopPropagation();
     if (toolsDropdown.style.display === 'block') {
@@ -890,7 +908,7 @@ if (toolsBtn && toolsDropdown) {
           btn.addEventListener('click', (e) => {
             e.stopPropagation();
             e.preventDefault();
-            console.log(`[Security] Intercepted disabled Tools feature click`);
+            if (DEBUG) console.log(`[Security] Intercepted disabled Tools feature click`);
             showUpgradeMessage();
           });
         });
@@ -916,25 +934,25 @@ if (layersDropdown) {
       const value = btn.getAttribute('data-species');
       
       // Check if the new species layer system is ready
-    if (!window.WITD?.species?.ready) {
-      console.log('Species layers not ready yet, waiting...');
-      // Wait a bit then try again
-      setTimeout(() => {
+      if (!window.WITD?.species?.ready) {
+        console.log('Species layers not ready yet, waiting...');
+        // Wait a bit then try again
+        setTimeout(() => {
+          if (window.handleSpeciesClick) {
+            window.handleSpeciesClick(value);
+          } else {
+            console.error('handleSpeciesClick function not available');
+          }
+        }, 500);
+      } else {
+        // Species layers ready, switch immediately
         if (window.handleSpeciesClick) {
           window.handleSpeciesClick(value);
         } else {
           console.error('handleSpeciesClick function not available');
         }
-      }, 500);
-    } else {
-      // Species layers ready, switch immediately
-      if (window.handleSpeciesClick) {
-        window.handleSpeciesClick(value);
-      } else {
-        console.error('handleSpeciesClick function not available');
       }
-    }
-  };
+    };
   });
 }
 
@@ -966,16 +984,18 @@ if (currentUserPlan === 'premium') {
     btn.addEventListener('click', (e) => {
       e.stopPropagation();
       e.preventDefault();
-      console.log(`[Security] Intercepted disabled layer feature click`);
+      if (DEBUG) console.log(`[Security] Intercepted disabled layer feature click`);
       showUpgradeMessage();
     });
   });
 }
 
 // GPX Modal - Unified gating with custom logic
-const gpxBtn = document.getElementById('toolbarGpxBtn');
+let gpxBtn = document.getElementById('toolbarGpxBtn');
 const gpxModal = document.getElementById('gpxModal');
 if (gpxBtn && gpxModal) {
+  gpxBtn.replaceWith(gpxBtn.cloneNode(true));
+  gpxBtn = document.getElementById(gpxBtn.id);
   gpxBtn.addEventListener('click', e => {
     e.stopPropagation();
     if (gpxModal.style.display === 'block') {
@@ -1024,7 +1044,7 @@ if (gpxBtn && gpxModal) {
           uploadLabel.addEventListener('click', (e) => {
             e.stopPropagation();
             e.preventDefault();
-            console.log(`[Security] Intercepted disabled GPX upload click`);
+            if (DEBUG) console.log(`[Security] Intercepted disabled GPX upload click`);
             showUpgradeMessage();
           });
         }
@@ -1032,7 +1052,7 @@ if (gpxBtn && gpxModal) {
           removeBtn.addEventListener('click', (e) => {
             e.stopPropagation();
             e.preventDefault();
-            console.log(`[Security] Intercepted disabled GPX remove click`);
+            if (DEBUG) console.log(`[Security] Intercepted disabled GPX remove click`);
             showUpgradeMessage();
           });
         }
@@ -1042,9 +1062,11 @@ if (gpxBtn && gpxModal) {
 }
 
 // Weather Button
-const weatherBtn = document.getElementById('toolbarWeatherBtn');
+let weatherBtn = document.getElementById('toolbarWeatherBtn');
 const weatherWrapper = document.getElementById('weatherWrapper');
 if (weatherBtn && weatherWrapper) {
+  weatherBtn.replaceWith(weatherBtn.cloneNode(true));
+  weatherBtn = document.getElementById(weatherBtn.id);
   weatherBtn.addEventListener('click', e => {
     e.stopPropagation();
     if (weatherWrapper.style.display === 'block') {
@@ -1067,7 +1089,7 @@ if (journalBtn && journalModal) {
     
     // Check if user is authenticated
     if (!loggedInUser) {
-      console.log('[Security] Journal access denied - user not authenticated');
+      if (DEBUG) console.log('[Security] Journal access denied - user not authenticated');
       showUpgradeMessage();
       return;
     }
@@ -1126,7 +1148,7 @@ if (journalBtn && journalModal) {
           newEntryBtn.addEventListener('click', (e) => {
             e.stopPropagation();
             e.preventDefault();
-            console.log(`[Security] Intercepted disabled journal new entry click`);
+            if (DEBUG) console.log(`[Security] Intercepted disabled journal new entry click`);
             showUpgradeMessage();
           });
         }
@@ -1134,13 +1156,14 @@ if (journalBtn && journalModal) {
           viewEntriesBtn.addEventListener('click', (e) => {
             e.stopPropagation();
             e.preventDefault();
-            console.log(`[Security] Intercepted disabled journal view entries click`);
+            if (DEBUG) console.log(`[Security] Intercepted disabled journal view entries click`);
             showUpgradeMessage();
           });
         }
       }
     }
   });
+}
 }
 
 
@@ -1396,13 +1419,13 @@ function applyModalProtection(modalId) {
   const modal = document.getElementById(modalId);
   const isFreeUser = currentUserPlan !== 'premium';
   if (!modal || !isFreeUser) {
-    console.log(`[Protection] Skipping protection for ${modalId} - ${isFreeUser ? 'modal not found' : 'premium user'}`);
+    if (DEBUG) console.log(`[Protection] Skipping protection for ${modalId} - ${isFreeUser ? 'modal not found' : 'premium user'}`);
     return;
   }
 
   // Prevent duplicate protection
   if (protectedModals.has(modalId)) {
-    console.log(`[Protection] Modal ${modalId} already protected, skipping`);
+    if (DEBUG) console.log(`[Protection] Modal ${modalId} already protected, skipping`);
     return;
   }
   
@@ -1423,11 +1446,11 @@ function applyModalProtection(modalId) {
   
 
 
-  console.log(`[Protection] Applying protection to ${modalId} for FREE user`);
+  if (DEBUG) console.log(`[Protection] Applying protection to ${modalId} for FREE user`);
 
   // Get all popup buttons and ensure they have disabled class for free users
   const allPopupButtons = modal.querySelectorAll('.popup-btn');
-  console.log(`[Styling] All popup buttons in modal: ${modalId}`, allPopupButtons.length);
+  if (DEBUG) console.log(`[Styling] All popup buttons in modal: ${modalId}`, allPopupButtons.length);
   
   // For free users, make buttons clickable but show upgrade popup
   allPopupButtons.forEach(btn => {
@@ -1443,7 +1466,7 @@ function applyModalProtection(modalId) {
       btn.style.opacity = '0.5';
       btn.style.filter = 'grayscale(0.5)';
       
-      console.log(`[Protection] Applied disabled styling to: ${btn.id || btn.textContent}`);
+      if (DEBUG) console.log(`[Protection] Applied disabled styling to: ${btn.id || btn.textContent}`);
     } else {
       // Ensure close buttons work normally for free users
       btn.classList.remove('disabled');
@@ -1457,13 +1480,13 @@ function applyModalProtection(modalId) {
   
   // Now get the disabled buttons for event listener setup
   const disabledButtons = modal.querySelectorAll('.popup-btn.disabled');
-  console.log(`[Styling] Disabled buttons in modal: ${modalId}`, disabledButtons.length);
+  if (DEBUG) console.log(`[Styling] Disabled buttons in modal: ${modalId}`, disabledButtons.length);
   
   // Log specific button types for debugging
   if (modalId === 'layersDropdown') {
     const layerButtons = modal.querySelectorAll('button[data-layer]');
     const speciesButtons = modal.querySelectorAll('.species-btn');
-    console.log(`[Debug] Layer buttons: ${layerButtons.length}, Species buttons: ${speciesButtons.length}`);
+    if (DEBUG) console.log(`[Debug] Layer buttons: ${layerButtons.length}, Species buttons: ${speciesButtons.length}`);
   }
 
   disabledButtons.forEach(btn => {
@@ -1476,69 +1499,86 @@ function applyModalProtection(modalId) {
     const newBtn = btn.cloneNode(true);
     btn.parentNode.replaceChild(newBtn, btn);
     
-    console.log(`[Debug] Replaced button with new instance to clear old listeners`);
+    if (DEBUG) console.log(`[Debug] Replaced button with new instance to clear old listeners`);
     
     // Add single event listener to the new button
     newBtn.addEventListener('click', (e) => {
       e.stopPropagation();
       e.preventDefault();
-      console.log(`[Security] Intercepted disabled feature click in ${modalId}`);
+      if (DEBUG) console.log(`[Security] Intercepted disabled feature click in ${modalId}`);
       showUpgradeMessage(); // The styled upgrade popup
     });
   });
 }
 
 async function fetchUserPlan() {
-  const { data: { user } } = await supabase.auth.getUser();
-
-  if (!user) {
-    window.userPlan = 'free';
-    window.currentUserPlan = 'free';
-    window.planLoaded = true;
-    currentUserPlan = 'free';
-    planLoaded = true;
-    console.log('[Plan] Loaded:', 'free');
-    applyPremiumStyling();
-    return 'free';
+  if (planLoaded) {
+    if (DEBUG) console.log("⏭️ fetchUserPlan skipped (already loaded)");
+    return;
   }
 
-  const { data } = await supabase
-    .from('profiles')
-    .select('plan')
-    .eq('id', user.id)
-    .single();
-
-  const plan = data?.plan || 'free';
-
-  window.userPlan = plan;
-  window.currentUserPlan = plan;
-  window.planLoaded = true;
-  currentUserPlan = plan;
   planLoaded = true;
 
-  console.log('[Plan] Loaded:', plan);
-  applyPremiumStyling();
+  try {
+    if (!cachedUser) {
+      const { data } = await supabase.auth.getUser();
+      cachedUser = data.user;
+    }
+    const user = cachedUser;
 
-  if (plan === 'premium') {
-    restoreOriginalButtonFunctionality();
-  } else {
-    applyModalProtection('gpxModal');
-    applyModalProtection('journalModal');
-    applyToolbarProtection();
-    applyToolsProtection();
+    if (!user) {
+      window.userPlan = 'free';
+      window.currentUserPlan = 'free';
+      window.planLoaded = true;
+      currentUserPlan = 'free';
+      planLoaded = true;
+      if (DEBUG) console.log('[Plan] Loaded:', 'free');
+      applyPremiumStyling();
+      return 'free';
+    }
+
+    const { data } = await supabase
+      .from('profiles')
+      .select('plan')
+      .eq('id', user.id)
+      .single();
+
+    const plan = data?.plan || 'free';
+
+    window.userPlan = plan;
+    window.currentUserPlan = plan;
+    window.planLoaded = true;
+    currentUserPlan = plan;
+    planLoaded = true;
+
+    if (DEBUG) console.log('[Plan] Loaded:', plan);
+    applyPremiumStyling();
+
+    if (plan === 'premium') {
+      restoreOriginalButtonFunctionality();
+    } else {
+      applyModalProtection('gpxModal');
+      applyModalProtection('journalModal');
+      applyToolbarProtection();
+      applyToolsProtection();
+    }
+
+    if (plan !== 'premium') {
+      const hidden = document.getElementById('uiHidden');
+      if (hidden) hidden.remove();
+    }
+
+    return plan;
+  } catch (err) {
+    console.error("❌ fetchUserPlan failed:", err);
+    planLoaded = false; // allow retry on failure
   }
-
-  if (plan !== 'premium') {
-    const hidden = document.getElementById('uiHidden');
-    if (hidden) hidden.remove();
-  }
-
-  return plan;
 }
 
 // Function to reset plan loading flag (useful for logout/login scenarios)
 function resetPlanLoaded() {
   planLoaded = false;
+  cachedUser = null;
   window.planLoaded = false;
   console.log("🔄 Plan loading flag reset");
 }
@@ -1566,7 +1606,7 @@ window.debugPlan = function() {
 
 // Function to apply premium styling to UI elements
 function applyPremiumStyling() {
-  console.log(`[Styling] Applying premium styling for plan: ${currentUserPlan}`);
+  if (DEBUG) console.log(`[Styling] Applying premium styling for plan: ${currentUserPlan}`);
   
   // Update 2D/3D toggle button styling
   if (window.viewModeControl) {
@@ -1576,7 +1616,7 @@ function applyPremiumStyling() {
   // Apply protection to all modals based on current plan
   if (currentUserPlan === 'premium') {
     // Premium user - enable all features
-    console.log('[Styling] Premium user - enabling all features');
+    if (DEBUG) console.log('[Styling] Premium user - enabling all features');
     
     // Enable all layer buttons (Terrain, Satellite, Contours, Hybrid)
     const layerButtons = document.querySelectorAll('button[data-layer]');
@@ -1634,7 +1674,7 @@ function applyPremiumStyling() {
     
   } else {
     // Free user - apply protection to premium features
-    console.log('[Styling] Free user - applying protection to premium features');
+    if (DEBUG) console.log('[Styling] Free user - applying protection to premium features');
     
     // Species layers remain free for all users (Hog Deer / Duck stay UI-disabled)
     applySpeciesUiAvailability();
@@ -1714,13 +1754,13 @@ function applyDisabledButtonListeners() {
     const newBtn = btn.cloneNode(true);
     btn.parentNode.replaceChild(newBtn, btn);
     
-    console.log(`[Debug] Replaced button with new instance to clear old listeners`);
+    if (DEBUG) console.log(`[Debug] Replaced button with new instance to clear old listeners`);
     
     // Add single event listener to the new button
     newBtn.addEventListener('click', (e) => {
       e.stopPropagation();
       e.preventDefault();
-      console.log(`[Security] Intercepted disabled feature click`);
+      if (DEBUG) console.log(`[Security] Intercepted disabled feature click`);
       showUpgradeMessage(); // The styled upgrade popup
     });
   });
@@ -1733,7 +1773,7 @@ function applyToolbarProtection() {
     return; // Skip for premium users
   }
   
-  console.log('[Protection] Applying popup content protection for FREE user');
+  if (DEBUG) console.log('[Protection] Applying popup content protection for FREE user');
   
   // Don't protect toolbar buttons - they should remain clickable to open popups
   // The modal protection will handle the buttons inside the popups
@@ -1746,7 +1786,7 @@ function applyToolsProtection() {
     return; // Skip for premium users
   }
   
-  console.log('[Protection] Applying tools popup protection for FREE user');
+  if (DEBUG) console.log('[Protection] Applying tools popup protection for FREE user');
   
   // Get the tools popup buttons
   const toolsButtons = document.querySelectorAll('#toolsDropdown .popup-btn');
@@ -1762,7 +1802,7 @@ function applyToolsProtection() {
     btn.style.opacity = '0.5';
     btn.style.filter = 'grayscale(0.5)';
     
-    console.log(`[Protection] Applied disabled styling to: ${btn.id || btn.textContent}`);
+    if (DEBUG) console.log(`[Protection] Applied disabled styling to: ${btn.id || btn.textContent}`);
     
     // Remove existing onclick handlers and add upgrade popup
     const newBtn = btn.cloneNode(true);
@@ -1771,16 +1811,16 @@ function applyToolsProtection() {
     newBtn.addEventListener('click', (e) => {
       e.stopPropagation();
       e.preventDefault();
-      console.log(`[Security] Intercepted tools button click: ${newBtn.id || newBtn.textContent}`);
+      if (DEBUG) console.log(`[Security] Intercepted tools button click: ${newBtn.id || newBtn.textContent}`);
       showUpgradeMessage();
     });
   });
 }
 
 // Function to restore original button functionality for premium users
-function restoreOriginalButtonFunctionality() {
-  console.log("🔧 restoreOriginalButtonFunctionality() called");
-  console.log("[Restore] Restoring original button functionality for premium user");
+  function restoreOriginalButtonFunctionality() {
+  if (DEBUG) console.log("🔧 restoreOriginalButtonFunctionality() called");
+  if (DEBUG) console.log("[Restore] Restoring original button functionality for premium user");
   
   // First, remove any disabled styling from all buttons
   const allButtons = document.querySelectorAll('.popup-btn, .species-btn, button[data-layer]');
@@ -1837,6 +1877,9 @@ function restoreOriginalButtonFunctionality() {
       drawSubmenu.style.display = 'block';
       // Position the submenu properly
       positionToolSubmenu(drawSubmenu);
+      if (window.WITD && window.WITD.draw && typeof window.WITD.draw.updateExportGpxButtonVisibility === 'function') {
+        window.WITD.draw.updateExportGpxButtonVisibility();
+      }
     }
   });
   replaceButtonHandler('toolbarTrack', () => {
@@ -2049,6 +2092,25 @@ function restoreOriginalButtonFunctionality() {
       }
     });
   }
+
+  const drawColorModeSelect = document.getElementById('drawColorModeSelect');
+  if (drawColorModeSelect) {
+    drawColorModeSelect.addEventListener('change', (e) => {
+      const mode = e.target.value;
+      if (window.WITD && window.WITD.draw && window.WITD.draw.updateDrawColorMode) {
+        window.WITD.draw.updateDrawColorMode(mode);
+      }
+    });
+  }
+
+  const exportDrawGpxBtn = document.getElementById('exportDrawGpxBtn');
+  if (exportDrawGpxBtn) {
+    exportDrawGpxBtn.addEventListener('click', () => {
+      if (window.WITD && window.WITD.draw && window.WITD.draw.exportDrawnTracksAsGpx) {
+        window.WITD.draw.exportDrawnTracksAsGpx('drawn-tracks.gpx');
+      }
+    });
+  }
   
   // Precision slider
   const precisionSlider = document.getElementById('precisionSlider');
@@ -2112,65 +2174,38 @@ function restoreOriginalButtonFunctionality() {
     }
   });
   
-  // Close submenus when other toolbars are opened
-  const toolbarButtons = [
-    'toolbarLayersBtn', 'toolbarGpxBtn', 'toolbarWeatherBtn', 
-    'toolbarJournalBtn', /* 'toolbarSSSBtn', */ 'toolbarAccountBtn'
-  ];
-  
-  toolbarButtons.forEach(btnId => {
-    const btn = document.getElementById(btnId);
-    if (btn) {
-      btn.addEventListener('click', () => {
+  if (!buttonsInitialized) {
+    // Close submenus when other toolbars are opened
+    const toolbarButtons = [
+      'toolbarLayersBtn', 'toolbarGpxBtn', 'toolbarWeatherBtn', 
+      'toolbarJournalBtn', /* 'toolbarSSSBtn', */ 'toolbarAccountBtn'
+    ];
+    
+    toolbarButtons.forEach(btnId => {
+      const btn = document.getElementById(btnId);
+      if (btn) {
+        btn.addEventListener('click', () => {
+          closeAllToolSubmenus();
+        });
+      }
+    });
+    
+    // Close submenus when main tools dropdown is opened (do not clone — cloning removes the
+    // primary Tools toggle handler attached earlier in this page).
+    const toolsBtnForSubmenus = document.getElementById('toolbarToolsBtn');
+    if (toolsBtnForSubmenus) {
+      toolsBtnForSubmenus.addEventListener('click', () => {
         closeAllToolSubmenus();
       });
     }
-  });
-  
-  // Close submenus when main tools dropdown is opened
-  const toolsBtn = document.getElementById('toolbarToolsBtn');
-  if (toolsBtn) {
-    toolsBtn.addEventListener('click', () => {
-      closeAllToolSubmenus();
-    });
+
+    buttonsInitialized = true;
   }
 
   // --- GPX Modal Close Button Removed ---
   // Close button removed - modal closes on outside click
 
-  // --- GPX Upload Proxy → Real Input Forwarder ---
-  const proxy = document.getElementById('gpxUploadProxy');
-  const real = document.getElementById('gpxUpload');
-
-  if (proxy && real) {
-    proxy.addEventListener('change', () => {
-      const proxyFiles = proxy.files;
-      console.log("🌀 Proxy input changed. Files:", proxyFiles);
-
-      if (!proxyFiles || proxyFiles.length === 0) {
-        console.warn("🌀 No files selected in proxy input");
-        return;
-      }
-
-      try {
-        const dt = new DataTransfer();
-        for (const file of proxyFiles) {
-          dt.items.add(file);
-        }
-
-        real.files = dt.files;
-        console.log("🌀 Forwarded to real input:", real.files);
-
-        // Trigger the real GPX logic
-        real.dispatchEvent(new Event('change'));
-
-        // Reset proxy so next selection works
-        proxy.value = '';
-      } catch (err) {
-        console.error("🛑 Error forwarding files:", err);
-      }
-    });
-  }
+  // GPX proxy forwarding removed; JS/gpxManager.js owns upload flow.
 
   // --- Layers popup ---
   const layerButtons = document.querySelectorAll('button[data-layer]');
@@ -2222,14 +2257,14 @@ function restoreOriginalButtonFunctionality() {
   
   // --- GPX Upload Button ---
   replaceButtonHandler('gpxUploadBtn', () => {
-    console.log("📁 GPX Upload clicked");
+    if (DEBUG) console.log("📁 GPX Upload clicked");
     // Use our new GPX manager input to avoid conflicts
     const gpxManagerInput = window.gpxManagerInput;
     if (gpxManagerInput) {
-      console.log("📁 Using GPX manager input");
+      if (DEBUG) console.log("📁 Using GPX manager input");
       gpxManagerInput.click();
     } else {
-      console.log("📁 Fallback to original gpxUpload input");
+      if (DEBUG) console.log("📁 Fallback to original gpxUpload input");
       const gpxUpload = document.getElementById('gpxUpload');
       if (gpxUpload) {
         gpxUpload.click();
@@ -2269,7 +2304,7 @@ function restoreOriginalButtonFunctionality() {
   //   };
   // }
   
-  console.log("✅ Button functionality restored");
+  if (DEBUG) console.log("✅ Button functionality restored");
   applySpeciesUiAvailability();
 }
 
@@ -2385,7 +2420,7 @@ window.supabaseClient.auth.getUser().then(({ data: { user } }) => {
   if (user) {
     loggedInUser = user;
     fetchUserPlan();
-    console.log("Logged in:", user.email);
+    if (DEBUG) console.log("Logged in:", user.email);
   } else {
     // No user logged in, ensure free user styling is applied
     currentUserPlan = 'free';
@@ -2398,11 +2433,11 @@ window.supabaseClient.auth.getUser().then(({ data: { user } }) => {
 
 // Listen for auth state changes
 window.supabaseClient.auth.onAuthStateChange((event, session) => {
-  console.log("🔄 Auth state change:", event, session);
+  if (DEBUG) console.log("🔄 Auth state change:", event, session);
   if (event === 'SIGNED_IN' && session?.user) {
     loggedInUser = session.user;
     fetchUserPlan();
-    console.log("✅ User signed in:", session.user.email);
+    if (DEBUG) console.log("✅ User signed in:", session.user.email);
     
     // Load drawing color and style when user signs in
     if (window.WITD && window.WITD.draw && window.WITD.draw.loadDrawColor) {
@@ -2464,7 +2499,7 @@ window.addEventListener('DOMContentLoaded', function() {
   
   // Initialize session and user state after all functions are defined
   if (loggedInUser) {
-    console.log("🔄 Initializing user state for:", loggedInUser.email);
+    if (DEBUG) console.log("🔄 Initializing user state for:", loggedInUser.email);
     fetchUserPlan().then((plan) => {
       window.userPlan = plan || 'free';
     });
@@ -2487,23 +2522,22 @@ window.addEventListener('DOMContentLoaded', function() {
   ].forEach(id => secureFeatureAccess(id));
   
   // 🔐 Initialize unified gating for all toolbar modals
-  console.debug("[Init] Setting up unified gating for toolbar modals");
+  if (DEBUG) console.debug("[Init] Setting up unified gating for toolbar modals");
   
   // Apply unified gating to all modal buttons
   applyUnifiedGating('toolbarLayersBtn', 'layersDropdown');
   // applyUnifiedGating('toolbarSSSBtn', 'sssModal'); // SSS not in use currently
   
   // Modal protection is now handled in fetchUserPlan() after plan is determined
-  console.log("[Init] Modal protection will be applied after user plan is fetched");
+  if (DEBUG) console.log("[Init] Modal protection will be applied after user plan is fetched");
   
-  console.debug("[Init] Gating and popup logic initialized");
+  if (DEBUG) console.debug("[Init] Gating and popup logic initialized");
 
   // 🎯 Add a plan badge in the bottom right corner
   const planIndicator = document.getElementById('planIndicator');
   // Plan indicator removed - no longer needed
 }); // Close the DOMContentLoaded event listener
 </script>
-<script src="JS/journalModal.js"></script>
 <script>
 // Apply initial styling after page load
 document.addEventListener('DOMContentLoaded', () => {
@@ -2788,44 +2822,10 @@ function restoreButtonFunctionality() {
   //   };
   // }
   
-  console.log("✅ Button functionality restored");
+  if (DEBUG) console.log("✅ Button functionality restored");
 }
 
-// GPX file forwarding — wait for DOM content
-document.addEventListener("DOMContentLoaded", () => {
-  const proxy = document.getElementById('gpxUploadProxy');
-  const real = document.getElementById('gpxUpload');
-
-  if (!proxy || !real) {
-    console.warn("🛑 Missing gpxUploadProxy or gpxUpload input.");
-    return;
-  }
-
-  proxy.addEventListener('change', () => {
-    const proxyFiles = proxy.files;
-    console.log("🌀 Proxy input changed. Files:", proxyFiles);
-
-    if (!proxyFiles || proxyFiles.length === 0) {
-      console.warn("🌀 No files selected in proxy input");
-      return;
-    }
-
-    try {
-      const dt = new DataTransfer();
-      for (const file of proxyFiles) {
-        dt.items.add(file);
-      }
-
-      real.files = dt.files;
-      console.log("🌀 Forwarded to real input:", real.files);
-
-      real.dispatchEvent(new Event('change'));
-      proxy.value = '';
-    } catch (err) {
-      console.error("🛑 Error forwarding files:", err);
-    }
-  });
-});
+// GPX proxy forwarding removed; JS/gpxManager.js owns upload flow.
 
 // Global GPX cluster group for managing start/finish markers
 let gpxClusterGroup = null;
@@ -2869,25 +2869,12 @@ function clearGpxFiles() {
     console.log('[GPX] Cleared GPX files from localStorage');
   }
   
-  // Remove cluster group from map
-  if (gpxClusterGroup) {
-    const map = window.WITD?.map;
-    if (map) {
-      map.removeLayer(gpxClusterGroup);
-    }
-    gpxClusterGroup = null;
-  }
-  
-  // Remove all GPX track layers from the map
+  gpxClusterGroup = null;
+
+  // Clear Mapbox GPX tracks, pins, and labels (uses layer/source ids internally)
   const map = window.WITD?.map;
-  if (map) {
-    // Find and remove all GPX layers
-    map.eachLayer((layer) => {
-      if (layer._gpx) {
-        console.log('[GPX] Removing GPX layer:', layer);
-        map.removeLayer(layer);
-      }
-    });
+  if (map && typeof window.clearAllGpxTracks === 'function') {
+    window.clearAllGpxTracks();
   }
   
   // Clear any existing GPX list in the UI
@@ -2919,14 +2906,17 @@ function clearGpxFiles() {
   setTimeout(() => {
     const map = window.WITD?.map;
     if (map) {
-      let gpxLayerCount = 0;
-      map.eachLayer((layer) => {
-        if (layer._gpx) {
-          gpxLayerCount++;
-          console.log('[GPX] Found GPX layer after clearing:', layer);
+      try {
+        const src = map.getSource('gpx-tracks');
+        let featureCount = 0;
+        if (src && typeof src.serialize === 'function') {
+          const data = src.serialize().data;
+          featureCount = data && data.features ? data.features.length : 0;
         }
-      });
-      console.log('[GPX] GPX layers on map after clearing:', gpxLayerCount);
+        console.log('[GPX] GPX track features in source after clearing:', featureCount);
+      } catch (err) {
+        console.log('[GPX] Could not read gpx-tracks source after clearing:', err);
+      }
     }
     
     // Reset the gpxCleared flag after 2 seconds to allow new uploads
@@ -3103,7 +3093,7 @@ document.addEventListener('DOMContentLoaded', function() {
   // NOTE: Modal close buttons are handled by authModal.js
   // This block intentionally left minimal to avoid conflicts
   
-  console.log('✅ map.html DOMContentLoaded - login handlers are in main.js and authModal.js');
+  if (DEBUG) console.log('✅ map.html DOMContentLoaded - login handlers are in main.js and authModal.js');
 });
 </script>
 

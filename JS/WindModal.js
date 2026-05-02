@@ -205,8 +205,12 @@ export class WindModal {
     if (this.canvas.width !== pixelWidth || this.canvas.height !== pixelHeight) {
       this.canvas.width = pixelWidth;
       this.canvas.height = pixelHeight;
-      this.canvas.style.width = `${cssWidth}px`;
-      this.canvas.style.height = `${cssHeight}px`;
+      if (Number.isFinite(cssWidth) && cssWidth > 0) {
+        this.canvas.style.width = `${cssWidth}px`;
+      }
+      if (Number.isFinite(cssHeight) && cssHeight > 0) {
+        this.canvas.style.height = `${cssHeight}px`;
+      }
       this.ctx.setTransform(this.dpr, 0, 0, this.dpr, 0, 0);
     }
   }

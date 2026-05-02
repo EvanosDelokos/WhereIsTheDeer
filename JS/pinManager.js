@@ -1,4 +1,8 @@
 // Pin manager module loaded
+const PIN_DEBUG = false;
+const plog = (...args) => {
+  if (PIN_DEBUG) console.log(...args);
+};
 
 // ============================================================================
 // UNIFIED PIN BUILDER FUNCTIONS
@@ -315,11 +319,11 @@ async function saveCurrentLocalPinsToSupabase() {
   try {
     const { data: { user } } = await window.supabaseClient.auth.getUser();
     if (!user) {
-      console.log('[Pins] No user authenticated, cannot save to Supabase');
+      plog('[Pins] No user authenticated, cannot save to Supabase');
       return false;
     }
     
-    console.log('[Pins] Manually saving localPinData to Supabase:', localPinData);
+    plog('[Pins] Manually saving localPinData to Supabase:', localPinData);
     
     const { error } = await supabase
       .from('user_pins')
@@ -336,7 +340,7 @@ async function saveCurrentLocalPinsToSupabase() {
       return false;
     }
     
-    console.log('[Pins] Successfully saved localPinData to Supabase');
+    plog('[Pins] Successfully saved localPinData to Supabase');
     return true;
   } catch (error) {
     console.error('[Pins] Error in manual save to Supabase:', error.message);
@@ -352,11 +356,11 @@ async function loadPinsFromSupabaseAndUpdateLocal() {
   try {
     const { data: { user } } = await window.supabaseClient.auth.getUser();
     if (!user) {
-      console.log('[Pins] No user authenticated, cannot load from Supabase');
+      plog('[Pins] No user authenticated, cannot load from Supabase');
       return false;
     }
     
-    console.log('[Pins] Manually loading pins from Supabase for user:', user.id);
+    plog('[Pins] Manually loading pins from Supabase for user:', user.id);
     
     const pins = await loadUserPinsFromSupabase(user.id);
     if (pins && pins.length > 0) {
@@ -370,10 +374,10 @@ async function loadPinsFromSupabaseAndUpdateLocal() {
         });
       });
       
-      console.log('[Pins] Updated localPinData from Supabase:', localPinData);
+      plog('[Pins] Updated localPinData from Supabase:', localPinData);
       return true;
     } else {
-      console.log('[Pins] No pins found in Supabase');
+      plog('[Pins] No pins found in Supabase');
       localPinData.length = 0;
       return true;
     }
@@ -402,7 +406,7 @@ function cleanPinDataForSerialization(pins) {
 
 // === POPUP ACTION BINDING FUNCTIONS ===
 function bindPopupActions(marker, pin) {
-  console.log('🚨 [bindPopupActions] FUNCTION CALLED for pin:', pin.name);
+  plog('🚨 [bindPopupActions] FUNCTION CALLED for pin:', pin.name);
   
   // Try to get popup element with retries
   let attempts = 0;
@@ -410,11 +414,11 @@ function bindPopupActions(marker, pin) {
   
   const tryBind = () => {
     attempts++;
-    console.log(`[bindPopupActions] Attempt ${attempts}/${maxAttempts} for pin:`, pin.name);
+    plog(`[bindPopupActions] Attempt ${attempts}/${maxAttempts} for pin:`, pin.name);
     
     const popup = marker.getPopup();
     if (!popup) {
-      console.log('[bindPopupActions] No popup object found');
+      plog('[bindPopupActions] No popup object found');
       if (attempts < maxAttempts) {
         setTimeout(tryBind, 100);
         return;
@@ -425,16 +429,16 @@ function bindPopupActions(marker, pin) {
     }
     
     const popupElement = popup?.getElement();
-    console.log('[bindPopupActions] Popup element:', popupElement);
+    plog('[bindPopupActions] Popup element:', popupElement);
     
     if (popupElement) {
-      console.log('[bindPopupActions] Popup element found, binding actions for pin:', pin.name);
+      plog('[bindPopupActions] Popup element found, binding actions for pin:', pin.name);
       bindActionsToPopup(popupElement, marker, pin);
       return;
     }
     
     if (attempts < maxAttempts) {
-      console.log('[bindPopupActions] Popup element not ready, retrying in 100ms...');
+      plog('[bindPopupActions] Popup element not ready, retrying in 100ms...');
       setTimeout(tryBind, 100);
     } else {
       console.error('[bindPopupActions] Failed to get popup element after', maxAttempts, 'attempts');
@@ -445,13 +449,13 @@ function bindPopupActions(marker, pin) {
 }
 
 function bindActionsToPopup(popupElement, marker, pin) {
-  console.log('[bindActionsToPopup] Binding actions to popup element for pin:', pin.name);
+  plog('[bindActionsToPopup] Binding actions to popup element for pin:', pin.name);
   
   const renameBtn = popupElement.querySelector('.rename-btn');
   const deleteBtn = popupElement.querySelector('.delete-btn');
   const journalBtn = popupElement.querySelector('.journal-btn');
   
-  console.log('[bindActionsToPopup] Found buttons:', {
+  plog('[bindActionsToPopup] Found buttons:', {
     rename: !!renameBtn,
     delete: !!deleteBtn,
     journal: !!journalBtn
@@ -463,7 +467,7 @@ function bindActionsToPopup(popupElement, marker, pin) {
     const newRenameBtn = popupElement.querySelector('.rename-btn');
     newRenameBtn.addEventListener('click', (e) => {
       e.stopPropagation();
-      console.log('[bindActionsToPopup] Rename button clicked for pin:', pin.name);
+      plog('[bindActionsToPopup] Rename button clicked for pin:', pin.name);
       reopenRename(marker, pin);
     });
   }
@@ -474,7 +478,7 @@ function bindActionsToPopup(popupElement, marker, pin) {
     const newDeleteBtn = popupElement.querySelector('.delete-btn');
     newDeleteBtn.addEventListener('click', async (e) => {
       e.stopPropagation();
-      console.log('[bindActionsToPopup] Delete button clicked for pin:', pin.name);
+      plog('[bindActionsToPopup] Delete button clicked for pin:', pin.name);
        // Create custom confirmation dialog
        const confirmDialog = document.createElement('div');
        confirmDialog.className = 'custom-confirm-dialog';
@@ -512,7 +516,7 @@ function bindActionsToPopup(popupElement, marker, pin) {
          await deletePin(pin);
          
          // Re-bind event listeners for all remaining pins
-         console.log('[Delete] Re-binding event listeners for remaining pins...');
+         plog('[Delete] Re-binding event listeners for remaining pins...');
          customPins.forEach(remainingPin => {
            if (remainingPin.marker && remainingPin.marker.element) {
              const popup = remainingPin.marker.element.getPopup();
@@ -557,7 +561,7 @@ function bindActionsToPopup(popupElement, marker, pin) {
     const newJournalBtn = popupElement.querySelector('.journal-btn');
     newJournalBtn.addEventListener('click', (e) => {
       e.stopPropagation();
-      console.log('[bindActionsToPopup] Journal button clicked for pin:', pin.name);
+      plog('[bindActionsToPopup] Journal button clicked for pin:', pin.name);
       // Send pin to journal
       if (typeof window.initJournal === 'function') {
         // Get the journal button to simulate a click
@@ -680,7 +684,7 @@ async function save() {
     );
     if (localIndex > -1) {
       localPinData[localIndex].label = newName;
-      console.log('[Pins] Updated localPinData for renamed pin:', localPinData[localIndex]);
+      plog('[Pins] Updated localPinData for renamed pin:', localPinData[localIndex]);
     }
 
     // Restore original popup with new styled structure using the unified builder
@@ -700,7 +704,7 @@ async function save() {
     marker.togglePopup();
     
     // Re-bind actions
-    console.log('[reopenRename save] About to re-bind popup actions for pin:', newName);
+    plog('[reopenRename save] About to re-bind popup actions for pin:', newName);
     setTimeout(() => {
       bindPopupActions(marker, pin);
     }, 100);
@@ -719,9 +723,9 @@ document.addEventListener("DOMContentLoaded", () => {
   const clearPinsBtn = document.getElementById("clearPinsBtn");
 
   // Load saved pins
-  console.log('🚨 [pinManager] About to load saved pins');
+  plog('🚨 [pinManager] About to load saved pins');
   loadPins(map, customPins, { reopenRename }).then(() => {
-    console.log('🚨 [pinManager] Finished loading saved pins');
+    plog('🚨 [pinManager] Finished loading saved pins');
   }).catch(error => {
     console.error('🚨 [pinManager] Error loading saved pins:', error);
   });
@@ -741,7 +745,7 @@ document.addEventListener("DOMContentLoaded", () => {
        });
      }
      
-     console.log("Pin mode:", window.WITD.pinMode ? "ON" : "OFF");
+     plog("Pin mode:", window.WITD.pinMode ? "ON" : "OFF");
    });
 
      clearPinsBtn.addEventListener("click", async () => {
@@ -758,7 +762,7 @@ document.addEventListener("DOMContentLoaded", () => {
        
        // Clear local pin data
        localPinData.length = 0;
-       console.log('[Pins] Cleared localPinData');
+       plog('[Pins] Cleared localPinData');
        
        await persistPins(customPins);
        
@@ -779,7 +783,7 @@ document.addEventListener("DOMContentLoaded", () => {
            if (error) {
              console.error('[Pins] Failed to clear Supabase pins:', error.message);
            } else {
-             console.log('[Pins] Successfully cleared Supabase pins');
+            plog('[Pins] Successfully cleared Supabase pins');
            }
          }
        } catch (error) {
@@ -791,14 +795,14 @@ document.addEventListener("DOMContentLoaded", () => {
      map.on("click", (e) => {
      if (!window.WITD.pinMode) return;
      
-     console.log('[pin] Pin placement click detected, stopping propagation');
+     plog('[pin] Pin placement click detected, stopping propagation');
      
      // Stop event propagation to prevent species layer from handling this click
      e.originalEvent?.stopPropagation?.();
      
      // Prevent multiple simultaneous pin creation popups
      if (window.currentPinPopup) {
-       console.log("Pin creation already in progress, ignoring click");
+       plog("Pin creation already in progress, ignoring click");
        return;
      }
 
@@ -818,7 +822,7 @@ document.addEventListener("DOMContentLoaded", () => {
      });
 
      const { lng, lat } = e.lngLat;
-     console.log('🚨 [map click] Pin placement coordinates:', { lng, lat });
+    plog('🚨 [map click] Pin placement coordinates:', { lng, lat });
 
      // Create styled container
      const popupContent = document.createElement("div");
@@ -941,14 +945,14 @@ document.addEventListener("DOMContentLoaded", () => {
          style: pin.style
        });
        
-       console.log('[Pins] Added to localPinData:', localPinData);
+      plog('[Pins] Added to localPinData:', localPinData);
      
        // Set popup and bind actions
        marker.setPopup(popup);
        marker.togglePopup();
        
              // Bind actions to the new popup
-      console.log('[savePin] About to bind popup actions for new pin:', name);
+      plog('[savePin] About to bind popup actions for new pin:', name);
       setTimeout(() => {
         bindPopupActions(marker, pin);
       }, 100);
@@ -1124,13 +1128,13 @@ async function persistPins(pins = []) {
     if (!pins || pins.length === 0) {
       localStorage.removeItem('witd_pins');
       localStorage.removeItem('witd_pins_last_update');
-      console.log("🗑️ Cleared pins from localStorage");
+      plog("🗑️ Cleared pins from localStorage");
     } else {
       // Clean pin data to remove circular references before serialization
       const cleanPins = cleanPinDataForSerialization(pins);
       localStorage.setItem('witd_pins', JSON.stringify(cleanPins));
       localStorage.setItem('witd_pins_last_update', Date.now().toString());
-      console.log(`💾 Saved ${pins.length} pins to localStorage`);
+      plog(`💾 Saved ${pins.length} pins to localStorage`);
     }
   } catch (err) {
     console.error("❌ Error writing pins to localStorage:", err);
@@ -1140,7 +1144,7 @@ async function persistPins(pins = []) {
     // Use cleaned pins for Supabase sync as well
     const cleanPins = pins.length > 0 ? cleanPinDataForSerialization(pins) : pins;
     await savePins(cleanPins);
-    console.log("☁️ Synced pins to Supabase");
+    plog("☁️ Synced pins to Supabase");
   } catch (err) {
     console.error("❌ Error syncing pins to Supabase:", err);
   }
@@ -1150,10 +1154,10 @@ async function persistPins(pins = []) {
 async function persistGpx(files = []) {
   if (!files || files.length === 0) {
     localStorage.removeItem('witd_gpx_files');
-    console.log("🗑️ Cleared GPX files from localStorage");
+    plog("🗑️ Cleared GPX files from localStorage");
   } else {
     localStorage.setItem('witd_gpx_files', JSON.stringify(files));
-    console.log(`💾 Saved ${files.length} GPX files to localStorage`);
+    plog(`💾 Saved ${files.length} GPX files to localStorage`);
   }
   if (window.saveGpxFiles) await window.saveGpxFiles(files);
 }
@@ -1162,10 +1166,10 @@ async function persistGpx(files = []) {
 async function persistJournal(entries = []) {
   if (!entries || entries.length === 0) {
     localStorage.removeItem('witd_journal_entries');
-    console.log("🗑️ Cleared journal entries from localStorage");
+    plog("🗑️ Cleared journal entries from localStorage");
   } else {
     localStorage.setItem('witd_journal_entries', JSON.stringify(entries));
-    console.log(`💾 Saved ${entries.length} journal entries to localStorage`);
+    plog(`💾 Saved ${entries.length} journal entries to localStorage`);
   }
   if (window.saveJournalEntries) await window.saveJournalEntries(entries);
 }
@@ -1174,10 +1178,10 @@ async function persistJournal(entries = []) {
 function persistDrawColor(color) {
   if (!color) {
     localStorage.removeItem('witd_draw_color');
-    console.log("🗑️ Cleared draw color");
+    plog("🗑️ Cleared draw color");
   } else {
     localStorage.setItem('witd_draw_color', color);
-    console.log("🎨 Saved draw color:", color);
+    plog("🎨 Saved draw color:", color);
   }
 }
 
@@ -1204,7 +1208,7 @@ async function clearAllPins() {
     // Local
     localStorage.removeItem('witd_pins');
     localStorage.removeItem('witd_pins_last_update');
-    console.log("🗑️ Local pins cleared");
+    plog("🗑️ Local pins cleared");
 
     // Supabase
     try {
@@ -1222,7 +1226,7 @@ async function clearAllPins() {
         if (error) {
           console.error("❌ Failed to clear Supabase pins:", error);
         } else {
-          console.log("☁️ Supabase pins cleared");
+          plog("☁️ Supabase pins cleared");
         }
       }
     } catch (supabaseError) {
@@ -1232,7 +1236,7 @@ async function clearAllPins() {
     console.error("❌ Error clearing pins:", err);
   }
 
-  console.log("✅ All Pin Tool pins cleared everywhere.");
+  plog("✅ All Pin Tool pins cleared everywhere.");
 }
 
 // Delete single pin
@@ -1250,7 +1254,7 @@ async function deletePin(pinToDelete) {
     );
     if (localIndex > -1) {
       localPinData.splice(localIndex, 1);
-      console.log('[Pins] Removed from localPinData, remaining:', localPinData.length);
+      plog('[Pins] Removed from localPinData, remaining:', localPinData.length);
     }
     
     await persistPins(customPins);
@@ -1273,14 +1277,14 @@ async function deletePin(pinToDelete) {
         if (error) {
           console.error('[Pins] Failed to update Supabase after deletion:', error.message);
         } else {
-          console.log('[Pins] Successfully updated Supabase after pin deletion');
+          plog('[Pins] Successfully updated Supabase after pin deletion');
         }
       }
     } catch (error) {
       console.error('[Pins] Error updating Supabase after deletion:', error.message);
     }
     
-    console.log("🗑️ Pin deleted (local + Supabase updated)");
+    plog("🗑️ Pin deleted (local + Supabase updated)");
   }
 }
 
@@ -1290,7 +1294,7 @@ async function resetAllUserData() {
   await persistGpx([]);
   await persistJournal([]);
   persistDrawColor(null);
-  console.log("🧹 Full reset of user data complete.");
+  plog("🧹 Full reset of user data complete.");
 }
 
 function enablePinPlacement() {
@@ -1304,7 +1308,7 @@ function enablePinPlacement() {
       window.closeSpeciesPopups();
     }
   }
-  console.log("Pin placement enabled");
+  plog("Pin placement enabled");
 }
 
  // Expose functions globally
