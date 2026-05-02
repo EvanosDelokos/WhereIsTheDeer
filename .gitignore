@@ -1,3 +1,6 @@
+# Generated Capacitor web bundle (regenerate with: node copy-to-www.js)
+www/
+
 # Big local data
 Data/
 *.geojson
